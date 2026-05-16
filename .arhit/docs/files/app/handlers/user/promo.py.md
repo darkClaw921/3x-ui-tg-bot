@@ -1,0 +1,3 @@
+# app/handlers/user/promo.py
+
+Активация промокода без оплаты (free-days). cb_open (PromoActCB action=open): переводит в PromoActivate.waiting_code. msg_code: validate через promos_service.validate(plan=None); при не-free_days промо очищает стейт и просит идти в buy flow; при ошибке остаётся в стейте для повторного ввода; при free_days вызывает subs_service.activate_free_days (xui-first → db), затем promos.apply (best-effort redeem), затем deliver_keys. Двойная активация защищена validate (one-per-user через promo_redemptions) + try_redeem (BEGIN IMMEDIATE). При XuiError промокод не редимится — юзер может повторить.

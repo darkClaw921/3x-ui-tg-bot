@@ -1,0 +1,3 @@
+# app/handlers/user/_keys.py
+
+Хелпер deliver_keys(bot, xui, chat_id, sub, header) — общий код для buy.py и promo.py. Получает inbound через xui.get_inbound, строит vless_uri (build_vless_link) и sub_url (build_subscription_url). Отправляет три сообщения: (1) текстовый summary с expires_at и vless в code-block; (2) QR PNG через bot.send_photo с BufferedInputFile (make_qr_png генерирует bytes); (3) sub URL + клавиатуру с URL-кнопкой 'Subscription URL' (только http(s) схемы допустимы для InlineKeyboardButton.url; vless:// идёт текстом) + subscription_kb (повторная выдача/назад). При XuiError на get_inbound vless_uri оставляется пустым, QR строится по sub_url.

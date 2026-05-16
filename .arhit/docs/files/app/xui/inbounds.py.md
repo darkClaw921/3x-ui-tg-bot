@@ -1,0 +1,3 @@
+# app/xui/inbounds.py
+
+Операции с inbound'ами 3x-ui панели. Функции: list_inbounds(client)->list[dict] (GET /panel/api/inbounds/list, возвращает массив с распарсенными settings/streamSettings), get_inbound(client, inbound_id)->dict (GET /panel/api/inbounds/get/:id, возвращает inbound с распарсенными nested-полями; clients доступны через obj['settings']['clients']). Helper _parse_inbound(raw)->dict декодирует JSON-string subfields settings/streamSettings/sniffing/allocate в nested dict; делает shallow copy, не мутирует входной dict; малформный JSON оставляет как строку. На отсутствующий inbound XuiClient.request_json кидает XuiError (success=false). Зависимости: XuiClient, XuiError из app.xui.client, json (stdlib).

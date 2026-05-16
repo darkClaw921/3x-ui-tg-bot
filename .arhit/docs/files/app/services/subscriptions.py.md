@@ -1,0 +1,3 @@
+# app/services/subscriptions.py
+
+Единая точка работы с подписками. create_or_extend(conn, xui, user, plan, promo) -> Subscription: вычисляет delta = plan.days + (promo.value если free_days); если у юзера есть активная подписка — extend в БД + update_client(expiryTime=новое) в xui; иначе — генерирует uuid+email(make_client_email)+sub_id, вызывает add_client (xui-first), затем subs_repo.create. activate_free_days(conn, xui, user, promo): тот же путь с plan_id=None и delta=promo.value (raises ValueError если promo.type != free_days). revoke(xui, sub): update_client(enable=False) и status='revoked'. Порядок xui-first, db-after — чтобы при сбое xui не оставалось БД-сирот без панельного клиента.

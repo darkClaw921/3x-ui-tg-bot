@@ -1,0 +1,3 @@
+# app/services/billing.py
+
+Stars-invoice и финальная цена. _STARS_MIN=1 (TG требует amount>=1). InvoicePrice(stars, raw_discount, extra_days). calc_price(plan, promo): обёртка над promos.compute_discount + max(_STARS_MIN, final_price). build_invoice_payload(plan_id, promo_id): JSON {plan_id, promo_id} (compact, <128 байт); parse_invoice_payload — обратное преобразование с ValueError на malformed input. send_invoice(bot, chat_id, plan, promo): bot.send_invoice с currency='XTR', provider_token='', prices=[LabeledPrice(label=plan.title, amount=stars)], payload=build_invoice_payload(...), title/description с указанием бонусных дней и применённого промокода.

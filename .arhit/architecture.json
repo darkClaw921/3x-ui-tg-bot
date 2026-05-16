@@ -1,0 +1,3948 @@
+{
+  "root": "/Users/igorgerasimov/claudeWorkspace/3x-ui-tg-bot",
+  "generatedAt": "2026-05-16T17:37:46.599Z",
+  "nodes": [
+    {
+      "id": "app/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/__init__.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "app/config.py",
+      "name": "config.py",
+      "type": "file",
+      "path": "app/config.py",
+      "exports": [
+        "Settings",
+        "settings"
+      ],
+      "children": [
+        {
+          "id": "app/config.py:Settings",
+          "name": "Settings",
+          "type": "class",
+          "path": "app/config.py",
+          "line": 31,
+          "exports": [
+            "Settings"
+          ]
+        },
+        {
+          "id": "app/config.py:settings",
+          "name": "settings",
+          "type": "variable",
+          "path": "app/config.py",
+          "line": 92,
+          "exports": [
+            "settings"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/db/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/db/__init__.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "app/db/engine.py",
+      "name": "engine.py",
+      "type": "file",
+      "path": "app/db/engine.py",
+      "exports": [
+        "The"
+      ],
+      "children": [
+        {
+          "id": "app/db/engine.py:The",
+          "name": "The",
+          "type": "variable",
+          "path": "app/db/engine.py",
+          "line": 21,
+          "exports": [
+            "The"
+          ]
+        },
+        {
+          "id": "app/db/engine.py:_SCHEMA_PATH",
+          "name": "_SCHEMA_PATH",
+          "type": "variable",
+          "path": "app/db/engine.py",
+          "line": 38,
+          "exports": []
+        },
+        {
+          "id": "app/db/engine.py:_resolve_db_path",
+          "name": "_resolve_db_path",
+          "type": "function",
+          "path": "app/db/engine.py",
+          "line": 41,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/db/repos/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/db/repos/__init__.py",
+      "exports": [
+        "Modules"
+      ],
+      "children": [
+        {
+          "id": "app/db/repos/__init__.py:Modules",
+          "name": "Modules",
+          "type": "variable",
+          "path": "app/db/repos/__init__.py",
+          "line": 7,
+          "exports": [
+            "Modules"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/db/repos/payments.py",
+      "name": "payments.py",
+      "type": "file",
+      "path": "app/db/repos/payments.py",
+      "exports": [
+        "PaymentStatus",
+        "Payment"
+      ],
+      "children": [
+        {
+          "id": "app/db/repos/payments.py:PaymentStatus",
+          "name": "PaymentStatus",
+          "type": "variable",
+          "path": "app/db/repos/payments.py",
+          "line": 18,
+          "exports": [
+            "PaymentStatus"
+          ]
+        },
+        {
+          "id": "app/db/repos/payments.py:Payment",
+          "name": "Payment",
+          "type": "class",
+          "path": "app/db/repos/payments.py",
+          "line": 22,
+          "exports": [
+            "Payment"
+          ]
+        },
+        {
+          "id": "app/db/repos/payments.py:_SELECT",
+          "name": "_SELECT",
+          "type": "variable",
+          "path": "app/db/repos/payments.py",
+          "line": 51,
+          "exports": []
+        },
+        {
+          "id": "app/db/repos/payments.py:_to_iso",
+          "name": "_to_iso",
+          "type": "function",
+          "path": "app/db/repos/payments.py",
+          "line": 163,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/db/repos/plans.py",
+      "name": "plans.py",
+      "type": "file",
+      "path": "app/db/repos/plans.py",
+      "exports": [
+        "Plan"
+      ],
+      "children": [
+        {
+          "id": "app/db/repos/plans.py:_UPDATABLE_COLUMNS",
+          "name": "_UPDATABLE_COLUMNS",
+          "type": "variable",
+          "path": "app/db/repos/plans.py",
+          "line": 20,
+          "exports": []
+        },
+        {
+          "id": "app/db/repos/plans.py:Plan",
+          "name": "Plan",
+          "type": "class",
+          "path": "app/db/repos/plans.py",
+          "line": 24,
+          "exports": [
+            "Plan"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/db/repos/promos.py",
+      "name": "promos.py",
+      "type": "file",
+      "path": "app/db/repos/promos.py",
+      "exports": [
+        "PromoType",
+        "Promo",
+        "Redemption"
+      ],
+      "children": [
+        {
+          "id": "app/db/repos/promos.py:PromoType",
+          "name": "PromoType",
+          "type": "variable",
+          "path": "app/db/repos/promos.py",
+          "line": 25,
+          "exports": [
+            "PromoType"
+          ]
+        },
+        {
+          "id": "app/db/repos/promos.py:Promo",
+          "name": "Promo",
+          "type": "class",
+          "path": "app/db/repos/promos.py",
+          "line": 29,
+          "exports": [
+            "Promo"
+          ]
+        },
+        {
+          "id": "app/db/repos/promos.py:Redemption",
+          "name": "Redemption",
+          "type": "class",
+          "path": "app/db/repos/promos.py",
+          "line": 59,
+          "exports": [
+            "Redemption"
+          ]
+        },
+        {
+          "id": "app/db/repos/promos.py:_utcnow_iso",
+          "name": "_utcnow_iso",
+          "type": "function",
+          "path": "app/db/repos/promos.py",
+          "line": 80,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/db/repos/subscriptions.py",
+      "name": "subscriptions.py",
+      "type": "file",
+      "path": "app/db/repos/subscriptions.py",
+      "exports": [
+        "SubscriptionStatus",
+        "Subscription",
+        "TrafficSnapshot",
+        "NotificationKind"
+      ],
+      "children": [
+        {
+          "id": "app/db/repos/subscriptions.py:SubscriptionStatus",
+          "name": "SubscriptionStatus",
+          "type": "variable",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 20,
+          "exports": [
+            "SubscriptionStatus"
+          ]
+        },
+        {
+          "id": "app/db/repos/subscriptions.py:_to_iso",
+          "name": "_to_iso",
+          "type": "function",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 23,
+          "exports": []
+        },
+        {
+          "id": "app/db/repos/subscriptions.py:_utcnow_iso",
+          "name": "_utcnow_iso",
+          "type": "function",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 34,
+          "exports": []
+        },
+        {
+          "id": "app/db/repos/subscriptions.py:Subscription",
+          "name": "Subscription",
+          "type": "class",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 40,
+          "exports": [
+            "Subscription"
+          ]
+        },
+        {
+          "id": "app/db/repos/subscriptions.py:TrafficSnapshot",
+          "name": "TrafficSnapshot",
+          "type": "class",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 72,
+          "exports": [
+            "TrafficSnapshot"
+          ]
+        },
+        {
+          "id": "app/db/repos/subscriptions.py:_SELECT",
+          "name": "_SELECT",
+          "type": "variable",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 93,
+          "exports": []
+        },
+        {
+          "id": "app/db/repos/subscriptions.py:NotificationKind",
+          "name": "NotificationKind",
+          "type": "variable",
+          "path": "app/db/repos/subscriptions.py",
+          "line": 284,
+          "exports": [
+            "NotificationKind"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/db/repos/users.py",
+      "name": "users.py",
+      "type": "file",
+      "path": "app/db/repos/users.py",
+      "exports": [
+        "The",
+        "an",
+        "User"
+      ],
+      "children": [
+        {
+          "id": "app/db/repos/users.py:The",
+          "name": "The",
+          "type": "variable",
+          "path": "app/db/repos/users.py",
+          "line": 10,
+          "exports": [
+            "The"
+          ]
+        },
+        {
+          "id": "app/db/repos/users.py:an",
+          "name": "an",
+          "type": "variable",
+          "path": "app/db/repos/users.py",
+          "line": 11,
+          "exports": [
+            "an"
+          ]
+        },
+        {
+          "id": "app/db/repos/users.py:User",
+          "name": "User",
+          "type": "class",
+          "path": "app/db/repos/users.py",
+          "line": 25,
+          "exports": [
+            "User"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/handlers/__init__.py",
+      "exports": [
+        "register_routers"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/__init__.py:register_routers",
+          "name": "register_routers",
+          "type": "function",
+          "path": "app/handlers/__init__.py",
+          "line": 20,
+          "exports": [
+            "register_routers"
+          ]
+        },
+        {
+          "id": "app/handlers/__init__.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/__init__.py",
+          "line": 41,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/handlers/admin/__init__.py",
+      "exports": [
+        "Usage",
+        "admin_router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/__init__.py:Usage",
+          "name": "Usage",
+          "type": "variable",
+          "path": "app/handlers/admin/__init__.py",
+          "line": 11,
+          "exports": [
+            "Usage"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/__init__.py:_build_admin_router",
+          "name": "_build_admin_router",
+          "type": "function",
+          "path": "app/handlers/admin/__init__.py",
+          "line": 25,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/__init__.py:admin_router",
+          "name": "admin_router",
+          "type": "variable",
+          "path": "app/handlers/admin/__init__.py",
+          "line": 38,
+          "exports": [
+            "admin_router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/__init__.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/__init__.py",
+          "line": 40,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/menu.py",
+      "name": "menu.py",
+      "type": "file",
+      "path": "app/handlers/admin/menu.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/menu.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/admin/menu.py",
+          "line": 28,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/menu.py:_GREETING",
+          "name": "_GREETING",
+          "type": "variable",
+          "path": "app/handlers/admin/menu.py",
+          "line": 31,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/menu.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/menu.py",
+          "line": 60,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/plans.py",
+      "name": "plans.py",
+      "type": "file",
+      "path": "app/handlers/admin/plans.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/plans.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/admin/plans.py",
+          "line": 51,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/plans.py:_format_plan",
+          "name": "_format_plan",
+          "type": "function",
+          "path": "app/handlers/admin/plans.py",
+          "line": 59,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/plans.py:_FIELD_LABELS",
+          "name": "_FIELD_LABELS",
+          "type": "variable",
+          "path": "app/handlers/admin/plans.py",
+          "line": 245,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/plans.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/plans.py",
+          "line": 324,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/promos.py",
+      "name": "promos.py",
+      "type": "file",
+      "path": "app/handlers/admin/promos.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/promos.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/admin/promos.py",
+          "line": 57,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/promos.py:_TYPE_LABELS",
+          "name": "_TYPE_LABELS",
+          "type": "variable",
+          "path": "app/handlers/admin/promos.py",
+          "line": 65,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/promos.py:_format_promo",
+          "name": "_format_promo",
+          "type": "function",
+          "path": "app/handlers/admin/promos.py",
+          "line": 72,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/promos.py:_promo_is_active",
+          "name": "_promo_is_active",
+          "type": "function",
+          "path": "app/handlers/admin/promos.py",
+          "line": 115,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/promos.py:_parse_expires_at",
+          "name": "_parse_expires_at",
+          "type": "function",
+          "path": "app/handlers/admin/promos.py",
+          "line": 153,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/promos.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/promos.py",
+          "line": 414,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/stats.py",
+      "name": "stats.py",
+      "type": "file",
+      "path": "app/handlers/admin/stats.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/stats.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 42,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_PERIODS",
+          "name": "_PERIODS",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 53,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_DEFAULT_PERIOD",
+          "name": "_DEFAULT_PERIOD",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 59,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_EXPIRING_WINDOW_DAYS",
+          "name": "_EXPIRING_WINDOW_DAYS",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 60,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_PAYMENTS_WINDOW",
+          "name": "_PAYMENTS_WINDOW",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 61,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_MAX_EXPIRING_ROWS",
+          "name": "_MAX_EXPIRING_ROWS",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 62,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_TOP_PROMOS_LIMIT",
+          "name": "_TOP_PROMOS_LIMIT",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 63,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_period_meta",
+          "name": "_period_meta",
+          "type": "function",
+          "path": "app/handlers/admin/stats.py",
+          "line": 66,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:_format_expiring",
+          "name": "_format_expiring",
+          "type": "function",
+          "path": "app/handlers/admin/stats.py",
+          "line": 76,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/stats.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/stats.py",
+          "line": 188,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/users.py",
+      "name": "users.py",
+      "type": "file",
+      "path": "app/handlers/admin/users.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/users.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/admin/users.py",
+          "line": 65,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/users.py:_MAX_PAYMENTS",
+          "name": "_MAX_PAYMENTS",
+          "type": "variable",
+          "path": "app/handlers/admin/users.py",
+          "line": 73,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/users.py:_safe",
+          "name": "_safe",
+          "type": "function",
+          "path": "app/handlers/admin/users.py",
+          "line": 76,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/users.py:_sub_status_glyph",
+          "name": "_sub_status_glyph",
+          "type": "function",
+          "path": "app/handlers/admin/users.py",
+          "line": 123,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/users.py:_format_payment",
+          "name": "_format_payment",
+          "type": "function",
+          "path": "app/handlers/admin/users.py",
+          "line": 132,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/users.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/users.py",
+          "line": 407,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/start.py",
+      "name": "start.py",
+      "type": "file",
+      "path": "app/handlers/start.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/start.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/start.py",
+          "line": 25,
+          "exports": [
+            "router"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/handlers/user/__init__.py",
+      "exports": [
+        "Usage",
+        "user_router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/__init__.py:Usage",
+          "name": "Usage",
+          "type": "variable",
+          "path": "app/handlers/user/__init__.py",
+          "line": 8,
+          "exports": [
+            "Usage"
+          ]
+        },
+        {
+          "id": "app/handlers/user/__init__.py:_build_user_router",
+          "name": "_build_user_router",
+          "type": "function",
+          "path": "app/handlers/user/__init__.py",
+          "line": 21,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/__init__.py:user_router",
+          "name": "user_router",
+          "type": "variable",
+          "path": "app/handlers/user/__init__.py",
+          "line": 40,
+          "exports": [
+            "user_router"
+          ]
+        },
+        {
+          "id": "app/handlers/user/__init__.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/__init__.py",
+          "line": 42,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/_keys.py",
+      "name": "_keys.py",
+      "type": "file",
+      "path": "app/handlers/user/_keys.py",
+      "exports": [
+        "and"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/_keys.py:and",
+          "name": "and",
+          "type": "variable",
+          "path": "app/handlers/user/_keys.py",
+          "line": 4,
+          "exports": [
+            "and"
+          ]
+        },
+        {
+          "id": "app/handlers/user/_keys.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/_keys.py",
+          "line": 124,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/buy.py",
+      "name": "buy.py",
+      "type": "file",
+      "path": "app/handlers/user/buy.py",
+      "exports": [
+        "The",
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/buy.py:The",
+          "name": "The",
+          "type": "variable",
+          "path": "app/handlers/user/buy.py",
+          "line": 29,
+          "exports": [
+            "The"
+          ]
+        },
+        {
+          "id": "app/handlers/user/buy.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/user/buy.py",
+          "line": 62,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/user/buy.py:_format_confirm",
+          "name": "_format_confirm",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 70,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:_plan_is_buyable",
+          "name": "_plan_is_buyable",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 106,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:_promo_is_usable",
+          "name": "_promo_is_usable",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 111,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/buy.py",
+          "line": 518,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/help.py",
+      "name": "help.py",
+      "type": "file",
+      "path": "app/handlers/user/help.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/help.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/user/help.py",
+          "line": 23,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/user/help.py:_HELP_TEXT",
+          "name": "_HELP_TEXT",
+          "type": "variable",
+          "path": "app/handlers/user/help.py",
+          "line": 26,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/help.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/help.py",
+          "line": 55,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/menu.py",
+      "name": "menu.py",
+      "type": "file",
+      "path": "app/handlers/user/menu.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/menu.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/user/menu.py",
+          "line": 31,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/user/menu.py:_GREETING",
+          "name": "_GREETING",
+          "type": "variable",
+          "path": "app/handlers/user/menu.py",
+          "line": 34,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/menu.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/menu.py",
+          "line": 91,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/my_subscription.py",
+      "name": "my_subscription.py",
+      "type": "file",
+      "path": "app/handlers/user/my_subscription.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/my_subscription.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 62,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_BYTE_UNITS",
+          "name": "_BYTE_UNITS",
+          "type": "variable",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 70,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_format_bytes",
+          "name": "_format_bytes",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 73,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_parse_iso",
+          "name": "_parse_iso",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 99,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_days_delta",
+          "name": "_days_delta",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 112,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_is_active",
+          "name": "_is_active",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 129,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_format_days_line",
+          "name": "_format_days_line",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 136,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_format_status_line",
+          "name": "_format_status_line",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 151,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_format_sub_card",
+          "name": "_format_sub_card",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 216,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_sub_card_kb",
+          "name": "_sub_card_kb",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 241,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_no_subscription_kb",
+          "name": "_no_subscription_kb",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 271,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 427,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/user/promo.py",
+      "name": "promo.py",
+      "type": "file",
+      "path": "app/handlers/user/promo.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/user/promo.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/user/promo.py",
+          "line": 45,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/user/promo.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/user/promo.py",
+          "line": 155,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/keyboards/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/keyboards/__init__.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "app/keyboards/admin.py",
+      "name": "admin.py",
+      "type": "file",
+      "path": "app/keyboards/admin.py",
+      "exports": [
+        "AdminCB",
+        "PlanCB",
+        "UserCB",
+        "StatsCB",
+        "PromoCB",
+        "admin_main_menu",
+        "back_to_main_kb",
+        "cancel_kb",
+        "plans_list_kb",
+        "plan_card_kb",
+        "plan_edit_fields_kb",
+        "promos_list_kb",
+        "promo_type_kb",
+        "promo_card_kb",
+        "user_card_kb",
+        "stats_kb"
+      ],
+      "children": [
+        {
+          "id": "app/keyboards/admin.py:AdminCB",
+          "name": "AdminCB",
+          "type": "class",
+          "path": "app/keyboards/admin.py",
+          "line": 38,
+          "exports": [
+            "AdminCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:PlanCB",
+          "name": "PlanCB",
+          "type": "class",
+          "path": "app/keyboards/admin.py",
+          "line": 45,
+          "exports": [
+            "PlanCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:UserCB",
+          "name": "UserCB",
+          "type": "class",
+          "path": "app/keyboards/admin.py",
+          "line": 62,
+          "exports": [
+            "UserCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:StatsCB",
+          "name": "StatsCB",
+          "type": "class",
+          "path": "app/keyboards/admin.py",
+          "line": 80,
+          "exports": [
+            "StatsCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:PromoCB",
+          "name": "PromoCB",
+          "type": "class",
+          "path": "app/keyboards/admin.py",
+          "line": 96,
+          "exports": [
+            "PromoCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:admin_main_menu",
+          "name": "admin_main_menu",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 119,
+          "exports": [
+            "admin_main_menu"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:back_to_main_kb",
+          "name": "back_to_main_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 135,
+          "exports": [
+            "back_to_main_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:cancel_kb",
+          "name": "cancel_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 142,
+          "exports": [
+            "cancel_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:plans_list_kb",
+          "name": "plans_list_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 152,
+          "exports": [
+            "plans_list_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:plan_card_kb",
+          "name": "plan_card_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 172,
+          "exports": [
+            "plan_card_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:plan_edit_fields_kb",
+          "name": "plan_edit_fields_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 189,
+          "exports": [
+            "plan_edit_fields_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:promos_list_kb",
+          "name": "promos_list_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 212,
+          "exports": [
+            "promos_list_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:promo_type_kb",
+          "name": "promo_type_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 230,
+          "exports": [
+            "promo_type_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:promo_card_kb",
+          "name": "promo_card_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 250,
+          "exports": [
+            "promo_card_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:user_card_kb",
+          "name": "user_card_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 270,
+          "exports": [
+            "user_card_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:stats_kb",
+          "name": "stats_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 310,
+          "exports": [
+            "stats_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/keyboards/admin.py",
+          "line": 344,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/keyboards/user.py",
+      "name": "user.py",
+      "type": "file",
+      "path": "app/keyboards/user.py",
+      "exports": [
+        "UserCB",
+        "BuyCB",
+        "SubCB",
+        "PromoActCB",
+        "user_main_menu",
+        "back_to_menu_kb",
+        "cancel_kb",
+        "plans_kb",
+        "confirm_kb",
+        "subscription_kb"
+      ],
+      "children": [
+        {
+          "id": "app/keyboards/user.py:UserCB",
+          "name": "UserCB",
+          "type": "class",
+          "path": "app/keyboards/user.py",
+          "line": 38,
+          "exports": [
+            "UserCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:BuyCB",
+          "name": "BuyCB",
+          "type": "class",
+          "path": "app/keyboards/user.py",
+          "line": 44,
+          "exports": [
+            "BuyCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:SubCB",
+          "name": "SubCB",
+          "type": "class",
+          "path": "app/keyboards/user.py",
+          "line": 60,
+          "exports": [
+            "SubCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:PromoActCB",
+          "name": "PromoActCB",
+          "type": "class",
+          "path": "app/keyboards/user.py",
+          "line": 72,
+          "exports": [
+            "PromoActCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:user_main_menu",
+          "name": "user_main_menu",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 88,
+          "exports": [
+            "user_main_menu"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:back_to_menu_kb",
+          "name": "back_to_menu_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 112,
+          "exports": [
+            "back_to_menu_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:cancel_kb",
+          "name": "cancel_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 119,
+          "exports": [
+            "cancel_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:plans_kb",
+          "name": "plans_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 126,
+          "exports": [
+            "plans_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:confirm_kb",
+          "name": "confirm_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 143,
+          "exports": [
+            "confirm_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:subscription_kb",
+          "name": "subscription_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 164,
+          "exports": [
+            "subscription_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/keyboards/user.py",
+          "line": 176,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/logger.py",
+      "name": "logger.py",
+      "type": "file",
+      "path": "app/logger.py",
+      "exports": [
+        "InterceptHandler",
+        "setup_logging"
+      ],
+      "children": [
+        {
+          "id": "app/logger.py:InterceptHandler",
+          "name": "InterceptHandler",
+          "type": "class",
+          "path": "app/logger.py",
+          "line": 25,
+          "exports": [
+            "InterceptHandler"
+          ]
+        },
+        {
+          "id": "app/logger.py:_LOG_FORMAT",
+          "name": "_LOG_FORMAT",
+          "type": "variable",
+          "path": "app/logger.py",
+          "line": 48,
+          "exports": []
+        },
+        {
+          "id": "app/logger.py:setup_logging",
+          "name": "setup_logging",
+          "type": "function",
+          "path": "app/logger.py",
+          "line": 56,
+          "exports": [
+            "setup_logging"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/main.py",
+      "name": "main.py",
+      "type": "file",
+      "path": "app/main.py",
+      "exports": [
+        "Lifecycle"
+      ],
+      "children": [
+        {
+          "id": "app/main.py:Lifecycle",
+          "name": "Lifecycle",
+          "type": "variable",
+          "path": "app/main.py",
+          "line": 8,
+          "exports": [
+            "Lifecycle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/middlewares/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/middlewares/__init__.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "app/middlewares/__init__.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/middlewares/__init__.py",
+          "line": 17,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/middlewares/admin_only.py",
+      "name": "admin_only.py",
+      "type": "file",
+      "path": "app/middlewares/admin_only.py",
+      "exports": [
+        "AdminOnlyMiddleware"
+      ],
+      "children": [
+        {
+          "id": "app/middlewares/admin_only.py:_ACCESS_DENIED",
+          "name": "_ACCESS_DENIED",
+          "type": "variable",
+          "path": "app/middlewares/admin_only.py",
+          "line": 28,
+          "exports": []
+        },
+        {
+          "id": "app/middlewares/admin_only.py:AdminOnlyMiddleware",
+          "name": "AdminOnlyMiddleware",
+          "type": "class",
+          "path": "app/middlewares/admin_only.py",
+          "line": 31,
+          "exports": [
+            "AdminOnlyMiddleware"
+          ]
+        },
+        {
+          "id": "app/middlewares/admin_only.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/middlewares/admin_only.py",
+          "line": 71,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/middlewares/user_ctx.py",
+      "name": "user_ctx.py",
+      "type": "file",
+      "path": "app/middlewares/user_ctx.py",
+      "exports": [
+        "UserContextMiddleware"
+      ],
+      "children": [
+        {
+          "id": "app/middlewares/user_ctx.py:_extract_tg_user",
+          "name": "_extract_tg_user",
+          "type": "function",
+          "path": "app/middlewares/user_ctx.py",
+          "line": 30,
+          "exports": []
+        },
+        {
+          "id": "app/middlewares/user_ctx.py:UserContextMiddleware",
+          "name": "UserContextMiddleware",
+          "type": "class",
+          "path": "app/middlewares/user_ctx.py",
+          "line": 65,
+          "exports": [
+            "UserContextMiddleware"
+          ]
+        },
+        {
+          "id": "app/middlewares/user_ctx.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/middlewares/user_ctx.py",
+          "line": 109,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/scheduler.py",
+      "name": "scheduler.py",
+      "type": "file",
+      "path": "app/scheduler.py",
+      "exports": [
+        "ReminderKind",
+        "setup_scheduler"
+      ],
+      "children": [
+        {
+          "id": "app/scheduler.py:ReminderKind",
+          "name": "ReminderKind",
+          "type": "variable",
+          "path": "app/scheduler.py",
+          "line": 43,
+          "exports": [
+            "ReminderKind"
+          ]
+        },
+        {
+          "id": "app/scheduler.py:_REMINDER_TEXTS",
+          "name": "_REMINDER_TEXTS",
+          "type": "variable",
+          "path": "app/scheduler.py",
+          "line": 47,
+          "exports": []
+        },
+        {
+          "id": "app/scheduler.py:_EXPIRED_TEXT",
+          "name": "_EXPIRED_TEXT",
+          "type": "variable",
+          "path": "app/scheduler.py",
+          "line": 62,
+          "exports": []
+        },
+        {
+          "id": "app/scheduler.py:_parse_iso",
+          "name": "_parse_iso",
+          "type": "function",
+          "path": "app/scheduler.py",
+          "line": 74,
+          "exports": []
+        },
+        {
+          "id": "app/scheduler.py:_days_left",
+          "name": "_days_left",
+          "type": "function",
+          "path": "app/scheduler.py",
+          "line": 88,
+          "exports": []
+        },
+        {
+          "id": "app/scheduler.py:_kind_for_days_left",
+          "name": "_kind_for_days_left",
+          "type": "function",
+          "path": "app/scheduler.py",
+          "line": 100,
+          "exports": []
+        },
+        {
+          "id": "app/scheduler.py:_wrap",
+          "name": "_wrap",
+          "type": "function",
+          "path": "app/scheduler.py",
+          "line": 372,
+          "exports": []
+        },
+        {
+          "id": "app/scheduler.py:setup_scheduler",
+          "name": "setup_scheduler",
+          "type": "function",
+          "path": "app/scheduler.py",
+          "line": 394,
+          "exports": [
+            "setup_scheduler"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/services/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/services/__init__.py",
+      "exports": [
+        "Submodules"
+      ],
+      "children": [
+        {
+          "id": "app/services/__init__.py:Submodules",
+          "name": "Submodules",
+          "type": "variable",
+          "path": "app/services/__init__.py",
+          "line": 3,
+          "exports": [
+            "Submodules"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app/services/billing.py",
+      "name": "billing.py",
+      "type": "file",
+      "path": "app/services/billing.py",
+      "exports": [
+        "InvoicePrice",
+        "calc_price",
+        "build_invoice_payload",
+        "parse_invoice_payload"
+      ],
+      "children": [
+        {
+          "id": "app/services/billing.py:_STARS_MIN",
+          "name": "_STARS_MIN",
+          "type": "variable",
+          "path": "app/services/billing.py",
+          "line": 39,
+          "exports": []
+        },
+        {
+          "id": "app/services/billing.py:_PAYLOAD_BYTE_LIMIT",
+          "name": "_PAYLOAD_BYTE_LIMIT",
+          "type": "variable",
+          "path": "app/services/billing.py",
+          "line": 44,
+          "exports": []
+        },
+        {
+          "id": "app/services/billing.py:InvoicePrice",
+          "name": "InvoicePrice",
+          "type": "class",
+          "path": "app/services/billing.py",
+          "line": 48,
+          "exports": [
+            "InvoicePrice"
+          ]
+        },
+        {
+          "id": "app/services/billing.py:calc_price",
+          "name": "calc_price",
+          "type": "function",
+          "path": "app/services/billing.py",
+          "line": 68,
+          "exports": [
+            "calc_price"
+          ]
+        },
+        {
+          "id": "app/services/billing.py:build_invoice_payload",
+          "name": "build_invoice_payload",
+          "type": "function",
+          "path": "app/services/billing.py",
+          "line": 85,
+          "exports": [
+            "build_invoice_payload"
+          ]
+        },
+        {
+          "id": "app/services/billing.py:parse_invoice_payload",
+          "name": "parse_invoice_payload",
+          "type": "function",
+          "path": "app/services/billing.py",
+          "line": 108,
+          "exports": [
+            "parse_invoice_payload"
+          ]
+        },
+        {
+          "id": "app/services/billing.py:_invoice_title",
+          "name": "_invoice_title",
+          "type": "function",
+          "path": "app/services/billing.py",
+          "line": 146,
+          "exports": []
+        },
+        {
+          "id": "app/services/billing.py:_invoice_description",
+          "name": "_invoice_description",
+          "type": "function",
+          "path": "app/services/billing.py",
+          "line": 151,
+          "exports": []
+        },
+        {
+          "id": "app/services/billing.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/services/billing.py",
+          "line": 197,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/services/promos.py",
+      "name": "promos.py",
+      "type": "file",
+      "path": "app/services/promos.py",
+      "exports": [
+        "PromoValidation",
+        "DiscountResult",
+        "compute_discount"
+      ],
+      "children": [
+        {
+          "id": "app/services/promos.py:PromoValidation",
+          "name": "PromoValidation",
+          "type": "class",
+          "path": "app/services/promos.py",
+          "line": 38,
+          "exports": [
+            "PromoValidation"
+          ]
+        },
+        {
+          "id": "app/services/promos.py:DiscountResult",
+          "name": "DiscountResult",
+          "type": "class",
+          "path": "app/services/promos.py",
+          "line": 53,
+          "exports": [
+            "DiscountResult"
+          ]
+        },
+        {
+          "id": "app/services/promos.py:_utcnow_iso",
+          "name": "_utcnow_iso",
+          "type": "function",
+          "path": "app/services/promos.py",
+          "line": 71,
+          "exports": []
+        },
+        {
+          "id": "app/services/promos.py:compute_discount",
+          "name": "compute_discount",
+          "type": "function",
+          "path": "app/services/promos.py",
+          "line": 179,
+          "exports": [
+            "compute_discount"
+          ]
+        },
+        {
+          "id": "app/services/promos.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/services/promos.py",
+          "line": 257,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/services/stats.py",
+      "name": "stats.py",
+      "type": "file",
+      "path": "app/services/stats.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "app/services/stats.py:_utcnow",
+          "name": "_utcnow",
+          "type": "function",
+          "path": "app/services/stats.py",
+          "line": 38,
+          "exports": []
+        },
+        {
+          "id": "app/services/stats.py:_iso",
+          "name": "_iso",
+          "type": "function",
+          "path": "app/services/stats.py",
+          "line": 192,
+          "exports": []
+        },
+        {
+          "id": "app/services/stats.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/services/stats.py",
+          "line": 203,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/services/subscriptions.py",
+      "name": "subscriptions.py",
+      "type": "file",
+      "path": "app/services/subscriptions.py",
+      "exports": [
+        "consistent",
+        "always"
+      ],
+      "children": [
+        {
+          "id": "app/services/subscriptions.py:consistent",
+          "name": "consistent",
+          "type": "variable",
+          "path": "app/services/subscriptions.py",
+          "line": 4,
+          "exports": [
+            "consistent"
+          ]
+        },
+        {
+          "id": "app/services/subscriptions.py:always",
+          "name": "always",
+          "type": "variable",
+          "path": "app/services/subscriptions.py",
+          "line": 14,
+          "exports": [
+            "always"
+          ]
+        },
+        {
+          "id": "app/services/subscriptions.py:_expiry_ms",
+          "name": "_expiry_ms",
+          "type": "function",
+          "path": "app/services/subscriptions.py",
+          "line": 58,
+          "exports": []
+        },
+        {
+          "id": "app/services/subscriptions.py:_parse_iso",
+          "name": "_parse_iso",
+          "type": "function",
+          "path": "app/services/subscriptions.py",
+          "line": 69,
+          "exports": []
+        },
+        {
+          "id": "app/services/subscriptions.py:_bonus_days_from_promo",
+          "name": "_bonus_days_from_promo",
+          "type": "function",
+          "path": "app/services/subscriptions.py",
+          "line": 89,
+          "exports": []
+        },
+        {
+          "id": "app/services/subscriptions.py:_make_sub_id",
+          "name": "_make_sub_id",
+          "type": "function",
+          "path": "app/services/subscriptions.py",
+          "line": 98,
+          "exports": []
+        },
+        {
+          "id": "app/services/subscriptions.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/services/subscriptions.py",
+          "line": 314,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/states/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/states/__init__.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "app/states/__init__.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/states/__init__.py",
+          "line": 12,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/states/admin.py",
+      "name": "admin.py",
+      "type": "file",
+      "path": "app/states/admin.py",
+      "exports": [
+        "PlanCreate",
+        "PlanEdit",
+        "AdminSearchUser",
+        "PromoCreate"
+      ],
+      "children": [
+        {
+          "id": "app/states/admin.py:PlanCreate",
+          "name": "PlanCreate",
+          "type": "class",
+          "path": "app/states/admin.py",
+          "line": 15,
+          "exports": [
+            "PlanCreate"
+          ]
+        },
+        {
+          "id": "app/states/admin.py:PlanEdit",
+          "name": "PlanEdit",
+          "type": "class",
+          "path": "app/states/admin.py",
+          "line": 27,
+          "exports": [
+            "PlanEdit"
+          ]
+        },
+        {
+          "id": "app/states/admin.py:AdminSearchUser",
+          "name": "AdminSearchUser",
+          "type": "class",
+          "path": "app/states/admin.py",
+          "line": 39,
+          "exports": [
+            "AdminSearchUser"
+          ]
+        },
+        {
+          "id": "app/states/admin.py:PromoCreate",
+          "name": "PromoCreate",
+          "type": "class",
+          "path": "app/states/admin.py",
+          "line": 51,
+          "exports": [
+            "PromoCreate"
+          ]
+        },
+        {
+          "id": "app/states/admin.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/states/admin.py",
+          "line": 68,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/states/user.py",
+      "name": "user.py",
+      "type": "file",
+      "path": "app/states/user.py",
+      "exports": [
+        "BuyFlow",
+        "PromoActivate"
+      ],
+      "children": [
+        {
+          "id": "app/states/user.py:BuyFlow",
+          "name": "BuyFlow",
+          "type": "class",
+          "path": "app/states/user.py",
+          "line": 15,
+          "exports": [
+            "BuyFlow"
+          ]
+        },
+        {
+          "id": "app/states/user.py:PromoActivate",
+          "name": "PromoActivate",
+          "type": "class",
+          "path": "app/states/user.py",
+          "line": 33,
+          "exports": [
+            "PromoActivate"
+          ]
+        },
+        {
+          "id": "app/states/user.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/states/user.py",
+          "line": 43,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/xui/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "app/xui/__init__.py",
+      "exports": [
+        "Exposes",
+        "Submodules"
+      ],
+      "children": [
+        {
+          "id": "app/xui/__init__.py:Exposes",
+          "name": "Exposes",
+          "type": "variable",
+          "path": "app/xui/__init__.py",
+          "line": 3,
+          "exports": [
+            "Exposes"
+          ]
+        },
+        {
+          "id": "app/xui/__init__.py:Submodules",
+          "name": "Submodules",
+          "type": "variable",
+          "path": "app/xui/__init__.py",
+          "line": 9,
+          "exports": [
+            "Submodules"
+          ]
+        },
+        {
+          "id": "app/xui/__init__.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/xui/__init__.py",
+          "line": 19,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/xui/client.py",
+      "name": "client.py",
+      "type": "file",
+      "path": "app/xui/client.py",
+      "exports": [
+        "Usage",
+        "XuiError",
+        "XuiClient"
+      ],
+      "children": [
+        {
+          "id": "app/xui/client.py:Usage",
+          "name": "Usage",
+          "type": "variable",
+          "path": "app/xui/client.py",
+          "line": 12,
+          "exports": [
+            "Usage"
+          ]
+        },
+        {
+          "id": "app/xui/client.py:_DEFAULT_TIMEOUT",
+          "name": "_DEFAULT_TIMEOUT",
+          "type": "variable",
+          "path": "app/xui/client.py",
+          "line": 35,
+          "exports": []
+        },
+        {
+          "id": "app/xui/client.py:XuiError",
+          "name": "XuiError",
+          "type": "class",
+          "path": "app/xui/client.py",
+          "line": 38,
+          "exports": [
+            "XuiError"
+          ]
+        },
+        {
+          "id": "app/xui/client.py:XuiClient",
+          "name": "XuiClient",
+          "type": "class",
+          "path": "app/xui/client.py",
+          "line": 46,
+          "exports": [
+            "XuiClient"
+          ]
+        },
+        {
+          "id": "app/xui/client.py:_singleton",
+          "name": "_singleton",
+          "type": "variable",
+          "path": "app/xui/client.py",
+          "line": 244,
+          "exports": []
+        },
+        {
+          "id": "app/xui/client.py:_singleton_lock",
+          "name": "_singleton_lock",
+          "type": "variable",
+          "path": "app/xui/client.py",
+          "line": 245,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/xui/clients.py",
+      "name": "clients.py",
+      "type": "file",
+      "path": "app/xui/clients.py",
+      "exports": [
+        "make_client_uuid",
+        "make_client_email"
+      ],
+      "children": [
+        {
+          "id": "app/xui/clients.py:make_client_uuid",
+          "name": "make_client_uuid",
+          "type": "function",
+          "path": "app/xui/clients.py",
+          "line": 38,
+          "exports": [
+            "make_client_uuid"
+          ]
+        },
+        {
+          "id": "app/xui/clients.py:make_client_email",
+          "name": "make_client_email",
+          "type": "function",
+          "path": "app/xui/clients.py",
+          "line": 43,
+          "exports": [
+            "make_client_email"
+          ]
+        },
+        {
+          "id": "app/xui/clients.py:_make_sub_id",
+          "name": "_make_sub_id",
+          "type": "function",
+          "path": "app/xui/clients.py",
+          "line": 54,
+          "exports": []
+        },
+        {
+          "id": "app/xui/clients.py:_UPDATABLE_CLIENT_FIELDS",
+          "name": "_UPDATABLE_CLIENT_FIELDS",
+          "type": "variable",
+          "path": "app/xui/clients.py",
+          "line": 128,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/xui/inbounds.py",
+      "name": "inbounds.py",
+      "type": "file",
+      "path": "app/xui/inbounds.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "app/xui/inbounds.py:_JSON_STRING_FIELDS",
+          "name": "_JSON_STRING_FIELDS",
+          "type": "variable",
+          "path": "app/xui/inbounds.py",
+          "line": 23,
+          "exports": []
+        },
+        {
+          "id": "app/xui/inbounds.py:_parse_inbound",
+          "name": "_parse_inbound",
+          "type": "function",
+          "path": "app/xui/inbounds.py",
+          "line": 26,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/xui/links.py",
+      "name": "links.py",
+      "type": "file",
+      "path": "app/xui/links.py",
+      "exports": [
+        "build_subscription_url",
+        "build_vless_link",
+        "make_qr_png"
+      ],
+      "children": [
+        {
+          "id": "app/xui/links.py:build_subscription_url",
+          "name": "build_subscription_url",
+          "type": "function",
+          "path": "app/xui/links.py",
+          "line": 36,
+          "exports": [
+            "build_subscription_url"
+          ]
+        },
+        {
+          "id": "app/xui/links.py:_find_client",
+          "name": "_find_client",
+          "type": "function",
+          "path": "app/xui/links.py",
+          "line": 52,
+          "exports": []
+        },
+        {
+          "id": "app/xui/links.py:_stream_params",
+          "name": "_stream_params",
+          "type": "function",
+          "path": "app/xui/links.py",
+          "line": 63,
+          "exports": []
+        },
+        {
+          "id": "app/xui/links.py:build_vless_link",
+          "name": "build_vless_link",
+          "type": "function",
+          "path": "app/xui/links.py",
+          "line": 179,
+          "exports": [
+            "build_vless_link"
+          ]
+        },
+        {
+          "id": "app/xui/links.py:make_qr_png",
+          "name": "make_qr_png",
+          "type": "function",
+          "path": "app/xui/links.py",
+          "line": 225,
+          "exports": [
+            "make_qr_png"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scripts/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "scripts/__init__.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "scripts/xui_smoke.py",
+      "name": "xui_smoke.py",
+      "type": "file",
+      "path": "scripts/xui_smoke.py",
+      "exports": [
+        "Usage",
+        "main"
+      ],
+      "children": [
+        {
+          "id": "scripts/xui_smoke.py:Usage",
+          "name": "Usage",
+          "type": "variable",
+          "path": "scripts/xui_smoke.py",
+          "line": 12,
+          "exports": [
+            "Usage"
+          ]
+        },
+        {
+          "id": "scripts/xui_smoke.py:_short",
+          "name": "_short",
+          "type": "function",
+          "path": "scripts/xui_smoke.py",
+          "line": 47,
+          "exports": []
+        },
+        {
+          "id": "scripts/xui_smoke.py:main",
+          "name": "main",
+          "type": "function",
+          "path": "scripts/xui_smoke.py",
+          "line": 148,
+          "exports": [
+            "main"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/__init__.py",
+      "name": "__init__.py",
+      "type": "file",
+      "path": "tests/__init__.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/conftest.py",
+      "name": "conftest.py",
+      "type": "file",
+      "path": "tests/conftest.py",
+      "exports": [
+        "monkey_settings",
+        "tmp_db_path",
+        "make_user",
+        "make_plan",
+        "make_promo",
+        "make_subscription",
+        "mock_bot",
+        "mock_xui_client"
+      ],
+      "children": [
+        {
+          "id": "tests/conftest.py:_SCHEMA_PATH",
+          "name": "_SCHEMA_PATH",
+          "type": "variable",
+          "path": "tests/conftest.py",
+          "line": 35,
+          "exports": []
+        },
+        {
+          "id": "tests/conftest.py:monkey_settings",
+          "name": "monkey_settings",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 44,
+          "exports": [
+            "monkey_settings"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:tmp_db_path",
+          "name": "tmp_db_path",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 61,
+          "exports": [
+            "tmp_db_path"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:make_user",
+          "name": "make_user",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 115,
+          "exports": [
+            "make_user"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:make_plan",
+          "name": "make_plan",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 139,
+          "exports": [
+            "make_plan"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:make_promo",
+          "name": "make_promo",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 156,
+          "exports": [
+            "make_promo"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:make_subscription",
+          "name": "make_subscription",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 184,
+          "exports": [
+            "make_subscription"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:mock_bot",
+          "name": "mock_bot",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 221,
+          "exports": [
+            "mock_bot"
+          ]
+        },
+        {
+          "id": "tests/conftest.py:mock_xui_client",
+          "name": "mock_xui_client",
+          "type": "function",
+          "path": "tests/conftest.py",
+          "line": 232,
+          "exports": [
+            "mock_xui_client"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_config.py",
+      "name": "test_config.py",
+      "type": "file",
+      "path": "tests/test_config.py",
+      "exports": [
+        "test_admin_ids_csv",
+        "test_admin_ids_csv_with_spaces",
+        "test_admin_ids_empty",
+        "test_admin_ids_unset",
+        "test_admin_ids_json_brackets",
+        "test_admin_ids_json_brackets_with_spaces",
+        "test_admin_ids_json_brackets_empty",
+        "test_admin_ids_json_brackets_invalid_json",
+        "test_admin_ids_single",
+        "test_admin_ids_trailing_comma",
+        "test_admin_ids_pre_parsed_list",
+        "test_settings_defaults_present",
+        "test_settings_verify_ssl_false"
+      ],
+      "children": [
+        {
+          "id": "tests/test_config.py:_fresh_settings",
+          "name": "_fresh_settings",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 10,
+          "exports": []
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_csv",
+          "name": "test_admin_ids_csv",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 51,
+          "exports": [
+            "test_admin_ids_csv"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_csv_with_spaces",
+          "name": "test_admin_ids_csv_with_spaces",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 56,
+          "exports": [
+            "test_admin_ids_csv_with_spaces"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_empty",
+          "name": "test_admin_ids_empty",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 61,
+          "exports": [
+            "test_admin_ids_empty"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_unset",
+          "name": "test_admin_ids_unset",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 66,
+          "exports": [
+            "test_admin_ids_unset"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_json_brackets",
+          "name": "test_admin_ids_json_brackets",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 72,
+          "exports": [
+            "test_admin_ids_json_brackets"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_json_brackets_with_spaces",
+          "name": "test_admin_ids_json_brackets_with_spaces",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 77,
+          "exports": [
+            "test_admin_ids_json_brackets_with_spaces"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_json_brackets_empty",
+          "name": "test_admin_ids_json_brackets_empty",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 82,
+          "exports": [
+            "test_admin_ids_json_brackets_empty"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_json_brackets_invalid_json",
+          "name": "test_admin_ids_json_brackets_invalid_json",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 87,
+          "exports": [
+            "test_admin_ids_json_brackets_invalid_json"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_single",
+          "name": "test_admin_ids_single",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 94,
+          "exports": [
+            "test_admin_ids_single"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_trailing_comma",
+          "name": "test_admin_ids_trailing_comma",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 99,
+          "exports": [
+            "test_admin_ids_trailing_comma"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_admin_ids_pre_parsed_list",
+          "name": "test_admin_ids_pre_parsed_list",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 104,
+          "exports": [
+            "test_admin_ids_pre_parsed_list"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_settings_defaults_present",
+          "name": "test_settings_defaults_present",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 121,
+          "exports": [
+            "test_settings_defaults_present"
+          ]
+        },
+        {
+          "id": "tests/test_config.py:test_settings_verify_ssl_false",
+          "name": "test_settings_verify_ssl_false",
+          "type": "function",
+          "path": "tests/test_config.py",
+          "line": 128,
+          "exports": [
+            "test_settings_verify_ssl_false"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_db_engine.py",
+      "name": "test_db_engine.py",
+      "type": "file",
+      "path": "tests/test_db_engine.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_db_payments.py",
+      "name": "test_db_payments.py",
+      "type": "file",
+      "path": "tests/test_db_payments.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_db_plans.py",
+      "name": "test_db_plans.py",
+      "type": "file",
+      "path": "tests/test_db_plans.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_db_promos.py",
+      "name": "test_db_promos.py",
+      "type": "file",
+      "path": "tests/test_db_promos.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_db_promos.py:_iso",
+          "name": "_iso",
+          "type": "function",
+          "path": "tests/test_db_promos.py",
+          "line": 14,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_db_subscriptions.py",
+      "name": "test_db_subscriptions.py",
+      "type": "file",
+      "path": "tests/test_db_subscriptions.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_db_users.py",
+      "name": "test_db_users.py",
+      "type": "file",
+      "path": "tests/test_db_users.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_handlers_admin_plans.py",
+      "name": "test_handlers_admin_plans.py",
+      "type": "file",
+      "path": "tests/test_handlers_admin_plans.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_admin_plans.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 13,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_admin_promos.py",
+      "name": "test_handlers_admin_promos.py",
+      "type": "file",
+      "path": "tests/test_handlers_admin_promos.py",
+      "exports": [
+        "test_parse_expires_at_skip",
+        "test_parse_expires_at_invalid",
+        "test_parse_expires_at_valid",
+        "test_promo_is_active",
+        "test_promo_is_active_past_expires"
+      ],
+      "children": [
+        {
+          "id": "tests/test_handlers_admin_promos.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 13,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_parse_expires_at_skip",
+          "name": "test_parse_expires_at_skip",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 22,
+          "exports": [
+            "test_parse_expires_at_skip"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_parse_expires_at_invalid",
+          "name": "test_parse_expires_at_invalid",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 31,
+          "exports": [
+            "test_parse_expires_at_invalid"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_parse_expires_at_valid",
+          "name": "test_parse_expires_at_valid",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 35,
+          "exports": [
+            "test_parse_expires_at_valid"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_promo_is_active",
+          "name": "test_promo_is_active",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 41,
+          "exports": [
+            "test_promo_is_active"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_promo_is_active_past_expires",
+          "name": "test_promo_is_active_past_expires",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 51,
+          "exports": [
+            "test_promo_is_active_past_expires"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_admin_stats.py",
+      "name": "test_handlers_admin_stats.py",
+      "type": "file",
+      "path": "tests/test_handlers_admin_stats.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_handlers_admin_users.py",
+      "name": "test_handlers_admin_users.py",
+      "type": "file",
+      "path": "tests/test_handlers_admin_users.py",
+      "exports": [
+        "test_safe_escapes_html",
+        "test_format_payment_basic",
+        "test_format_payment_refunded"
+      ],
+      "children": [
+        {
+          "id": "tests/test_handlers_admin_users.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_admin_users.py",
+          "line": 14,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_users.py:test_safe_escapes_html",
+          "name": "test_safe_escapes_html",
+          "type": "function",
+          "path": "tests/test_handlers_admin_users.py",
+          "line": 23,
+          "exports": [
+            "test_safe_escapes_html"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_users.py:test_format_payment_basic",
+          "name": "test_format_payment_basic",
+          "type": "function",
+          "path": "tests/test_handlers_admin_users.py",
+          "line": 28,
+          "exports": [
+            "test_format_payment_basic"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_users.py:test_format_payment_refunded",
+          "name": "test_format_payment_refunded",
+          "type": "function",
+          "path": "tests/test_handlers_admin_users.py",
+          "line": 42,
+          "exports": [
+            "test_format_payment_refunded"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_init.py",
+      "name": "test_handlers_init.py",
+      "type": "file",
+      "path": "tests/test_handlers_init.py",
+      "exports": [
+        "test_register_routers_attaches_to_dispatcher"
+      ],
+      "children": [
+        {
+          "id": "tests/test_handlers_init.py:test_register_routers_attaches_to_dispatcher",
+          "name": "test_register_routers_attaches_to_dispatcher",
+          "type": "function",
+          "path": "tests/test_handlers_init.py",
+          "line": 10,
+          "exports": [
+            "test_register_routers_attaches_to_dispatcher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_start.py",
+      "name": "test_handlers_start.py",
+      "type": "file",
+      "path": "tests/test_handlers_start.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_start.py:_user",
+          "name": "_user",
+          "type": "function",
+          "path": "tests/test_handlers_start.py",
+          "line": 13,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_user_buy.py",
+      "name": "test_handlers_user_buy.py",
+      "type": "file",
+      "path": "tests/test_handlers_user_buy.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_user_buy.py:_user",
+          "name": "_user",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 17,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_buy.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 24,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_user_menu.py",
+      "name": "test_handlers_user_menu.py",
+      "type": "file",
+      "path": "tests/test_handlers_user_menu.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_user_menu.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_user_menu.py",
+          "line": 14,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_user_my_subscription.py",
+      "name": "test_handlers_user_my_subscription.py",
+      "type": "file",
+      "path": "tests/test_handlers_user_my_subscription.py",
+      "exports": [
+        "test_format_bytes_zero",
+        "test_format_bytes_kb",
+        "test_format_bytes_gb",
+        "test_format_bytes_negative_clamped",
+        "test_parse_iso_with_space",
+        "test_days_delta_future",
+        "test_days_delta_past",
+        "test_format_status_lines",
+        "test_format_days_line_today",
+        "test_format_days_line_yesterday"
+      ],
+      "children": [
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_bytes_zero",
+          "name": "test_format_bytes_zero",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 16,
+          "exports": [
+            "test_format_bytes_zero"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_bytes_kb",
+          "name": "test_format_bytes_kb",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 20,
+          "exports": [
+            "test_format_bytes_kb"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_bytes_gb",
+          "name": "test_format_bytes_gb",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 24,
+          "exports": [
+            "test_format_bytes_gb"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_bytes_negative_clamped",
+          "name": "test_format_bytes_negative_clamped",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 28,
+          "exports": [
+            "test_format_bytes_negative_clamped"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_parse_iso_with_space",
+          "name": "test_parse_iso_with_space",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 32,
+          "exports": [
+            "test_parse_iso_with_space"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_days_delta_future",
+          "name": "test_days_delta_future",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 37,
+          "exports": [
+            "test_days_delta_future"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_days_delta_past",
+          "name": "test_days_delta_past",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 42,
+          "exports": [
+            "test_days_delta_past"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_status_lines",
+          "name": "test_format_status_lines",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 221,
+          "exports": [
+            "test_format_status_lines"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_days_line_today",
+          "name": "test_format_days_line_today",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 250,
+          "exports": [
+            "test_format_days_line_today"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_format_days_line_yesterday",
+          "name": "test_format_days_line_yesterday",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 264,
+          "exports": [
+            "test_format_days_line_yesterday"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_user_promo.py",
+      "name": "test_handlers_user_promo.py",
+      "type": "file",
+      "path": "tests/test_handlers_user_promo.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_user_promo.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_user_promo.py",
+          "line": 14,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_keys_helper.py",
+      "name": "test_keys_helper.py",
+      "type": "file",
+      "path": "tests/test_keys_helper.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_keys_helper.py:_sub",
+          "name": "_sub",
+          "type": "function",
+          "path": "tests/test_keys_helper.py",
+          "line": 14,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_logger.py",
+      "name": "test_logger.py",
+      "type": "file",
+      "path": "tests/test_logger.py",
+      "exports": [
+        "test_setup_logging_runs_without_error",
+        "test_setup_logging_default_level",
+        "test_intercept_handler_emit_known_level",
+        "test_intercept_handler_emit_unknown_level"
+      ],
+      "children": [
+        {
+          "id": "tests/test_logger.py:test_setup_logging_runs_without_error",
+          "name": "test_setup_logging_runs_without_error",
+          "type": "function",
+          "path": "tests/test_logger.py",
+          "line": 12,
+          "exports": [
+            "test_setup_logging_runs_without_error"
+          ]
+        },
+        {
+          "id": "tests/test_logger.py:test_setup_logging_default_level",
+          "name": "test_setup_logging_default_level",
+          "type": "function",
+          "path": "tests/test_logger.py",
+          "line": 19,
+          "exports": [
+            "test_setup_logging_default_level"
+          ]
+        },
+        {
+          "id": "tests/test_logger.py:test_intercept_handler_emit_known_level",
+          "name": "test_intercept_handler_emit_known_level",
+          "type": "function",
+          "path": "tests/test_logger.py",
+          "line": 24,
+          "exports": [
+            "test_intercept_handler_emit_known_level"
+          ]
+        },
+        {
+          "id": "tests/test_logger.py:test_intercept_handler_emit_unknown_level",
+          "name": "test_intercept_handler_emit_unknown_level",
+          "type": "function",
+          "path": "tests/test_logger.py",
+          "line": 34,
+          "exports": [
+            "test_intercept_handler_emit_unknown_level"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_middlewares.py",
+      "name": "test_middlewares.py",
+      "type": "file",
+      "path": "tests/test_middlewares.py",
+      "exports": [
+        "test_extract_tg_user_from_message",
+        "test_extract_tg_user_returns_none_for_empty_update",
+        "test_extract_tg_user_fallback_for_direct_message"
+      ],
+      "children": [
+        {
+          "id": "tests/test_middlewares.py:_domain_user",
+          "name": "_domain_user",
+          "type": "function",
+          "path": "tests/test_middlewares.py",
+          "line": 16,
+          "exports": []
+        },
+        {
+          "id": "tests/test_middlewares.py:test_extract_tg_user_from_message",
+          "name": "test_extract_tg_user_from_message",
+          "type": "function",
+          "path": "tests/test_middlewares.py",
+          "line": 85,
+          "exports": [
+            "test_extract_tg_user_from_message"
+          ]
+        },
+        {
+          "id": "tests/test_middlewares.py:test_extract_tg_user_returns_none_for_empty_update",
+          "name": "test_extract_tg_user_returns_none_for_empty_update",
+          "type": "function",
+          "path": "tests/test_middlewares.py",
+          "line": 111,
+          "exports": [
+            "test_extract_tg_user_returns_none_for_empty_update"
+          ]
+        },
+        {
+          "id": "tests/test_middlewares.py:test_extract_tg_user_fallback_for_direct_message",
+          "name": "test_extract_tg_user_fallback_for_direct_message",
+          "type": "function",
+          "path": "tests/test_middlewares.py",
+          "line": 132,
+          "exports": [
+            "test_extract_tg_user_fallback_for_direct_message"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_scheduler.py",
+      "name": "test_scheduler.py",
+      "type": "file",
+      "path": "tests/test_scheduler.py",
+      "exports": [
+        "test_kind_for_days_left_table",
+        "test_parse_iso_naive_assumed_utc",
+        "test_parse_iso_aware",
+        "test_days_left",
+        "test_setup_scheduler_registers_three_jobs"
+      ],
+      "children": [
+        {
+          "id": "tests/test_scheduler.py:test_kind_for_days_left_table",
+          "name": "test_kind_for_days_left_table",
+          "type": "function",
+          "path": "tests/test_scheduler.py",
+          "line": 22,
+          "exports": [
+            "test_kind_for_days_left_table"
+          ]
+        },
+        {
+          "id": "tests/test_scheduler.py:test_parse_iso_naive_assumed_utc",
+          "name": "test_parse_iso_naive_assumed_utc",
+          "type": "function",
+          "path": "tests/test_scheduler.py",
+          "line": 33,
+          "exports": [
+            "test_parse_iso_naive_assumed_utc"
+          ]
+        },
+        {
+          "id": "tests/test_scheduler.py:test_parse_iso_aware",
+          "name": "test_parse_iso_aware",
+          "type": "function",
+          "path": "tests/test_scheduler.py",
+          "line": 38,
+          "exports": [
+            "test_parse_iso_aware"
+          ]
+        },
+        {
+          "id": "tests/test_scheduler.py:test_days_left",
+          "name": "test_days_left",
+          "type": "function",
+          "path": "tests/test_scheduler.py",
+          "line": 43,
+          "exports": [
+            "test_days_left"
+          ]
+        },
+        {
+          "id": "tests/test_scheduler.py:test_setup_scheduler_registers_three_jobs",
+          "name": "test_setup_scheduler_registers_three_jobs",
+          "type": "function",
+          "path": "tests/test_scheduler.py",
+          "line": 50,
+          "exports": [
+            "test_setup_scheduler_registers_three_jobs"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_services_billing.py",
+      "name": "test_services_billing.py",
+      "type": "file",
+      "path": "tests/test_services_billing.py",
+      "exports": [
+        "test_calc_price_no_promo",
+        "test_calc_price_percent_basic",
+        "test_calc_price_percent_ceiling",
+        "test_calc_price_percent_100_floors_to_one",
+        "test_calc_price_percent_clamped_high",
+        "test_calc_price_percent_clamped_low",
+        "test_calc_price_flat_stars",
+        "test_calc_price_flat_stars_exceeds_floor",
+        "test_calc_price_free_days_keeps_price",
+        "test_calc_price_free_days_negative_clamped",
+        "test_calc_price_unknown_type_fallback",
+        "test_calc_price_min_one_zero_priced_plan",
+        "test_build_payload_encodes_correctly",
+        "test_build_payload_no_promo",
+        "test_build_payload_promo_zero_treated_as_none",
+        "test_parse_payload_basic",
+        "test_parse_payload_no_promo",
+        "test_parse_payload_zero_promo_id_becomes_none",
+        "test_parse_payload_bad_json",
+        "test_parse_payload_not_object",
+        "test_parse_payload_missing_plan_id",
+        "test_parse_payload_bad_promo_id_type",
+        "test_payload_byte_limit_guard"
+      ],
+      "children": [
+        {
+          "id": "tests/test_services_billing.py:_plan",
+          "name": "_plan",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 14,
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_billing.py:_promo",
+          "name": "_promo",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 25,
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_no_promo",
+          "name": "test_calc_price_no_promo",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 39,
+          "exports": [
+            "test_calc_price_no_promo"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_percent_basic",
+          "name": "test_calc_price_percent_basic",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 45,
+          "exports": [
+            "test_calc_price_percent_basic"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_percent_ceiling",
+          "name": "test_calc_price_percent_ceiling",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 51,
+          "exports": [
+            "test_calc_price_percent_ceiling"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_percent_100_floors_to_one",
+          "name": "test_calc_price_percent_100_floors_to_one",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 58,
+          "exports": [
+            "test_calc_price_percent_100_floors_to_one"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_percent_clamped_high",
+          "name": "test_calc_price_percent_clamped_high",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 63,
+          "exports": [
+            "test_calc_price_percent_clamped_high"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_percent_clamped_low",
+          "name": "test_calc_price_percent_clamped_low",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 69,
+          "exports": [
+            "test_calc_price_percent_clamped_low"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_flat_stars",
+          "name": "test_calc_price_flat_stars",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 74,
+          "exports": [
+            "test_calc_price_flat_stars"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_flat_stars_exceeds_floor",
+          "name": "test_calc_price_flat_stars_exceeds_floor",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 79,
+          "exports": [
+            "test_calc_price_flat_stars_exceeds_floor"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_free_days_keeps_price",
+          "name": "test_calc_price_free_days_keeps_price",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 84,
+          "exports": [
+            "test_calc_price_free_days_keeps_price"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_free_days_negative_clamped",
+          "name": "test_calc_price_free_days_negative_clamped",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 90,
+          "exports": [
+            "test_calc_price_free_days_negative_clamped"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_unknown_type_fallback",
+          "name": "test_calc_price_unknown_type_fallback",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 95,
+          "exports": [
+            "test_calc_price_unknown_type_fallback"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_calc_price_min_one_zero_priced_plan",
+          "name": "test_calc_price_min_one_zero_priced_plan",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 101,
+          "exports": [
+            "test_calc_price_min_one_zero_priced_plan"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_build_payload_encodes_correctly",
+          "name": "test_build_payload_encodes_correctly",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 107,
+          "exports": [
+            "test_build_payload_encodes_correctly"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_build_payload_no_promo",
+          "name": "test_build_payload_no_promo",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 114,
+          "exports": [
+            "test_build_payload_no_promo"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_build_payload_promo_zero_treated_as_none",
+          "name": "test_build_payload_promo_zero_treated_as_none",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 120,
+          "exports": [
+            "test_build_payload_promo_zero_treated_as_none"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_basic",
+          "name": "test_parse_payload_basic",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 126,
+          "exports": [
+            "test_parse_payload_basic"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_no_promo",
+          "name": "test_parse_payload_no_promo",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 132,
+          "exports": [
+            "test_parse_payload_no_promo"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_zero_promo_id_becomes_none",
+          "name": "test_parse_payload_zero_promo_id_becomes_none",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 138,
+          "exports": [
+            "test_parse_payload_zero_promo_id_becomes_none"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_bad_json",
+          "name": "test_parse_payload_bad_json",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 146,
+          "exports": [
+            "test_parse_payload_bad_json"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_not_object",
+          "name": "test_parse_payload_not_object",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 151,
+          "exports": [
+            "test_parse_payload_not_object"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_missing_plan_id",
+          "name": "test_parse_payload_missing_plan_id",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 156,
+          "exports": [
+            "test_parse_payload_missing_plan_id"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_bad_promo_id_type",
+          "name": "test_parse_payload_bad_promo_id_type",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 161,
+          "exports": [
+            "test_parse_payload_bad_promo_id_type"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_payload_byte_limit_guard",
+          "name": "test_payload_byte_limit_guard",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 166,
+          "exports": [
+            "test_payload_byte_limit_guard"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_services_promos.py",
+      "name": "test_services_promos.py",
+      "type": "file",
+      "path": "tests/test_services_promos.py",
+      "exports": [
+        "test_compute_discount_no_promo",
+        "test_compute_discount_percent",
+        "test_compute_discount_unknown_type_fallback"
+      ],
+      "children": [
+        {
+          "id": "tests/test_services_promos.py:_plan",
+          "name": "_plan",
+          "type": "function",
+          "path": "tests/test_services_promos.py",
+          "line": 14,
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_promos.py:test_compute_discount_no_promo",
+          "name": "test_compute_discount_no_promo",
+          "type": "function",
+          "path": "tests/test_services_promos.py",
+          "line": 88,
+          "exports": [
+            "test_compute_discount_no_promo"
+          ]
+        },
+        {
+          "id": "tests/test_services_promos.py:test_compute_discount_percent",
+          "name": "test_compute_discount_percent",
+          "type": "function",
+          "path": "tests/test_services_promos.py",
+          "line": 94,
+          "exports": [
+            "test_compute_discount_percent"
+          ]
+        },
+        {
+          "id": "tests/test_services_promos.py:test_compute_discount_unknown_type_fallback",
+          "name": "test_compute_discount_unknown_type_fallback",
+          "type": "function",
+          "path": "tests/test_services_promos.py",
+          "line": 112,
+          "exports": [
+            "test_compute_discount_unknown_type_fallback"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_services_stats.py",
+      "name": "test_services_stats.py",
+      "type": "file",
+      "path": "tests/test_services_stats.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_services_subscriptions.py",
+      "name": "test_services_subscriptions.py",
+      "type": "file",
+      "path": "tests/test_services_subscriptions.py",
+      "exports": [
+        "test_expiry_ms_naive_converted_to_utc",
+        "test_parse_iso_t_separator",
+        "test_parse_iso_space_separator",
+        "test_parse_iso_with_microseconds_fallback",
+        "test_bonus_days"
+      ],
+      "children": [
+        {
+          "id": "tests/test_services_subscriptions.py:_plan",
+          "name": "_plan",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 16,
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_subscriptions.py:_promo",
+          "name": "_promo",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 22,
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_subscriptions.py:test_expiry_ms_naive_converted_to_utc",
+          "name": "test_expiry_ms_naive_converted_to_utc",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 36,
+          "exports": [
+            "test_expiry_ms_naive_converted_to_utc"
+          ]
+        },
+        {
+          "id": "tests/test_services_subscriptions.py:test_parse_iso_t_separator",
+          "name": "test_parse_iso_t_separator",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 44,
+          "exports": [
+            "test_parse_iso_t_separator"
+          ]
+        },
+        {
+          "id": "tests/test_services_subscriptions.py:test_parse_iso_space_separator",
+          "name": "test_parse_iso_space_separator",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 51,
+          "exports": [
+            "test_parse_iso_space_separator"
+          ]
+        },
+        {
+          "id": "tests/test_services_subscriptions.py:test_parse_iso_with_microseconds_fallback",
+          "name": "test_parse_iso_with_microseconds_fallback",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 58,
+          "exports": [
+            "test_parse_iso_with_microseconds_fallback"
+          ]
+        },
+        {
+          "id": "tests/test_services_subscriptions.py:test_bonus_days",
+          "name": "test_bonus_days",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 66,
+          "exports": [
+            "test_bonus_days"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_xui_client.py",
+      "name": "test_xui_client.py",
+      "type": "file",
+      "path": "tests/test_xui_client.py",
+      "exports": [],
+      "children": []
+    },
+    {
+      "id": "tests/test_xui_clients.py",
+      "name": "test_xui_clients.py",
+      "type": "file",
+      "path": "tests/test_xui_clients.py",
+      "exports": [
+        "test_make_client_uuid_unique",
+        "test_make_client_email_contains_tg_id"
+      ],
+      "children": [
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_uuid_unique",
+          "name": "test_make_client_uuid_unique",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 21,
+          "exports": [
+            "test_make_client_uuid_unique"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_contains_tg_id",
+          "name": "test_make_client_email_contains_tg_id",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 29,
+          "exports": [
+            "test_make_client_email_contains_tg_id"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_xui_inbounds.py",
+      "name": "test_xui_inbounds.py",
+      "type": "file",
+      "path": "tests/test_xui_inbounds.py",
+      "exports": [
+        "test_parse_inbound_decodes_json_string_fields",
+        "test_parse_inbound_leaves_malformed_json_alone",
+        "test_parse_inbound_handles_already_dict"
+      ],
+      "children": [
+        {
+          "id": "tests/test_xui_inbounds.py:test_parse_inbound_decodes_json_string_fields",
+          "name": "test_parse_inbound_decodes_json_string_fields",
+          "type": "function",
+          "path": "tests/test_xui_inbounds.py",
+          "line": 14,
+          "exports": [
+            "test_parse_inbound_decodes_json_string_fields"
+          ]
+        },
+        {
+          "id": "tests/test_xui_inbounds.py:test_parse_inbound_leaves_malformed_json_alone",
+          "name": "test_parse_inbound_leaves_malformed_json_alone",
+          "type": "function",
+          "path": "tests/test_xui_inbounds.py",
+          "line": 30,
+          "exports": [
+            "test_parse_inbound_leaves_malformed_json_alone"
+          ]
+        },
+        {
+          "id": "tests/test_xui_inbounds.py:test_parse_inbound_handles_already_dict",
+          "name": "test_parse_inbound_handles_already_dict",
+          "type": "function",
+          "path": "tests/test_xui_inbounds.py",
+          "line": 36,
+          "exports": [
+            "test_parse_inbound_handles_already_dict"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_xui_links.py",
+      "name": "test_xui_links.py",
+      "type": "file",
+      "path": "tests/test_xui_links.py",
+      "exports": [
+        "test_make_qr_png_returns_png",
+        "test_make_qr_png_long_payload",
+        "test_build_subscription_url_normalises_slashes",
+        "test_build_subscription_url_no_trailing",
+        "test_build_vless_link_tcp_reality",
+        "test_build_vless_link_ws_tls",
+        "test_build_vless_link_grpc",
+        "test_build_vless_link_http",
+        "test_build_vless_link_http_host_str",
+        "test_build_vless_link_kcp",
+        "test_build_vless_link_quic",
+        "test_build_vless_link_no_security",
+        "test_build_vless_link_no_stream_settings",
+        "test_build_vless_link_bad_stream_settings_type",
+        "test_build_vless_link_tcp_with_header_path_host",
+        "test_build_vless_link_tcp_with_string_host",
+        "test_build_vless_link_reality_with_serverName_singular"
+      ],
+      "children": [
+        {
+          "id": "tests/test_xui_links.py:test_make_qr_png_returns_png",
+          "name": "test_make_qr_png_returns_png",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 10,
+          "exports": [
+            "test_make_qr_png_returns_png"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_make_qr_png_long_payload",
+          "name": "test_make_qr_png_long_payload",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 17,
+          "exports": [
+            "test_make_qr_png_long_payload"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_subscription_url_normalises_slashes",
+          "name": "test_build_subscription_url_normalises_slashes",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 24,
+          "exports": [
+            "test_build_subscription_url_normalises_slashes"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_subscription_url_no_trailing",
+          "name": "test_build_subscription_url_no_trailing",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 30,
+          "exports": [
+            "test_build_subscription_url_no_trailing"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:_inbound",
+          "name": "_inbound",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 35,
+          "exports": []
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_tcp_reality",
+          "name": "test_build_vless_link_tcp_reality",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 47,
+          "exports": [
+            "test_build_vless_link_tcp_reality"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_ws_tls",
+          "name": "test_build_vless_link_ws_tls",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 72,
+          "exports": [
+            "test_build_vless_link_ws_tls"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_grpc",
+          "name": "test_build_vless_link_grpc",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 95,
+          "exports": [
+            "test_build_vless_link_grpc"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_http",
+          "name": "test_build_vless_link_http",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 108,
+          "exports": [
+            "test_build_vless_link_http"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_http_host_str",
+          "name": "test_build_vless_link_http_host_str",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 121,
+          "exports": [
+            "test_build_vless_link_http_host_str"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_kcp",
+          "name": "test_build_vless_link_kcp",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 132,
+          "exports": [
+            "test_build_vless_link_kcp"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_quic",
+          "name": "test_build_vless_link_quic",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 145,
+          "exports": [
+            "test_build_vless_link_quic"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_no_security",
+          "name": "test_build_vless_link_no_security",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 158,
+          "exports": [
+            "test_build_vless_link_no_security"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_no_stream_settings",
+          "name": "test_build_vless_link_no_stream_settings",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 167,
+          "exports": [
+            "test_build_vless_link_no_stream_settings"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_bad_stream_settings_type",
+          "name": "test_build_vless_link_bad_stream_settings_type",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 174,
+          "exports": [
+            "test_build_vless_link_bad_stream_settings_type"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_tcp_with_header_path_host",
+          "name": "test_build_vless_link_tcp_with_header_path_host",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 182,
+          "exports": [
+            "test_build_vless_link_tcp_with_header_path_host"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_tcp_with_string_host",
+          "name": "test_build_vless_link_tcp_with_string_host",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 203,
+          "exports": [
+            "test_build_vless_link_tcp_with_string_host"
+          ]
+        },
+        {
+          "id": "tests/test_xui_links.py:test_build_vless_link_reality_with_serverName_singular",
+          "name": "test_build_vless_link_reality_with_serverName_singular",
+          "type": "function",
+          "path": "tests/test_xui_links.py",
+          "line": 219,
+          "exports": [
+            "test_build_vless_link_reality_with_serverName_singular"
+          ]
+        }
+      ]
+    }
+  ]
+}

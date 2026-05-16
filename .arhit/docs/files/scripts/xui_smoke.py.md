@@ -1,0 +1,3 @@
+# scripts/xui_smoke.py
+
+Standalone smoke-тест 3x-ui клиента. Sequence: login -> list_inbounds (печатает все inbounds) -> get_inbound(XUI_INBOUND_ID) -> add_client (test uuid+email, 10 мин expiry) -> get_client_traffics(email) -> del_client (если не указан --keep). CLI: argparse с флагом --keep (не удалять клиента в конце). Запуск: python -m scripts.xui_smoke или python scripts/xui_smoke.py. Все ошибки логируются с указанием failed step и возвращают свой exit code (2-6). Использует setup_logging('INFO') из app.logger, конфиг из app.config.settings, XuiClient + helpers из app.xui. Helper _short(obj, limit=400) укорачивает JSON для логов.

@@ -1,0 +1,20 @@
+[Unit]
+Description=3x-ui Telegram VPN bot
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/3x-ui-tg-bot
+EnvironmentFile=/opt/3x-ui-tg-bot/.env
+ExecStart=/opt/3x-ui-tg-bot/.venv/bin/python -m app.main
+Restart=on-failure
+RestartSec=5
+User=tgbot
+Group=tgbot
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tg-vpn-bot
+
+[Install]
+WantedBy=multi-user.target

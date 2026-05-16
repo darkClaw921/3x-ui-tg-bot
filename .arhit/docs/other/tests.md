@@ -1,0 +1,3 @@
+# tests
+
+Pytest-каталог тестов с покрытием 95.95%. Использует pytest-asyncio (mode=auto), pytest-cov, pytest-httpx, aiosqlite (in-memory). Стратегия: репозитории и сервисы тестируются на чистой in-memory БД (фикстура db_conn) либо файловой (file_db) для проверки межсоединенческих операций; XuiClient мокается через pytest-httpx или AsyncMock; aiogram-хендлеры вызываются напрямую как функции с инжектированными Message/CallbackQuery/State через unittest.mock. Race-условия (try_redeem, apply) проверяются через asyncio.gather. Конфигурация — pyproject.toml [tool.pytest.ini_options] с addopts='--cov=app --cov-fail-under=90'. Все 405 тестов проходят за ~9 секунд.

@@ -1,0 +1,3 @@
+# app/keyboards/user.py
+
+Inline-клавиатуры пользовательского флоу. CallbackData-фабрики: UserCB (area=menu|help|my|cancel) — навигация; BuyCB (action=open|plan|apply_promo|confirm|cancel, plan_id, promo_id) — флоу покупки; SubCB (action=keys|back, sub_id) — карточка подписки; PromoActCB (action=open|cancel) — активация free-days промо. Билдеры: user_main_menu(has_subscription) с приоритетом «Моя подписка» если есть активная; plans_kb(plans) — кнопка на каждый тариф; confirm_kb(plan_id, promo_id) — Оплатить/Применить промокод/Отмена (кнопка применения промо скрывается когда promo_id уже привязан); subscription_kb(sub_id) — повторная выдача ключа + назад; cancel_kb()/back_to_menu_kb() — стандартные одиночные кнопки.

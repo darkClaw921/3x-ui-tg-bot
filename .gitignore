@@ -1,0 +1,91 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Local data
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Secrets / env
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+# Env
+.env
+.env.local
+.env.*.local
+
+# Claude / agent state
+.claude/
+!.claude/agents/
+!.claude/commands/
+
+# Beads / arhit local cache
+.beads/*.db
+.beads/*.db-journal
+.arhit/cache/
+
+# Editor scratch
+*.bak
+*.tmp
+CLAUDE.md
+TODO.md
+.forge
+.beads
+
+# Screenshots
+Снимок экрана*.png
+Screen Shot*.png
+Screenshot*.png
+*.screenshot.png
+
+# Build artifacts
+dist/
+build/
+node_modules/
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+tmux-web/target/*
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+beads_rust

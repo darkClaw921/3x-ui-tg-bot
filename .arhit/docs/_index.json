@@ -1,0 +1,434 @@
+[
+  {
+    "element": "app/main.py",
+    "path": "app/main.py",
+    "type": "file",
+    "content": "Точка входа приложения (python -m app.main). async def main(): setup_logging(); await init_db(); Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)); Dispatcher(storage=MemoryStorage()); register_routers(dp); scheduler = setup_scheduler(bot); scheduler.start(); await dp.start_polling(bot); finally: scheduler.shutdown(wait=False), await close_xui_client(), await bot.session.close(). Каждый шаг shutdown в try/except — best-effort. __main__ блок ловит KeyboardInterrupt/SystemExit для graceful exit.",
+    "createdAt": "2026-05-16T14:57:44.273Z",
+    "updatedAt": "2026-05-16T16:02:13.623Z"
+  },
+  {
+    "element": "app/config.py",
+    "path": "app/config.py",
+    "type": "file",
+    "content": "Конфигурация приложения через pydantic-settings. Класс Settings(BaseSettings) объявляет BOT_TOKEN, ADMIN_IDS (Annotated[list[int], NoDecode] для отключения JSON-декодирования), DB_PATH (default './data/bot.db'), XUI_BASE_URL/USERNAME/PASSWORD/INBOUND_ID/SERVER_HOST/SUB_BASE_URL, LOG_LEVEL (default 'INFO'). Читает из .env через SettingsConfigDict(env_file='.env'). field_validator '_parse_admin_ids' (mode='before') парсит CSV-строку '1,2,3' → [1,2,3], принимает пустую строку, JSON-массив, готовый list. Экспортирует синглтон settings = Settings().",
+    "createdAt": "2026-05-16T14:57:48.680Z",
+    "updatedAt": "2026-05-16T14:57:48.680Z"
+  },
+  {
+    "element": "app/logger.py",
+    "path": "app/logger.py",
+    "type": "file",
+    "content": "Настройка loguru и мост со стандартным модулем logging. Класс InterceptHandler(logging.Handler) перенаправляет записи stdlib logging в loguru, сохраняя имя уровня и корректный кадр-источник. Функция setup_logging(level: str | None = None) удаляет дефолтный sink, добавляет sink на sys.stderr с форматом time|level|name:function:line|message, монтирует InterceptHandler через logging.basicConfig (force=True), отдельно перенастраивает aiogram/aiogram.event/httpx/httpcore/apscheduler. Импорт модуля побочных эффектов не имеет. Параметр level переопределяет settings.LOG_LEVEL.",
+    "createdAt": "2026-05-16T14:57:52.193Z",
+    "updatedAt": "2026-05-16T14:57:52.193Z"
+  },
+  {
+    "element": "app/handlers/__init__.py",
+    "path": "app/handlers/__init__.py",
+    "type": "file",
+    "content": "register_routers(dp): подключает outer middleware UserContextMiddleware на dp.update + роутеры в порядке start → admin_router → user_router. start первым, чтобы /start всегда срабатывал; admin_router второй (внутри AdminOnlyMiddleware блокирует не-админов); user_router последний (catch-all для юзерских callback и messages).",
+    "createdAt": "2026-05-16T14:57:54.240Z",
+    "updatedAt": "2026-05-16T15:33:37.544Z"
+  },
+  {
+    "element": "app/handlers/start.py",
+    "path": "app/handlers/start.py",
+    "type": "file",
+    "content": "/start. Использует user из data (из UserContextMiddleware). Если is_admin=True → admin_main_menu(). Иначе показывает user_main_menu с has_subscription из subs_repo.get_active_for_user.",
+    "createdAt": "2026-05-16T14:57:56.332Z",
+    "updatedAt": "2026-05-16T15:33:34.978Z"
+  },
+  {
+    "element": "app/db/engine.py",
+    "path": "app/db/engine.py",
+    "type": "file",
+    "content": "Async-движок поверх aiosqlite. init_db() создаёт parent dir, открывает соединение, applies schema.sql через executescript, потом _apply_migrations. _apply_migrations выполняет два набора миграций: (1) идемпотентные ALTER TABLE (try/except 'duplicate column'/'already exists'); текущее: subscriptions.xui_sub_id TEXT NOT NULL DEFAULT ''. (2) CREATE TABLE/INDEX IF NOT EXISTS для таблиц, появившихся после первоначальной схемы; текущее: subscription_notifications + idx_subscription_notifications_sub. _configure_connection ставит row_factory=Row, PRAGMA foreign_keys=ON и journal_mode=WAL (per-connection). get_conn() async ctxmgr открывает/конфигурирует/закрывает соединение. transaction(conn=None) async ctxmgr оборачивает BEGIN IMMEDIATE/COMMIT/ROLLBACK блок (для критических секций типа promo redemption).",
+    "createdAt": "2026-05-16T15:05:57.498Z",
+    "updatedAt": "2026-05-16T16:02:18.666Z"
+  },
+  {
+    "element": "app/db/schema.sql",
+    "path": "",
+    "type": "unknown",
+    "content": "Идемпотентная DDL-схема SQLite (все CREATE TABLE/INDEX IF NOT EXISTS), применяется через executescript в init_db. Таблицы: users (id, tg_id UNIQUE, username, first_name, is_admin, created_at), plans (id, title, days CHECK>0, price_stars CHECK>=0, is_active, created_at), promos (id, code UNIQUE, type CHECK IN ('percent','flat_stars','free_days'), value, max_uses, used_count, expires_at, created_at, created_by FK users), subscriptions (id, user_id FK users CASCADE, xui_inbound_id, xui_client_uuid, xui_client_email, xui_sub_id, expires_at, created_at, plan_id FK plans SET NULL, status CHECK IN ('active','expired','revoked')), promo_redemptions (id, promo_id FK CASCADE, user_id FK CASCADE, subscription_id FK SET NULL, redeemed_at), payments (id, user_id FK CASCADE, subscription_id FK SET NULL, telegram_charge_id UNIQUE, stars_amount, plan_id FK SET NULL, promo_id FK SET NULL, status CHECK IN ('paid','refunded'), created_at), traffic_snapshots (id, subscription_id FK CASCADE, up, down, taken_at), subscription_notifications (id, subscription_id FK CASCADE, kind CHECK IN ('3d','1d','0d','expired'), sent_at, UNIQUE(subscription_id,kind)) — ledger дедупликации для scheduler-job-ов напоминаний и финального уведомления. Индексы: users(tg_id), subscriptions(user_id), subscriptions(user_id,status), subscriptions(expires_at), promos(code), promo_redemptions(promo_id), promo_redemptions(user_id), payments(user_id), payments(telegram_charge_id), traffic_snapshots(subscription_id, taken_at), subscription_notifications(subscription_id).",
+    "createdAt": "2026-05-16T15:06:06.677Z",
+    "updatedAt": "2026-05-16T16:02:25.723Z"
+  },
+  {
+    "element": "app/db/repos/users.py",
+    "path": "app/db/repos/users.py",
+    "type": "file",
+    "content": "Репозиторий пользователей.\n\n- Dataclass User(id, tg_id, username, first_name, is_admin, created_at).\n- User.from_row(row) — построение из aiosqlite.Row.\n- async def get_by_tg_id(conn, tg_id) -> User | None.\n- async def get_by_id(conn, user_id) -> User | None.\n- async def get_by_username(conn, username) -> User | None — case-insensitive (COLLATE NOCASE), убирает ведущий '@'. Возвращает None для пустой строки. Используется admin-флоу 'Пользователи'.\n- async def create(conn, tg_id, username, first_name, is_admin=False) -> User.\n- async def get_or_create(conn, tg_id, username, first_name) -> User — идемпотентен; is_admin синхронизируется с settings.ADMIN_IDS.\n- async def set_admin(conn, user_id, value: bool).",
+    "createdAt": "2026-05-16T15:06:15.201Z",
+    "updatedAt": "2026-05-16T15:52:44.547Z"
+  },
+  {
+    "element": "app/db/repos/plans.py",
+    "path": "app/db/repos/plans.py",
+    "type": "file",
+    "content": "Репозиторий таблицы plans (тарифы).\n\nDataclass Plan(slots, frozen): id, title, days, price_stars, is_active (bool), created_at.\nМетод Plan.from_row(aiosqlite.Row).\nКонстанта _UPDATABLE_COLUMNS = {'title','days','price_stars','is_active'}.\n\nAsync-функции:\n- create(conn, title, days, price_stars) -> Plan — создаёт активный тариф (is_active=1).\n- get(conn, plan_id) -> Plan | None.\n- list_active(conn) -> list[Plan] — где is_active=1, сортировка ORDER BY price_stars ASC, id ASC.\n- list_all(conn) -> list[Plan] — все, sorted by id.\n- update(conn, plan_id, **fields) -> Plan — только колонки из whitelist; ValueError на unknown columns; LookupError если запись не найдена. Преобразует bool→0/1 для is_active.\n- deactivate(conn, plan_id) — soft-delete (is_active=0). Запись остаётся для FK-целостности из payments/subscriptions.",
+    "createdAt": "2026-05-16T15:06:19.711Z",
+    "updatedAt": "2026-05-16T15:06:19.711Z"
+  },
+  {
+    "element": "app/db/repos/promos.py",
+    "path": "app/db/repos/promos.py",
+    "type": "file",
+    "content": "Репозиторий promos + promo_redemptions.\n\nPromoType = Literal['percent','flat_stars','free_days'].\n\nDataclass Promo(slots, frozen): id, code, type, value, max_uses, used_count, expires_at, created_at, created_by.\nDataclass Redemption(slots, frozen): id, promo_id, user_id, subscription_id, redeemed_at.\nHelper _utcnow_iso() — UTC ISO-8601 seconds.\n\nAsync-функции:\n- create(conn, code, type, value, max_uses, expires_at, created_by) -> Promo.\n- get(conn, promo_id) -> Promo | None.\n- get_by_code(conn, code) -> Promo | None — case-insensitive через WHERE code = ? COLLATE NOCASE.\n- list_active(conn) -> list[Promo] — (expires_at IS NULL OR expires_at>now) AND (max_uses=0 OR used_count<max_uses), ORDER BY created_at DESC.\n- deactivate(conn, promo_id) — UPDATE expires_at = now (мягкое выключение, не DELETE).\n- try_redeem(conn, promo_id, user_id, subscription_id) -> bool — атомарный redeem внутри transaction(conn): SELECT с валидацией → UPDATE с capacity-guarded WHERE (max_uses=0 OR used_count<max_uses) AND (expires_at IS NULL OR expires_at>now) → INSERT в promo_redemptions. Возвращает False если промо невалиден или гонка перехватила слот. На прочих исключениях — rollback + re-raise.\n- list_redemptions(conn, promo_id) -> list[Redemption] — newest first.\n\nЗависимости: app.db.engine.transaction (для try_redeem).",
+    "createdAt": "2026-05-16T15:06:26.325Z",
+    "updatedAt": "2026-05-16T15:06:26.325Z"
+  },
+  {
+    "element": "app/db/repos/subscriptions.py",
+    "path": "app/db/repos/subscriptions.py",
+    "type": "file",
+    "content": "Репозиторий подписок + traffic_snapshots + subscription_notifications. Литералы: SubscriptionStatus = Literal['active','expired','revoked'], NotificationKind = Literal['3d','1d','0d','expired']. Helpers _to_iso(value)/_utcnow_iso(). Dataclasses Subscription/TrafficSnapshot. Функции: create, get, get_active_for_user (active+expires_at>now), list_for_user, extend, set_status, list_expired_active (active+expires_at<=now — для expire-job), list_active, list_expiring_in(days) (окно (now, now+days]), add_traffic_snapshot, last_traffic_snapshot, try_mark_notification_sent(conn, sub_id, kind) -> bool (INSERT OR IGNORE в subscription_notifications с UNIQUE(sub_id,kind) — возвращает True если запись вставлена, False если уже существовала; используется scheduler-job-ами для дедупликации напоминаний).",
+    "createdAt": "2026-05-16T15:06:34.205Z",
+    "updatedAt": "2026-05-16T16:02:10.220Z"
+  },
+  {
+    "element": "app/db/repos/payments.py",
+    "path": "app/db/repos/payments.py",
+    "type": "file",
+    "content": "Репозиторий таблицы payments (Stars-платежи).\n\nPaymentStatus = Literal['paid','refunded'].\n\nDataclass Payment(slots, frozen): id, user_id, subscription_id, telegram_charge_id, stars_amount, plan_id, promo_id, status, created_at.\nHelper _to_iso(datetime|str) -> str — UTC ISO-8601 seconds.\n\nAsync-функции:\n- create(conn, user_id, subscription_id, telegram_charge_id, stars_amount, plan_id, promo_id, status='paid') -> Payment. UNIQUE на telegram_charge_id защищает от дублей: повторный create поднимает aiosqlite.IntegrityError, caller должен ловить и обращаться к get_by_charge_id для идемпотентного обработчика successful_payment.\n- get(conn, payment_id) -> Payment | None.\n- get_by_charge_id(conn, telegram_charge_id) -> Payment | None.\n- list_for_user(conn, user_id) -> list[Payment] — ORDER BY created_at DESC.\n- total_stars_period(conn, start, end) -> int — SUM(stars_amount) WHERE status='paid' AND created_at BETWEEN [start, end] (включительно). Возвращает 0 если ничего не подходит (COALESCE).\n- set_status(conn, payment_id, status).",
+    "createdAt": "2026-05-16T15:06:39.747Z",
+    "updatedAt": "2026-05-16T15:06:39.747Z"
+  },
+  {
+    "element": "app/db/__init__.py",
+    "path": "app/db/__init__.py",
+    "type": "file",
+    "content": "Маркер пакета app.db. Документирует публичный API: init_db, get_conn, transaction из app.db.engine; репозитории в app.db.repos.* (users, plans, promos, subscriptions, payments).",
+    "createdAt": "2026-05-16T15:06:43.317Z",
+    "updatedAt": "2026-05-16T15:06:43.317Z"
+  },
+  {
+    "element": "app/db/repos/__init__.py",
+    "path": "app/db/repos/__init__.py",
+    "type": "file",
+    "content": "Маркер пакета app.db.repos. Документирует контракт репозиториев: каждая функция — async, принимает aiosqlite.Connection первым аргументом (DI). Никакого ORM, чистый SQL. Жизненный цикл соединения принадлежит вызывающему коду (через app.db.engine.get_conn).",
+    "createdAt": "2026-05-16T15:06:43.574Z",
+    "updatedAt": "2026-05-16T15:06:43.574Z"
+  },
+  {
+    "element": "app/xui/client.py",
+    "path": "app/xui/client.py",
+    "type": "file",
+    "content": "XuiClient — async REST-клиент 3x-ui панели на httpx.AsyncClient. Авторизация: POST /login с form data {username,password}, сессионная cookie хранится в httpx cookie jar. Re-login: serialised через asyncio.Lock; вызывается лениво при первом запросе и автоматически при 401 либо при envelope success=false с msg, содержащим 'login'/'session'/'unauthor'. Методы: login(), request(method, path, **kwargs)->httpx.Response (auto-login + 1 retry), request_json(method, path, **kwargs)->Any (раскрывает obj envelope, кидает XuiError), close(), __aenter__/__aexit__. Внутренний _parse распаковывает {success,msg,obj}-envelope. Singleton: get_xui_client()/close_xui_client() с asyncio.Lock-инициализацией. XuiError(RuntimeError) — единая доменная ошибка для всех проблем (HTTP, JSON, success=false). Timeouts: connect=10s, read=30s, write=30s, pool=10s. verify_ssl читается из settings.XUI_VERIFY_SSL (default True). Зависимости: httpx, loguru, app.config.settings (XUI_BASE_URL/USERNAME/PASSWORD/VERIFY_SSL).",
+    "createdAt": "2026-05-16T15:09:28.537Z",
+    "updatedAt": "2026-05-16T15:09:28.537Z"
+  },
+  {
+    "element": "app/xui/__init__.py",
+    "path": "app/xui/__init__.py",
+    "type": "file",
+    "content": "Пакет 3x-ui REST-клиента. Re-exports: XuiClient, XuiError, get_xui_client, close_xui_client из app.xui.client. Подмодули: client (HTTP+singleton), inbounds (list/get inbound), clients (add/update/del/getTraffics), links (vless URI, sub URL, QR PNG).",
+    "createdAt": "2026-05-16T15:09:30.843Z",
+    "updatedAt": "2026-05-16T15:09:30.843Z"
+  },
+  {
+    "element": "app/xui/inbounds.py",
+    "path": "app/xui/inbounds.py",
+    "type": "file",
+    "content": "Операции с inbound'ами 3x-ui панели. Функции: list_inbounds(client)->list[dict] (GET /panel/api/inbounds/list, возвращает массив с распарсенными settings/streamSettings), get_inbound(client, inbound_id)->dict (GET /panel/api/inbounds/get/:id, возвращает inbound с распарсенными nested-полями; clients доступны через obj['settings']['clients']). Helper _parse_inbound(raw)->dict декодирует JSON-string subfields settings/streamSettings/sniffing/allocate в nested dict; делает shallow copy, не мутирует входной dict; малформный JSON оставляет как строку. На отсутствующий inbound XuiClient.request_json кидает XuiError (success=false). Зависимости: XuiClient, XuiError из app.xui.client, json (stdlib).",
+    "createdAt": "2026-05-16T15:10:08.426Z",
+    "updatedAt": "2026-05-16T15:10:08.426Z"
+  },
+  {
+    "element": "app/xui/clients.py",
+    "path": "app/xui/clients.py",
+    "type": "file",
+    "content": "Операции над клиентами inbound'а 3x-ui. Все функции async, первым аргументом XuiClient. Функции: add_client(client, inbound_id, client_uuid, email, expiry_ts_ms, total_gb=0, sub_id=None, flow='', enable=True, limit_ip=0, tg_id='', reset=0)->dict — POST /panel/api/inbounds/addClient; payload {id: inbound_id, settings: JSON.dumps({clients:[...]})}; sub_id генерируется (token_hex(8)) если None; expiry_ts_ms в миллисекундах. update_client(client, inbound_id, client_uuid, **fields)->dict — POST /panel/api/inbounds/updateClient/:uuid; whitelist полей _UPDATABLE_CLIENT_FIELDS (id, email, expiryTime, totalGB, enable, flow, subId, limitIp, tgId, reset); unknown fields => ValueError. del_client(client, inbound_id, client_uuid)->None — POST /panel/api/inbounds/:id/delClient/:uuid; soft-fail на 'not exist'/'not found'/'no such' (идемпотентно). get_client_traffics(client, email)->dict — GET /panel/api/inbounds/getClientTraffics/:email; возвращает {} если obj=None. Helpers: make_client_uuid()->str (uuid4), make_client_email(tg_id)->str (tg_<id>_<6hex>), _make_sub_id()->str (token_hex(8)).",
+    "createdAt": "2026-05-16T15:11:03.230Z",
+    "updatedAt": "2026-05-16T15:11:03.230Z"
+  },
+  {
+    "element": "app/xui/links.py",
+    "path": "app/xui/links.py",
+    "type": "file",
+    "content": "Билдеры ссылок и QR. Функции: build_subscription_url(sub_id)->str — джойнит settings.XUI_SUB_BASE_URL с sub_id, нормализуя слеши; build_vless_link(inbound, client_uuid, email)->str — собирает vless://uuid@host:port?<params>#<email> URI на основе распарсенного inbound (см. app.xui.inbounds.get_inbound); host берётся из settings.XUI_SERVER_HOST (не из panel), port из inbound.port; query-параметры извлекаются из streamSettings через _stream_params: type/security всегда; для tcp — headerType/path/host (из header.request), ws — path/host, grpc — serviceName/mode, http — path/host, kcp — headerType/seed, quic — quicSecurity/key/headerType; для tls — sni/alpn/fp; для reality — pbk/fp/sni/sid/spx; flow добавляется из client object (settings.clients[i].flow); _find_client ищет клиент по uuid в inbound.settings.clients; fragment — URL-encoded email через urllib.parse.quote(safe=''); make_qr_png(text)->bytes — qrcode.make + сохранение в BytesIO как PNG; возвращает байты, готовые для send_photo. Зависимости: qrcode[pil], urllib.parse, io.BytesIO, app.config.settings (XUI_SERVER_HOST, XUI_SUB_BASE_URL).",
+    "createdAt": "2026-05-16T15:12:14.526Z",
+    "updatedAt": "2026-05-16T15:12:14.526Z"
+  },
+  {
+    "element": "scripts/xui_smoke.py",
+    "path": "scripts/xui_smoke.py",
+    "type": "file",
+    "content": "Standalone smoke-тест 3x-ui клиента. Sequence: login -> list_inbounds (печатает все inbounds) -> get_inbound(XUI_INBOUND_ID) -> add_client (test uuid+email, 10 мин expiry) -> get_client_traffics(email) -> del_client (если не указан --keep). CLI: argparse с флагом --keep (не удалять клиента в конце). Запуск: python -m scripts.xui_smoke или python scripts/xui_smoke.py. Все ошибки логируются с указанием failed step и возвращают свой exit code (2-6). Использует setup_logging('INFO') из app.logger, конфиг из app.config.settings, XuiClient + helpers из app.xui. Helper _short(obj, limit=400) укорачивает JSON для логов.",
+    "createdAt": "2026-05-16T15:13:05.990Z",
+    "updatedAt": "2026-05-16T15:13:05.990Z"
+  },
+  {
+    "element": "scripts/__init__.py",
+    "path": "scripts/__init__.py",
+    "type": "file",
+    "content": "Пакет standalone CLI-скриптов (smoke-тесты, ops-хелперы). Не часть runtime-приложения, но в том же venv; запускаются через python -m scripts.<name>.",
+    "createdAt": "2026-05-16T15:13:07.650Z",
+    "updatedAt": "2026-05-16T15:13:07.650Z"
+  },
+  {
+    "element": "app/middlewares/__init__.py",
+    "path": "app/middlewares/__init__.py",
+    "type": "file",
+    "content": "Маркер пакета aiogram-middleware'ов. Re-export UserContextMiddleware и AdminOnlyMiddleware.",
+    "createdAt": "2026-05-16T15:21:26.753Z",
+    "updatedAt": "2026-05-16T15:21:26.753Z"
+  },
+  {
+    "element": "app/middlewares/user_ctx.py",
+    "path": "app/middlewares/user_ctx.py",
+    "type": "file",
+    "content": "Outer dispatcher-middleware UserContextMiddleware. Извлекает from_user из любого типа апдейта (Update.message/callback_query/inline_query/pre_checkout_query/...), вызывает users_repo.get_or_create(conn, tg_id, username, first_name) и кладёт User в data['user']. При ошибках БД логирует и проставляет data['user']=None — апдейт не теряется. Helper _extract_tg_user(event) обходит все update-поля с from_user.",
+    "createdAt": "2026-05-16T15:21:27.010Z",
+    "updatedAt": "2026-05-16T15:21:27.010Z"
+  },
+  {
+    "element": "app/middlewares/admin_only.py",
+    "path": "app/middlewares/admin_only.py",
+    "type": "file",
+    "content": "Router-middleware AdminOnlyMiddleware. На Message/CallbackQuery: если data['user'].is_admin или event.from_user.id ∈ settings.ADMIN_IDS — пропускает; иначе отвечает «Доступ запрещён» (на CallbackQuery с show_alert=True) и поглощает апдейт без вызова handler. Static helper _is_admin(event, data) с приоритетом data['user'] (уже синхронизирован с ADMIN_IDS UserContextMiddleware'ом).",
+    "createdAt": "2026-05-16T15:21:27.264Z",
+    "updatedAt": "2026-05-16T15:21:27.264Z"
+  },
+  {
+    "element": "app/states/__init__.py",
+    "path": "app/states/__init__.py",
+    "type": "file",
+    "content": "Маркер пакета FSM-states. Re-export PlanCreate, PlanEdit, PromoCreate из app.states.admin.",
+    "createdAt": "2026-05-16T15:21:27.544Z",
+    "updatedAt": "2026-05-16T15:21:27.544Z"
+  },
+  {
+    "element": "app/states/admin.py",
+    "path": "app/states/admin.py",
+    "type": "file",
+    "content": "FSM-стейты админ-флоу (aiogram StatesGroup).\n\n- PlanCreate(waiting_title, waiting_days, waiting_price) — wizard создания тарифа.\n- PlanEdit(waiting_field, waiting_value) — wizard редактирования одного поля; plan_id и field хранятся в FSMContext data.\n- PromoCreate(waiting_code, waiting_type, waiting_value, waiting_max_uses, waiting_expires_at) — wizard создания промокода.\n- AdminSearchUser(waiting_query) — поиск пользователя по tg_id (цифры) или @username; handler сразу резолвит и чистит state.",
+    "createdAt": "2026-05-16T15:21:27.797Z",
+    "updatedAt": "2026-05-16T15:52:48.050Z"
+  },
+  {
+    "element": "app/keyboards/__init__.py",
+    "path": "app/keyboards/__init__.py",
+    "type": "file",
+    "content": "Маркер пакета aiogram inline-keyboards. В Фазе 4 содержит только admin-клавиатуры; user-клавиатуры добавятся в Фазе 5.",
+    "createdAt": "2026-05-16T15:21:53.186Z",
+    "updatedAt": "2026-05-16T15:21:53.186Z"
+  },
+  {
+    "element": "app/keyboards/admin.py",
+    "path": "app/keyboards/admin.py",
+    "type": "file",
+    "content": "Inline-клавиатуры админ-флоу через InlineKeyboardBuilder.\n\nCallbackData-фабрики:\n- AdminCB(prefix='adm', area, action) — навигация (area ∈ main/plans/promos/users/stats, action ∈ open/back/cancel).\n- PlanCB(prefix='admp', action, id=0, field='') — list/create/card/edit_menu/edit/deactivate; field ∈ title/days/price_stars.\n- PromoCB(prefix='admpr', action, id=0, field='') — list/create/card/deactivate/redemptions/type; field ∈ percent/flat_stars/free_days.\n- UserCB(prefix='admu', action, id=0, user_id=0) — поиск/карточка/мутации в админском 'Пользователи'; action ∈ search/card/revoke/toggle_admin. Для revoke: id=sub_id, user_id=users.id.\n- StatsCB(prefix='adms', action, field='') — экран статистики; action ∈ open/period/refresh; field несёт период (7d/30d/all) — stateless через callback.\n\nФункции:\n- admin_main_menu() — 4 кнопки (Тарифы / Промокоды / Пользователи / Статистика).\n- back_to_main_kb() — одна кнопка «В меню».\n- cancel_kb() — одна кнопка «✖ Отмена» для FSM-wizard'ов.\n- plans_list_kb(plans) — список тарифов + «Создать» + «В меню». Inactive с префиксом 🔒.\n- plan_card_kb(plan_id, is_active=True) — Редактировать / Деактивировать / Назад.\n- plan_edit_fields_kb(plan_id) — выбор поля (Название/Срок/Цена) + Назад.\n- promos_list_kb(promos) — список промокодов + «Создать» + «В меню». Исчерпанные с префиксом 🔒.\n- promo_type_kb() — percent / flat_stars / free_days + Отмена.\n- promo_card_kb(promo_id, is_active=True) — Redemptions / Деактивировать / Назад.\n- user_card_kb(user_id, *, active_sub_id=None, is_admin=False) — кнопки карточки пользователя: «Отозвать активную подписку» (если active_sub_id), «Сделать/Снять админа», «Найти другого», «В меню».\n- stats_kb(active_period='30d') — переключатель 7д/30д/Всё время (текущий с обёрткой «· text ·»), «🔄 Обновить» с current_period в payload, «В меню».\n\ncallback_data всегда укладывается в Telegram-лимит 64 байта.",
+    "createdAt": "2026-05-16T15:21:53.441Z",
+    "updatedAt": "2026-05-16T15:52:59.251Z"
+  },
+  {
+    "element": "app/handlers/admin/__init__.py",
+    "path": "app/handlers/admin/__init__.py",
+    "type": "file",
+    "content": "Агрегатор admin-router. _build_admin_router() создаёт Router(name='admin'), вешает AdminOnlyMiddleware на admin_router.message и admin_router.callback_query, включает sub-роутеры menu/plans/promos. Экспортирует admin_router как переменную модуля. Подключается в app.handlers.__init__ через dp.include_router.",
+    "createdAt": "2026-05-16T15:21:53.696Z",
+    "updatedAt": "2026-05-16T15:21:53.696Z"
+  },
+  {
+    "element": "app/handlers/admin/menu.py",
+    "path": "app/handlers/admin/menu.py",
+    "type": "file",
+    "content": "Хэндлеры команды /admin и навигации в админ-меню. router = Router(name='admin_menu'). cmd_admin(message) на Command('admin') — отвечает _GREETING + admin_main_menu(). open_main(callback) на AdminCB(area=main, action in {open,back}) — edit_text обратно в главное меню. cancel_fsm(callback, state) на AdminCB(action=cancel) — state.clear() + возврат в главное меню; используется как единая Cancel-точка во всех wizard'ах.",
+    "createdAt": "2026-05-16T15:21:53.955Z",
+    "updatedAt": "2026-05-16T15:21:53.955Z"
+  },
+  {
+    "element": "app/handlers/admin/plans.py",
+    "path": "app/handlers/admin/plans.py",
+    "type": "file",
+    "content": "Хэндлеры CRUD тарифов. router = Router(name='admin_plans'). Helpers: _format_plan(plan) — HTML карточка; _show_card(message, plan_id, edit=True); _show_list(message, edit=True) — list_all + сортировка active→inactive. Callbacks: cb_list (PlanCB.action=list, clear state) — _show_list; cb_card (action=card) — _show_card; cb_edit_menu (action=edit_menu) — plan_edit_fields_kb; cb_deactivate (action=deactivate) — plans_repo.deactivate + re-render. Wizard PlanCreate (cb_create→st_title→st_days→st_price): валидация days>0, price_stars>=0, на ошибке re-ask без сброса FSM; в конце plans_repo.create + карточка. Wizard PlanEdit (cb_edit (PlanCB.field in title/days/price_stars) → st_edit_value): валидация по типу поля, plans_repo.update, LookupError на отсутствующий plan_id. _FIELD_LABELS — словарь подсказок для редактирования.",
+    "createdAt": "2026-05-16T15:21:54.212Z",
+    "updatedAt": "2026-05-16T15:21:54.212Z"
+  },
+  {
+    "element": "app/handlers/admin/promos.py",
+    "path": "app/handlers/admin/promos.py",
+    "type": "file",
+    "content": "Хэндлеры CRUD промокодов. router = Router(name='admin_promos'). Helpers: _TYPE_LABELS — RU-метки для percent/flat_stars/free_days; _format_promo(promo) — HTML карточка со статусом (активен/исчерпан/истёк); _list_all_promos(conn) — inline SQL (репо не имеет list_all); _promo_is_active(promo); _show_card; _show_list; _parse_expires_at(raw) — принимает '-'/skip/нет/no→None, иначе datetime.strptime('%Y-%m-%d')→ISO UTC 23:59:59, False на ошибку. Callbacks: cb_list/cb_card/cb_deactivate. cb_redemptions показывает историю активаций с tg_id + датой + sub_id. Wizard PromoCreate: cb_create→st_code (уникальность через get_by_code, без пробелов) → cb_type (PromoCB.action=type, field=percent|flat_stars|free_days) → st_value (percent 1..100, flat_stars/free_days >0) → st_max_uses (≥0, 0=∞) → st_expires_at (parse + promos_repo.create с created_by=user.id). На IntegrityError при create — fallback с сообщением.",
+    "createdAt": "2026-05-16T15:21:54.473Z",
+    "updatedAt": "2026-05-16T15:21:54.473Z"
+  },
+  {
+    "element": "app/states/user.py",
+    "path": "app/states/user.py",
+    "type": "file",
+    "content": "FSM-стейты пользовательского флоу. BuyFlow: choosing_plan (выбор тарифа), entering_promo (ввод промокода), confirming (просмотр итоговой цены/применённого промо). PromoActivate: waiting_code (ввод кода для активации free_days без оплаты). Стейт-данные (plan_id, promo_id) хранятся через FSMContext.update_data; стейт очищается после отправки invoice, потому что pre_checkout/successful_payment приходят без стейта и используют payload invoice'а для переноса plan_id/promo_id.",
+    "createdAt": "2026-05-16T15:26:38.786Z",
+    "updatedAt": "2026-05-16T15:26:38.786Z"
+  },
+  {
+    "element": "app/keyboards/user.py",
+    "path": "app/keyboards/user.py",
+    "type": "file",
+    "content": "Inline-клавиатуры пользовательского флоу. CallbackData-фабрики: UserCB (area=menu|help|my|cancel) — навигация; BuyCB (action=open|plan|apply_promo|confirm|cancel, plan_id, promo_id) — флоу покупки; SubCB (action=keys|back, sub_id) — карточка подписки; PromoActCB (action=open|cancel) — активация free-days промо. Билдеры: user_main_menu(has_subscription) с приоритетом «Моя подписка» если есть активная; plans_kb(plans) — кнопка на каждый тариф; confirm_kb(plan_id, promo_id) — Оплатить/Применить промокод/Отмена (кнопка применения промо скрывается когда promo_id уже привязан); subscription_kb(sub_id) — повторная выдача ключа + назад; cancel_kb()/back_to_menu_kb() — стандартные одиночные кнопки.",
+    "createdAt": "2026-05-16T15:26:43.626Z",
+    "updatedAt": "2026-05-16T15:26:43.626Z"
+  },
+  {
+    "element": "app/services/promos.py",
+    "path": "app/services/promos.py",
+    "type": "file",
+    "content": "Бизнес-логика промокодов. validate(conn, code, user_id, plan) -> PromoValidation: проверяет код существует (regex case-insensitive через get_by_code), не истёк (expires_at > now), capacity (used_count < max_uses или max_uses=0), пользователь ещё не активировал (one-per-user через promo_redemptions). Когда plan=None — допустимо для standalone-флоу (caller проверит type сам). compute_discount(plan, promo) -> DiscountResult(final_price, extra_days): pure-функция. percent: ceil(price*(100-value)/100), нижний пол 0; flat_stars: max(0, price-value); free_days: final_price=price, extra_days=promo.value. apply(conn, promo_id, user_id, sub_id): обёртка над promos_repo.try_redeem — атомарный инкремент used_count + INSERT в promo_redemptions под BEGIN IMMEDIATE.",
+    "createdAt": "2026-05-16T15:27:46.815Z",
+    "updatedAt": "2026-05-16T15:27:46.815Z"
+  },
+  {
+    "element": "app/services/__init__.py",
+    "path": "app/services/__init__.py",
+    "type": "file",
+    "content": "Пакет бизнес-логики приложения. Подмодули: promos (валидация/скидка/redeem), billing (расчёт цены + Stars invoice), subscriptions (единая точка создания/продления подписки через xui+db). Сервисы оркестрируют репозитории и xui-клиент, держат код хэндлеров тонким.",
+    "createdAt": "2026-05-16T15:27:49.546Z",
+    "updatedAt": "2026-05-16T15:27:49.546Z"
+  },
+  {
+    "element": "app/services/subscriptions.py",
+    "path": "app/services/subscriptions.py",
+    "type": "file",
+    "content": "Единая точка работы с подписками. create_or_extend(conn, xui, user, plan, promo) -> Subscription: вычисляет delta = plan.days + (promo.value если free_days); если у юзера есть активная подписка — extend в БД + update_client(expiryTime=новое) в xui; иначе — генерирует uuid+email(make_client_email)+sub_id, вызывает add_client (xui-first), затем subs_repo.create. activate_free_days(conn, xui, user, promo): тот же путь с plan_id=None и delta=promo.value (raises ValueError если promo.type != free_days). revoke(xui, sub): update_client(enable=False) и status='revoked'. Порядок xui-first, db-after — чтобы при сбое xui не оставалось БД-сирот без панельного клиента.",
+    "createdAt": "2026-05-16T15:29:54.125Z",
+    "updatedAt": "2026-05-16T15:29:54.125Z"
+  },
+  {
+    "element": "app/services/billing.py",
+    "path": "app/services/billing.py",
+    "type": "file",
+    "content": "Stars-invoice и финальная цена. _STARS_MIN=1 (TG требует amount>=1). InvoicePrice(stars, raw_discount, extra_days). calc_price(plan, promo): обёртка над promos.compute_discount + max(_STARS_MIN, final_price). build_invoice_payload(plan_id, promo_id): JSON {plan_id, promo_id} (compact, <128 байт); parse_invoice_payload — обратное преобразование с ValueError на malformed input. send_invoice(bot, chat_id, plan, promo): bot.send_invoice с currency='XTR', provider_token='', prices=[LabeledPrice(label=plan.title, amount=stars)], payload=build_invoice_payload(...), title/description с указанием бонусных дней и применённого промокода.",
+    "createdAt": "2026-05-16T15:31:36.001Z",
+    "updatedAt": "2026-05-16T15:31:36.001Z"
+  },
+  {
+    "element": "app/handlers/user/__init__.py",
+    "path": "app/handlers/user/__init__.py",
+    "type": "file",
+    "content": "Агрегатор пользовательского user_router (aiogram Router). Подключает в порядке: menu -> my_subscription -> buy -> promo -> help. Без gate-middleware — доступен всем юзерам. menu идёт первым чтобы /menu и main-menu callbacks обрабатывались до более специфичных flow; my_subscription обрабатывает UserCB(area='my') и SubCB(action='keys') для повторной выдачи ключей; buy несёт самый тяжёлый набор FSM-хендлеров + pre_checkout/successful_payment; promo и help — отдельные одиночные колбеки.",
+    "createdAt": "2026-05-16T15:33:28.370Z",
+    "updatedAt": "2026-05-16T15:45:33.598Z"
+  },
+  {
+    "element": "app/handlers/user/menu.py",
+    "path": "app/handlers/user/menu.py",
+    "type": "file",
+    "content": "Главное меню пользователя. cmd_menu (/menu) и cb_menu (UserCB area=menu) → user_main_menu с приоритетом 'Моя подписка' если subs_repo.get_active_for_user вернул запись. cb_cancel (UserCB area=cancel) очищает FSM и возвращает в меню. _send_main_menu(edit=bool) — единая точка рендера для edit_text/answer.",
+    "createdAt": "2026-05-16T15:33:31.434Z",
+    "updatedAt": "2026-05-16T15:33:31.434Z"
+  },
+  {
+    "element": "app/handlers/user/help.py",
+    "path": "app/handlers/user/help.py",
+    "type": "file",
+    "content": "Инструкция по подключению. cb_help (UserCB area=help) рендерит фиксированный гайд с тремя клиентами (v2rayNG, Streisand, Hiddify) и тремя способами импорта (vless URI, sub URL, QR). back_to_menu_kb для возврата.",
+    "createdAt": "2026-05-16T15:33:33.459Z",
+    "updatedAt": "2026-05-16T15:33:33.459Z"
+  },
+  {
+    "element": "app/handlers/user/buy.py",
+    "path": "app/handlers/user/buy.py",
+    "type": "file",
+    "content": "Платёжный флоу: callback handlers cb_open (BuyCB action=open) показывает plans_kb из plans_repo.list_active; cb_pick_plan (action=plan) сохраняет plan_id в FSM, сохраняет promo_id если был, рендерит confirm_kb; cb_apply_promo (action=apply_promo) переводит в BuyFlow.entering_promo; msg_promo_code (msg в entering_promo) вызывает promos_service.validate, на success сохраняет promo_id и рендерит итоговую цену; cb_confirm (action=confirm) рев-валидирует и вызывает billing.send_invoice, очищает FSM. Stateless handlers: on_pre_checkout — parse_invoice_payload, проверяет plan.is_active и promo (срок/capacity), answer_pre_checkout_query; on_successful_payment (F.successful_payment) — идемпотентен по telegram_payment_charge_id, парсит payload, subs_service.create_or_extend (xui-first), payments_repo.create, promos.apply, deliver_keys. При XuiError платёж всё равно записывается, чтобы админ мог починить вручную; пользователь получает уведомление.",
+    "createdAt": "2026-05-16T15:36:03.419Z",
+    "updatedAt": "2026-05-16T15:36:03.419Z"
+  },
+  {
+    "element": "app/handlers/user/_keys.py",
+    "path": "app/handlers/user/_keys.py",
+    "type": "file",
+    "content": "Хелпер deliver_keys(bot, xui, chat_id, sub, header) — общий код для buy.py и promo.py. Получает inbound через xui.get_inbound, строит vless_uri (build_vless_link) и sub_url (build_subscription_url). Отправляет три сообщения: (1) текстовый summary с expires_at и vless в code-block; (2) QR PNG через bot.send_photo с BufferedInputFile (make_qr_png генерирует bytes); (3) sub URL + клавиатуру с URL-кнопкой 'Subscription URL' (только http(s) схемы допустимы для InlineKeyboardButton.url; vless:// идёт текстом) + subscription_kb (повторная выдача/назад). При XuiError на get_inbound vless_uri оставляется пустым, QR строится по sub_url.",
+    "createdAt": "2026-05-16T15:36:08.160Z",
+    "updatedAt": "2026-05-16T15:36:08.160Z"
+  },
+  {
+    "element": "app/handlers/user/promo.py",
+    "path": "app/handlers/user/promo.py",
+    "type": "file",
+    "content": "Активация промокода без оплаты (free-days). cb_open (PromoActCB action=open): переводит в PromoActivate.waiting_code. msg_code: validate через promos_service.validate(plan=None); при не-free_days промо очищает стейт и просит идти в buy flow; при ошибке остаётся в стейте для повторного ввода; при free_days вызывает subs_service.activate_free_days (xui-first → db), затем promos.apply (best-effort redeem), затем deliver_keys. Двойная активация защищена validate (one-per-user через promo_redemptions) + try_redeem (BEGIN IMMEDIATE). При XuiError промокод не редимится — юзер может повторить.",
+    "createdAt": "2026-05-16T15:37:05.600Z",
+    "updatedAt": "2026-05-16T15:37:05.600Z"
+  },
+  {
+    "element": "app/handlers/user/my_subscription.py",
+    "path": "app/handlers/user/my_subscription.py",
+    "type": "file",
+    "content": "Экран «Моя подписка» для пользователя. Хендлеры на user_router: cb_open_my (UserCB area=my) рендерит карточку подписки со статусом, датой истечения, днями до истечения и live-трафиком из 3x-ui (через xui.clients.get_client_traffics); cb_resend_keys (SubCB action=keys) повторно отдаёт vless+QR+Subscription URL через shared helper _keys.deliver_keys с проверкой ownership (sub.user_id == user.id). Helpers: _format_bytes (human-readable байты с бинарным шагом 1024 — B/KB/MB/GB/TB), _parse_iso/_days_delta (UTC-aware, floor-делением), _is_active (status='active' AND expires_at>now), _format_status_line (статус), _format_days_line (истекает через N дн./истекла N дн. назад), _fetch_traffics (ловит XuiError и любые исключения — экран не падает при недоступной панели), _format_sub_card (HTML-карточка), _sub_card_kb (кнопки получить ключ/продлить/в меню), _no_subscription_kb (купить/в меню). Branches в cb_open_my: нет подписок -> экран 'купите тариф'; одна подписка -> карточка; несколько -> карточка primary (свежайшая активная, или свежайшая по created_at) + компактный список остальных до 5 шт. Кнопка 'Продлить' (BuyCB action=open) появляется только для истёкших/отозванных. Регистрируется в app/handlers/user/__init__.py между menu и buy.",
+    "createdAt": "2026-05-16T15:45:29.962Z",
+    "updatedAt": "2026-05-16T15:45:29.962Z"
+  },
+  {
+    "element": "app/services/stats.py",
+    "path": "app/services/stats.py",
+    "type": "file",
+    "content": "Сервис агрегатов для админ-статистики. Все функции async и принимают aiosqlite.Connection (DI как у репозиториев).\n\nHelpers:\n- _utcnow() -> datetime — текущее UTC, seconds resolution, tz-aware.\n- _iso(value) -> str — нормализация datetime/str → ISO-8601 UTC.\n\nRevenue:\n- revenue_stars(conn, period: timedelta) -> int — суммарный Stars-доход за окно [now-period, now], делегирует в payments_repo.total_stars_period.\n- total_stars_period(conn, date_from, date_to) -> int — pass-through к репо.\n\nSubscriptions:\n- active_subscriptions_count(conn) -> int — COUNT по subscriptions WHERE status='active' AND expires_at > now.\n- expiring_in(conn, days) -> list[Subscription] — обёртка над subs_repo.list_expiring_in.\n- expiring_in_days(conn, days) — алиас expiring_in, чтобы имя совпадало с план-спецификацией.\n\nPromos:\n- top_promos(conn, limit=5) -> list[Promo] — SELECT * FROM promos ORDER BY used_count DESC, id DESC LIMIT ?. Включает деактивированные/истёкшие.\n\nUsers/Payments:\n- users_count(conn) -> int — COUNT по users.\n- users_count_total(conn) — алиас users_count.\n- payments_count_period(conn, date_from, date_to) -> int — COUNT по payments WHERE status='paid' AND created_at в окне.\n\nЗависимости: app.db.repos.payments, app.db.repos.subscriptions, app.db.repos.promos.Promo, app.db.repos.subscriptions.Subscription.",
+    "createdAt": "2026-05-16T15:48:20.411Z",
+    "updatedAt": "2026-05-16T15:48:20.411Z"
+  },
+  {
+    "element": "app/handlers/admin/users.py",
+    "path": "app/handlers/admin/users.py",
+    "type": "file",
+    "content": "Админский экран «Пользователи» — поиск + карточка пользователя.\n\nrouter = Router(name=\"admin_users\").\n\nКонстанты:\n- _MAX_PAYMENTS = 10 — лимит платежей в карточке.\n\nHelpers:\n- _safe(value) -> str — HTML-escape для имён/usernames.\n- _fetch_traffic_line(sub) -> str — pulls traffic через xui.clients.get_client_traffics; XuiError→'панель недоступна', пустой ответ→'клиент не найден в панели', не-active → '' (без отображения).\n- _sub_status_glyph(sub) -> str — ✅/🚫/❌ по эффективному статусу.\n- _format_payment(p) -> str — однострочный summary платежа (stars, charge_id, plan, promo, дата).\n- _build_card(target) -> (text, active_sub_id, is_admin) — собирает HTML-карточку: header (имя/tg_id/username/is_admin/created_at) + список подписок (active с трафиком, inactive — компактный) + 10 последних платежей. Обрезает на 4000 символов.\n- _render_card_message(message, target, edit=True) — рендер карточки.\n- _resolve_user_query(query) -> User | None — цифры→get_by_tg_id, иначе→get_by_username (case-insensitive).\n\nХендлеры:\n- cb_open_users (AdminCB area=users action=open) — точка входа из админ-меню; ставит FSM AdminSearchUser.waiting_query, просит ввести tg_id или @username.\n- cb_search (UserCB action=search) — re-enter поиска.\n- st_query (AdminSearchUser.waiting_query) — резолвит пользователя, рендерит карточку или сообщает «не найден».\n- cb_card (UserCB action=card) — открыть карточку по users.id.\n- cb_revoke (UserCB action=revoke, id=sub_id, user_id=users.id) — services.subscriptions.revoke(xui, sub); защита sub.user_id==target.id; обновляет карточку.\n- cb_toggle_admin (UserCB action=toggle_admin, id=users.id) — flip is_admin через users_repo.set_admin (UserContextMiddleware re-синхронизирует с ADMIN_IDS на следующем апдейте).\n\nЗависимости: app.db.engine, app.db.repos (payments, subscriptions, users), app.handlers.user.my_subscription._format_bytes/_is_active (переиспользование), app.keyboards.admin (AdminCB, UserCB, cancel_kb, user_card_kb), app.services.subscriptions, app.states.admin.AdminSearchUser, app.xui (XuiError, get_xui_client), app.xui.clients.get_client_traffics.",
+    "createdAt": "2026-05-16T15:52:28.385Z",
+    "updatedAt": "2026-05-16T15:52:28.385Z"
+  },
+  {
+    "element": "app/handlers/admin/stats.py",
+    "path": "app/handlers/admin/stats.py",
+    "type": "file",
+    "content": "Админский экран «Статистика». Stateless — период переключается через callback (StatsCB.field), нет FSM.\n\nrouter = Router(name=\"admin_stats\").\n\nКонстанты:\n- _PERIODS — словарь key→(label, timedelta): 7d/30d/all. all=timedelta(days=36500).\n- _DEFAULT_PERIOD = '30d'.\n- _EXPIRING_WINDOW_DAYS = 7.\n- _PAYMENTS_WINDOW = timedelta(days=30) — фиксированное окно для счётчика платежей (стабильная точка сравнения).\n- _MAX_EXPIRING_ROWS = 10.\n- _TOP_PROMOS_LIMIT = 5.\n\nHelpers:\n- _period_meta(key) -> (label, timedelta) — с fallback на default.\n- _format_expiring(subs, tg_ids) -> str — список «истекающих» по 1 строке (tg_id, sub#id, expires_at), обрезка на 10 + хвост.\n- _build_text(period_key) -> str — все запросы в одном get_conn: revenue_stars, active_subscriptions_count, expiring_in(7), top_promos(5), users_count, payments_count_period(30d), резолв tg_id для expiring. Обрезает на 4000 символов.\n- _render(callback, period_key) — edit_message_text с stats_kb(active_period=period_key).\n\nХендлеры:\n- cb_open_stats (AdminCB area=stats action=open) — рендерит с _DEFAULT_PERIOD.\n- cb_period (StatsCB action=period) — переключение headline-периода.\n- cb_refresh (StatsCB action=refresh) — пересчёт с тем же периодом (period передаётся в callback.field).\n\nЗависимости: app.db.engine, app.db.repos.users, app.db.repos.subscriptions.Subscription, app.keyboards.admin (AdminCB, StatsCB, stats_kb), app.services.stats.",
+    "createdAt": "2026-05-16T15:52:37.150Z",
+    "updatedAt": "2026-05-16T15:52:37.150Z"
+  },
+  {
+    "element": "app/scheduler.py",
+    "path": "app/scheduler.py",
+    "type": "file",
+    "content": "APScheduler фоновые задачи бота. Создаёт AsyncIOScheduler (timezone=UTC) с тремя cron-job-ами: expire_check_job (cron minute=0, ежечасно) — переводит истёкшие подписки в 'expired', дисейблит клиента через xui.update_client(enable=False), шлёт юзеру финальное уведомление (дедуп через subscription_notifications kind='expired'); reminders_job (cron hour=10 minute=0, раз в сутки) — для каждой подписки в окне 3 дней через _days_left + _kind_for_days_left маппит остаток в 3d/1d/0d и шлёт соответствующее сообщение из _REMINDER_TEXTS (дедуп через try_mark_notification_sent); traffic_snapshot_job (cron hour=0,6,12,18 minute=5) — для каждой active подписки вызывает xui.get_client_traffics(email) и пишет в traffic_snapshots. Все job-ы устойчивы к ошибкам отдельных подписок (try/except + logger.exception в цикле). setup_scheduler(bot) -> AsyncIOScheduler возвращает настроенный scheduler без старта; вызывает его из app/main.py через scheduler.start()/scheduler.shutdown(wait=False). Bot инстанс прокидывается через closure _wrap(job, bot, name). Зависит от: app.db.engine, app.db.repos.subscriptions, app.db.repos.users, app.xui.get_xui_client, app.xui.clients.update_client/get_client_traffics.",
+    "createdAt": "2026-05-16T16:02:04.923Z",
+    "updatedAt": "2026-05-16T16:02:04.923Z"
+  },
+  {
+    "element": "deploy/tg-vpn-bot.service",
+    "path": "",
+    "type": "unknown",
+    "content": "Systemd unit для деплоя бота на Ubuntu/Debian сервер.\n\n[Unit]\n- Description: человекочитаемое имя сервиса\n- After=network.target: запуск после сети\n- Wants=network-online.target: дождаться готовности сети (для long-polling Telegram)\n\n[Service]\n- Type=simple: основной процесс — это ExecStart\n- WorkingDirectory=/opt/3x-ui-tg-bot: рабочая директория (где лежит проект)\n- EnvironmentFile=/opt/3x-ui-tg-bot/.env: загрузка переменных окружения из .env (BOT_TOKEN, XUI_*, ADMIN_IDS и т.д.)\n- ExecStart=/opt/3x-ui-tg-bot/.venv/bin/python -m app.main: запуск бота из venv\n- Restart=on-failure: автоперезапуск при ошибке\n- RestartSec=5: пауза 5с между рестартами\n- User=tgbot, Group=tgbot: непривилегированный системный пользователь\n- StandardOutput/Error=journal: логи в systemd-journal (читаем через journalctl -u tg-vpn-bot)\n- SyslogIdentifier=tg-vpn-bot: идентификатор в syslog\n\n[Install]\n- WantedBy=multi-user.target: автозапуск на обычном multi-user runlevel\n\nИспользование:\n  sudo cp deploy/tg-vpn-bot.service /etc/systemd/system/\n  sudo systemctl daemon-reload\n  sudo systemctl enable --now tg-vpn-bot\n  journalctl -u tg-vpn-bot -f",
+    "createdAt": "2026-05-16T16:04:13.084Z",
+    "updatedAt": "2026-05-16T16:04:13.084Z"
+  },
+  {
+    "element": "docs/e2e-checklist.md",
+    "path": "",
+    "type": "unknown",
+    "content": "Ручной end-to-end чек-лист для прогона на staging-инстансе 3x-ui и dev-аккаунте Telegram-бота (Stars test mode).\n\nСтруктура:\n- Подготовка: требования к staging-окружению (3x-ui inbound, .env, ADMIN_IDS, XRay-клиент, чистая БД).\n- Админ-флоу: /start под админом, создание тарифа Test-30d, создание трёх промокодов (percent TEST10, flat_stars TESTFLAT, free_days TESTFREE).\n- Пользовательский флоу: /start, покупка тарифа через Stars, получение vless+QR+sub URL, подключение XRay-клиентом, проверка роста трафика.\n- Покупка со скидкой percent и flat_stars: проверка пересчёта суммы и инкремента used_count.\n- Активация free_days: проверка продления подписки и used_count.\n- Админ: деактивация тарифа (исчезает у юзера), сводная статистика.\n- Scheduler: имитация истечения (UPDATE subscriptions SET expires_at), проверка disabled в 3x-ui и нотификации.\n- Завершение: фиксация багов в br, синхронизация architecture.md и README.\n\nИспользуется: перед промо-релизом и после изменений в services.subscriptions, services.billing, xui/*, handlers/user/buy, handlers/admin/*, scheduler.",
+    "createdAt": "2026-05-16T16:06:06.626Z",
+    "updatedAt": "2026-05-16T16:06:06.626Z"
+  },
+  {
+    "element": "tests",
+    "path": "",
+    "type": "unknown",
+    "content": "Pytest-каталог тестов с покрытием 95.95%. Использует pytest-asyncio (mode=auto), pytest-cov, pytest-httpx, aiosqlite (in-memory). Стратегия: репозитории и сервисы тестируются на чистой in-memory БД (фикстура db_conn) либо файловой (file_db) для проверки межсоединенческих операций; XuiClient мокается через pytest-httpx или AsyncMock; aiogram-хендлеры вызываются напрямую как функции с инжектированными Message/CallbackQuery/State через unittest.mock. Race-условия (try_redeem, apply) проверяются через asyncio.gather. Конфигурация — pyproject.toml [tool.pytest.ini_options] с addopts='--cov=app --cov-fail-under=90'. Все 405 тестов проходят за ~9 секунд.",
+    "createdAt": "2026-05-16T17:25:32.729Z",
+    "updatedAt": "2026-05-16T17:25:32.729Z"
+  },
+  {
+    "element": "deploy/install-3x-ui.sh",
+    "path": "",
+    "type": "unknown",
+    "content": "Идемпотентный bash-скрипт автоматической установки 3x-ui (VLESS+Reality) и опционально Telegram-бота на чистый Ubuntu/Debian сервер.\n\nЗапуск: sudo bash deploy/install-3x-ui.sh --bot-token=... --admin-id=... --domain=... [--install-bot --bot-repo=...]\n\nCLI-аргументы:\n- --bot-token=<str> — BOT_TOKEN Telegram (обязателен)\n- --admin-id=<csv> — Telegram user ID админов через запятую (обязателен)\n- --domain=<fqdn> — публичный FQDN сервера (обязателен)\n- --panel-port=<int> — порт админ-панели (default: rand 20000-65535)\n- --panel-user=<str> — логин панели (default: admin)\n- --panel-pass=<str> — пароль панели (default: openssl rand -base64 18)\n- --panel-path=<str> — webBasePath панели (default: /<12 hex>/)\n- --vless-port=<int> — порт VLESS Reality inbound (default: 443)\n- --reality-dest=<host:port> — маскировочный сайт (default: www.microsoft.com:443)\n- --reality-sni=<str> — SNI (default: host из reality-dest)\n- --sub-port=<int> — порт подписок (default: 2096)\n- --sub-path=<str> — path подписок (default: /sub/)\n- --install-bot — также поднять бота как systemd-сервис\n- --bot-repo=<url> — git URL репозитория бота (нужен с --install-bot)\n- --non-interactive — не задавать вопросов\n- --help — справка\n\nКлючевые функции:\n- parse_args/usage — разбор CLI\n- info/ok/warn/err/fatal — цветные логи в stderr + tee в /var/log/install-3x-ui.log\n- cleanup (trap EXIT) — удаление временного cookie-файла + подсказка восстановления\n- ask/ask_secret — интерактивный/неинтерактивный prompt\n- rand_port/rand_hex/rand_base64/port_in_use — утилиты\n- ensure_root/ensure_os — префлайт (root + Debian/Ubuntu)\n- preflight — apt install curl wget tar jq openssl qrencode ca-certificates iproute2\n- configure_ufw — открывает 22/panel/vless/sub порты если ufw active\n- install_3x_ui — скачивает install.sh от MHSanaei/3x-ui, отвечает 'n' на customize-prompt\n- wait_service_active — ожидание systemctl is-active с таймаутом\n- configure_panel_settings — x-ui setting -username/-password/-port/-webBasePath + попытка -subPort/-subPath\n- build_panel_urls/panel_curl/panel_login — REST API панели (curl -k -b/-c cookie + jq)\n- configure_sub_via_api — fallback subPort/subPath через /panel/setting/update\n- generate_reality_keys — x25519 ключи через /server/getNewX25519Cert или xray x25519\n- create_inbound — POST /panel/api/inbounds/add с VLESS+Reality payload, парсит obj.id\n- write_env — генерирует .env с BOT_TOKEN/ADMIN_IDS/XUI_*/LOG_LEVEL, chmod 600\n- install_bot — python3.12 (deadsnakes если нужно), useradd tgbot, git clone, venv, pip install -e, systemd unit\n- final_report — печатает URL панели, логин/пароль, ID inbound, Reality publicKey, путь к .env\n\nЗависимости: bash 4+, curl, jq, openssl, systemd, apt-get, ss (iproute2).\n\nСвязанные файлы:\n- deploy/tg-vpn-bot.service — копируется в /etc/systemd/system при --install-bot\n- deploy/install-3x-ui.md — детальная документация со скрипту\n- .env.example — шаблон, на основе которого формируется итоговый .env",
+    "createdAt": "2026-05-16T17:37:42.428Z",
+    "updatedAt": "2026-05-16T17:37:42.428Z"
+  },
+  {
+    "element": "deploy/install-3x-ui.md",
+    "path": "",
+    "type": "unknown",
+    "content": "Документация на русском к скрипту deploy/install-3x-ui.sh.\n\nРазделы:\n- Что делает скрипт — пошаговое описание (10 шагов: префлайт, ufw, установка 3x-ui, x-ui setting, REST login, x25519 keys, create inbound, write .env, install bot, final report).\n- Аргументы — таблица всех CLI-флагов с обязательностью и значениями по умолчанию.\n- Примеры запуска — минимальный, полный (панель+бот), запуск через curl bash <(...).\n- Файлы и лог — расположение лог-файла, cookie, .env, БД 3x-ui и бота.\n- Идемпотентность — поведение при повторном запуске (skip 3x-ui install, prompt .env overwrite, git pull вместо clone, каждый запуск создаёт новый inbound).\n- Troubleshooting — зависший installer, неактивный сервис x-ui, ошибки x25519, занятые порты, упавший tg-vpn-bot.service, полное удаление.\n- Обновление — x-ui update; cd /opt/3x-ui-tg-bot && git pull && pip install -e . && systemctl restart tg-vpn-bot.\n- Безопасность — set +o history, временный cookie-файл, chmod 600 на .env, видимость секретов в ps.\n\nСвязанные файлы:\n- deploy/install-3x-ui.sh — сам скрипт\n- README.md — раздел 'Быстрая установка одной командой' ссылается на эту документацию",
+    "createdAt": "2026-05-16T17:37:42.683Z",
+    "updatedAt": "2026-05-16T17:37:42.683Z"
+  }
+]
