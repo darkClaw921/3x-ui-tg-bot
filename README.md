@@ -46,12 +46,31 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/
 
 Скрипт самостоятельно:
 
-- поставит 3x-ui из официального репозитория,
+- поставит 3x-ui из официального репозитория (отвечая на интерактивные
+  вопросы установщика),
 - задаст логин/пароль/порт/`webBasePath`,
 - сгенерирует x25519-ключи Reality и создаст inbound,
-- запишет готовый `.env` для бота,
+- при `--ssl-mode=nginx` (включается автоматически если `--domain` — это
+  FQDN): поставит nginx + certbot, выпустит Let's Encrypt сертификат,
+  поднимет reverse-proxy `https://<domain>/<panel-path>/` →
+  `127.0.0.1:<panel-port>`, забиндит панель только на 127.0.0.1
+  и пропишет deploy-hook для авто-перезагрузки nginx при renew,
+- если VLESS-порт совпал с nginx-портом (по умолчанию 443) —
+  автоматически унесёт nginx на 8443 (управляется `--nginx-port`),
+- запишет готовый `.env` для бота с корректными `XUI_BASE_URL`,
+  `XUI_SUB_BASE_URL`, `XUI_VERIFY_SSL`,
 - по флагу `--install-bot` склонирует репозиторий, создаст venv и поднимет
   бота как systemd-сервис.
+
+Полезные дополнительные флаги:
+
+- `--ssl-mode=auto|nginx|skip` — `auto` (по умолчанию): FQDN →
+  `nginx`+LE, IP → `skip`. `skip` оставляет панель HTTP-only на публичном
+  порту (`XUI_VERIFY_SSL=false`).
+- `--le-email=<addr>` — email для Let's Encrypt. Если не задан, сертификат
+  выпускается с `--register-unsafely-without-email`.
+- `--nginx-port=<int>` — порт HTTPS у nginx (по умолчанию 443; авто 8443
+  если VLESS на 443).
 
 Подробное описание всех аргументов, troubleshooting и обновление —
 в [`deploy/install-3x-ui.md`](./deploy/install-3x-ui.md).
