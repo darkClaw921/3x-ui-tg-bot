@@ -297,7 +297,7 @@ preflight() {
     apt-get update -y -qq
     info "Установка зависимостей (curl, wget, tar, jq, openssl, qrencode, ca-certificates, iproute2)..."
     apt-get install -y -qq --no-install-recommends \
-        curl wget tar jq openssl qrencode ca-certificates iproute2
+        curl wget tar jq openssl qrencode ca-certificates iproute2 sqlite3
     ok "Зависимости установлены."
 }
 
@@ -353,18 +353,18 @@ install_3x_ui() {
     fi
     chmod +x "$installer"
 
-    # Установщик 3x-ui v3+ задаёт три интерактивных вопроса:
-    #   1. "Customize Panel Port settings?" [y/n]    → 'n' (рандомный порт; всё равно перезапишем через x-ui setting)
-    #   2. "Choose an option (default 2 for IP):"    → '4' (skip SSL — TLS оформляем через nginx или вовсе пропускаем)
-    #   3. "Bind the panel to 127.0.0.1 only? [y/N]" → 'y' в nginx-режиме (трафик идёт через reverse-proxy)
-    #                                                  'n' в skip-режиме (бот ходит снаружи по DOMAIN:PORT)
-    local bind_answer="n"
-    [[ "$SSL_MODE" == "nginx" ]] && bind_answer="y"
-    local installer_input
-    installer_input="$(printf 'n\n4\n%s\n' "$bind_answer")"
-
-    info "Запускаю установщик 3x-ui (ssl_mode=$SSL_MODE, bind_localhost=$bind_answer)..."
-    if ! printf '%s' "$installer_input" | bash "$installer" 2>&1 | tee -a "$LOG_FILE"; then
+    # Установщик 3x-ui v3+ может задать разный набор вопросов в зависимости от
+    # состояния (свежая установка / существующие credentials и т.д.). Чтобы
+    # всегда детерминированно получить skip-SSL + no-bind, отвечаем "4" на
+    # все вопросы:
+    #   - "Customize Panel Port settings? [y/n]"  → "4" != y → random port (ок,
+    #     всё равно перезапишем через `x-ui setting -port` позже)
+    #   - "Choose an option (default 2 for IP):"  → "4" → skip SSL (нам TLS
+    #     поднимет nginx либо вообще не нужен)
+    #   - "Bind the panel to 127.0.0.1 only? [y/N]" → "4" != y → не биндить
+    #     (потом сами забиндим в setup_nginx_panel если SSL_MODE=nginx)
+    info "Запускаю установщик 3x-ui (отвечаю '4' на все вопросы → skip SSL, no bind)..."
+    if ! yes 4 | bash "$installer" 2>&1 | tee -a "$LOG_FILE"; then
         rm -f "$installer"
         fatal "Установщик 3x-ui завершился с ошибкой."
     fi
@@ -392,6 +392,23 @@ wait_service_active() {
     fatal "Не дождался активации '$svc'."
 }
 
+wait_port_listening() {
+    # wait_port_listening <host> <port> [timeout]
+    local host="$1" port="$2" timeout="${3:-30}" i=0
+    info "Жду открытия порта $host:$port (timeout ${timeout}s)..."
+    while (( i < timeout )); do
+        if (echo >"/dev/tcp/$host/$port") 2>/dev/null; then
+            ok "Порт $host:$port открыт."
+            return 0
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+    err "Порт $host:$port не открылся за ${timeout}s. ss -tlnp:"
+    ss -tlnp 2>/dev/null | head -30 >&2 || true
+    return 1
+}
+
 # ---------------------------------------------------------------------- #
 # Шаг 4: настройка панели через `x-ui setting`
 # ---------------------------------------------------------------------- #
@@ -413,6 +430,23 @@ configure_panel_settings() {
         -port "$PANEL_PORT" \
         -webBasePath "$web_base_path_clean" 2>&1 | tee -a "$LOG_FILE"; then
         fatal "x-ui setting (основные параметры) завершилась с ошибкой."
+    fi
+
+    # Полная очистка наследия от установщика 3x-ui (он мог выпустить LE-cert,
+    # включить HTTPS, забиндить на 127.0.0.1 и т.п.). Идём в SQLite напрямую,
+    # потому что CLI `x-ui setting` не даёт сбросить эти поля в пустую строку.
+    if [[ -f "$XUI_DB" ]]; then
+        info "Сброс TLS/listen-настроек панели через SQLite (приводим к чистому HTTP-only)..."
+        systemctl stop x-ui >/dev/null 2>&1 || true
+        sqlite3 "$XUI_DB" <<SQL 2>&1 | tee -a "$LOG_FILE" || warn "Не удалось обновить $XUI_DB"
+UPDATE settings SET value='' WHERE key IN (
+    'webCertFile','webKeyFile','webListen',
+    'subCertFile','subKeyFile','subListen'
+);
+SQL
+        ok "TLS/listen очищены."
+    else
+        warn "$XUI_DB не найден — пропускаю SQLite-сброс."
     fi
 
     # Sub-сервер настраивается отдельным набором флагов. Не все билды его
@@ -473,6 +507,14 @@ panel_curl() {
 
 panel_login() {
     info "Шаг 5: логин в REST API панели ($PANEL_BASE_LOCAL/login)..."
+
+    # Дожидаемся, пока web-сервер панели реально откроет порт.
+    # `systemctl is-active` возвращает true сразу после старта, но go-приложение
+    # инициализируется ещё несколько секунд.
+    if ! wait_port_listening 127.0.0.1 "$PANEL_PORT" 30; then
+        fatal "Панель не открыла порт 127.0.0.1:$PANEL_PORT. Проверьте: journalctl -u x-ui -n 50"
+    fi
+
     local resp
     resp="$(curl -sS -k --max-time 30 \
         -c "$COOKIE_FILE" \
