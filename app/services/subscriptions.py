@@ -163,6 +163,7 @@ async def create_or_extend(
         user=user,
         delta_days=delta_days,
         plan_id=plan.id,
+        total_gb=int(plan.traffic_gb),
     )
 
 
@@ -194,6 +195,7 @@ async def activate_free_days(
         user=user,
         delta_days=delta_days,
         plan_id=None,
+        total_gb=0,
     )
 
 
@@ -234,11 +236,18 @@ async def _provision(
     user: User,
     delta_days: int,
     plan_id: int | None,
+    total_gb: int = 0,
 ) -> Subscription:
     """Either extend the user's active subscription or create a new one.
 
     Common path shared by :func:`create_or_extend` and
     :func:`activate_free_days`. Always xui-first, DB-after.
+
+    The ``total_gb`` argument is only applied when provisioning a fresh
+    client — on extend we deliberately leave ``totalGB`` untouched in
+    :func:`app.xui.clients.update_client` so the user's accumulated
+    traffic quota / remainder is not reset when their subscription is
+    renewed.
     """
     delta = timedelta(days=max(0, delta_days))
     now = datetime.now(UTC).replace(microsecond=0)
@@ -278,7 +287,7 @@ async def _provision(
     new_expiry = now + delta
     inbound_id = int(settings.XUI_INBOUND_ID)
     client_uuid = make_client_uuid()
-    email = make_client_email(user.tg_id)
+    email = make_client_email(user.tg_id, user.username)
     sub_id = _make_sub_id()
 
     await add_client(
@@ -287,6 +296,7 @@ async def _provision(
         client_uuid=client_uuid,
         email=email,
         expiry_ts_ms=_expiry_ms(new_expiry),
+        total_gb=int(total_gb),
         sub_id=sub_id,
     )
 

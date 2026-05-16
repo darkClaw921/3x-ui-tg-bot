@@ -1,0 +1,3 @@
+# app/services/subscriptions.py::_provision
+
+Internal helper shared by create_or_extend and activate_free_days. Either extends an existing active subscription's expiry (xui update_client + DB extend) or provisions a fresh one (xui add_client + DB insert) — always xui-first, DB-after to avoid orphan rows on partial failures. For new provisioning generates client_uuid, sub_id, and email via make_client_email(user.tg_id, user.username) — the username is passed so the panel-side email label includes the normalized Telegram handle (e.g. 'alice_tg_42_a1b2c3') for easier admin identification. Past-expiry active rows are anchored to 'now' before extension.

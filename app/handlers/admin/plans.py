@@ -8,20 +8,27 @@ List view (``PlanCB(action='list')``):
     see inactive ones too) and renders :func:`plans_list_kb`.
 
 Create wizard (``PlanCB(action='create')``):
-    1. ``waiting_title``  — any non-empty string.
-    2. ``waiting_days``   — positive integer.
-    3. ``waiting_price``  — non-negative integer (Stars amount).
+    1. ``waiting_title``       — any non-empty string (text only).
+    2. ``waiting_days``        — preset keyboard OR positive integer text.
+    3. ``waiting_price``       — preset keyboard OR non-negative integer text.
+    4. ``waiting_traffic_gb``  — preset keyboard OR non-negative integer text
+       (``0`` ≡ без лимита, matches xui ``totalGB`` semantics).
     On success, opens the card of the freshly-created plan and clears state.
-    Invalid input re-asks without dropping FSM state.
+    Invalid input re-asks without dropping FSM state. The numeric steps
+    also accept preset buttons (:func:`plan_days_presets_kb`,
+    :func:`plan_price_presets_kb`, :func:`plan_gb_presets_kb`) — both paths
+    converge on the same FSM data writes via :func:`cb_plan_preset` /
+    :func:`cb_plan_manual`.
 
 Card view (``PlanCB(action='card', id=…)``):
-    fetches the plan, renders title/days/price/is_active + :func:`plan_card_kb`.
+    fetches the plan, renders title/days/price/traffic/is_active + :func:`plan_card_kb`.
 
 Edit wizard (``PlanCB(action='edit', id=…, field=…)``):
     Stores ``plan_id`` and ``field`` in FSM data, transitions to
     :class:`PlanEdit.waiting_value`. The handler validates the value type
     against the field (string for ``title``, ``int>0`` for ``days``,
-    ``int>=0`` for ``price_stars``) and calls :func:`plans_repo.update`.
+    ``int>=0`` for ``price_stars`` / ``traffic_gb``) and calls
+    :func:`plans_repo.update`.
 
 Deactivate (``PlanCB(action='deactivate', id=…)``):
     soft-disable via :func:`plans_repo.deactivate`. Card is re-rendered.
@@ -44,7 +51,10 @@ from app.keyboards.admin import (
     PlanCB,
     cancel_kb,
     plan_card_kb,
+    plan_days_presets_kb,
     plan_edit_fields_kb,
+    plan_gb_presets_kb,
+    plan_price_presets_kb,
     plans_list_kb,
 )
 from app.states.admin import PlanCreate, PlanEdit
@@ -60,11 +70,13 @@ router = Router(name="admin_plans")
 def _format_plan(plan: Plan) -> str:
     """Return a human-readable plan card body (HTML)."""
     active = "✅ активен" if plan.is_active else "🚫 деактивирован"
+    traffic = "без лимита" if plan.traffic_gb == 0 else f"{plan.traffic_gb} ГБ"
     return (
         f"<b>Тариф #{plan.id}</b>\n"
         f"Название: <code>{plan.title}</code>\n"
         f"Срок: <b>{plan.days}</b> дн.\n"
         f"Цена: <b>{plan.price_stars}</b> ⭐\n"
+        f"Трафик: <b>{traffic}</b>\n"
         f"Статус: {active}"
     )
 
@@ -173,7 +185,7 @@ async def cb_create(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(PlanCreate.waiting_title)
 async def st_title(message: Message, state: FSMContext) -> None:
-    """Accept the plan title and ask for days."""
+    """Accept the plan title and show the days-preset keyboard."""
     title = (message.text or "").strip()
     if not title:
         await message.answer(
@@ -184,14 +196,14 @@ async def st_title(message: Message, state: FSMContext) -> None:
     await state.update_data(title=title)
     await state.set_state(PlanCreate.waiting_days)
     await message.answer(
-        "Срок действия в днях (целое число > 0):",
-        reply_markup=cancel_kb(),
+        "Срок действия:",
+        reply_markup=plan_days_presets_kb(),
     )
 
 
 @router.message(PlanCreate.waiting_days)
 async def st_days(message: Message, state: FSMContext) -> None:
-    """Accept the days count and ask for the price."""
+    """Accept the days count (manual text path) and show price presets."""
     raw = (message.text or "").strip()
     try:
         days = int(raw)
@@ -210,14 +222,14 @@ async def st_days(message: Message, state: FSMContext) -> None:
     await state.update_data(days=days)
     await state.set_state(PlanCreate.waiting_price)
     await message.answer(
-        "Цена в Stars (целое число ≥ 0):",
-        reply_markup=cancel_kb(),
+        "Цена в Stars:",
+        reply_markup=plan_price_presets_kb(),
     )
 
 
 @router.message(PlanCreate.waiting_price)
 async def st_price(message: Message, state: FSMContext) -> None:
-    """Accept the price, create the plan in DB, show its card."""
+    """Accept the price (manual text path) and show traffic-GB presets."""
     raw = (message.text or "").strip()
     try:
         price = int(raw)
@@ -233,18 +245,151 @@ async def st_price(message: Message, state: FSMContext) -> None:
             reply_markup=cancel_kb(),
         )
         return
+    await state.update_data(price=price)
+    await state.set_state(PlanCreate.waiting_traffic_gb)
+    await message.answer(
+        "Лимит трафика на клиента (ГБ; 0 = без лимита):",
+        reply_markup=plan_gb_presets_kb(),
+    )
 
+
+@router.message(PlanCreate.waiting_traffic_gb)
+async def st_traffic_gb(message: Message, state: FSMContext) -> None:
+    """Accept the traffic limit (manual text path), persist the plan, show its card."""
+    raw = (message.text or "").strip()
+    try:
+        traffic_gb = int(raw)
+    except ValueError:
+        await message.answer(
+            "Нужно целое число ≥ 0. Попробуйте ещё раз:",
+            reply_markup=plan_gb_presets_kb(),
+        )
+        return
+    if traffic_gb < 0:
+        await message.answer(
+            "Лимит не может быть отрицательным. Введите снова:",
+            reply_markup=plan_gb_presets_kb(),
+        )
+        return
+    await _finalize_plan_create(message, state, traffic_gb=traffic_gb)
+
+
+async def _finalize_plan_create(
+    message: Message,
+    state: FSMContext,
+    *,
+    traffic_gb: int,
+) -> None:
+    """Persist the plan with collected FSM data, clear state, render its card.
+
+    Called from both the manual-text path (:func:`st_traffic_gb`) and the
+    preset-button path (:func:`cb_plan_preset` on the ``gb`` step). All
+    earlier wizard inputs (``title``/``days``/``price``) come from FSM
+    data populated by previous steps.
+    """
     data = await state.get_data()
     title: str = data["title"]
     days: int = data["days"]
+    price: int = data["price"]
 
     async with get_conn() as conn:
-        plan = await plans_repo.create(conn, title=title, days=days, price_stars=price)
+        plan = await plans_repo.create(
+            conn,
+            title=title,
+            days=days,
+            price_stars=price,
+            traffic_gb=traffic_gb,
+        )
     await state.clear()
     await message.answer(
         f"Тариф создан ✅\n\n{_format_plan(plan)}",
         reply_markup=plan_card_kb(plan.id, is_active=plan.is_active),
     )
+
+
+# ---------------------------------------------------------------------------
+# Preset / manual callbacks (shared across all 3 numeric wizard steps)
+# ---------------------------------------------------------------------------
+
+
+# Mapping: PlanCB.field (preset key) → (FSM-data key written, next state, next-step prompt+keyboard factory).
+# The ``gb`` row has ``None`` for the next-state because it terminates the
+# wizard (the handler persists the plan instead of moving on).
+_PRESET_FLOW: dict[str, tuple[str, object | None, str, object | None]] = {
+    "days": (
+        "days",
+        PlanCreate.waiting_price,
+        "Цена в Stars:",
+        plan_price_presets_kb,
+    ),
+    "price": (
+        "price",
+        PlanCreate.waiting_traffic_gb,
+        "Лимит трафика на клиента (ГБ; 0 = без лимита):",
+        plan_gb_presets_kb,
+    ),
+    "gb": ("traffic_gb", None, "", None),
+}
+
+
+@router.callback_query(PlanCB.filter(F.action == "preset"))
+async def cb_plan_preset(
+    callback: CallbackQuery,
+    callback_data: PlanCB,
+    state: FSMContext,
+) -> None:
+    """Handle a preset button click on any of the numeric wizard steps.
+
+    The button carries the chosen integer in ``callback_data.id`` and the
+    step key in ``callback_data.field`` (``days``/``price``/``gb``). The
+    handler writes the value into FSM data under the matching key, then
+    either moves to the next step (sending its preset keyboard) or — for
+    the terminal ``gb`` step — creates the plan and renders its card.
+    """
+    field = callback_data.field
+    flow = _PRESET_FLOW.get(field)
+    if flow is None:
+        await callback.answer("Неизвестный шаг", show_alert=True)
+        return
+    data_key, next_state, prompt, kb_factory = flow
+    value = callback_data.id
+
+    # Final step: persist the plan and exit.
+    if field == "gb":
+        if callback.message is not None:
+            await _finalize_plan_create(callback.message, state, traffic_gb=value)
+        await callback.answer()
+        return
+
+    await state.update_data(**{data_key: value})
+    assert next_state is not None  # not the terminal step, narrowed above
+    await state.set_state(next_state)
+    if callback.message is not None and kb_factory is not None:
+        await callback.message.answer(prompt, reply_markup=kb_factory())
+    await callback.answer()
+
+
+@router.callback_query(PlanCB.filter(F.action == "manual"))
+async def cb_plan_manual(callback: CallbackQuery, callback_data: PlanCB) -> None:
+    """Switch a wizard step from preset-buttons to manual text entry.
+
+    State is intentionally NOT changed — we are already in the right
+    ``waiting_*`` state when the preset keyboard was shown. The handler
+    just sends a fresh prompt and the user types the number.
+    """
+    field = callback_data.field
+    prompts = {
+        "days": "Введите срок действия в днях (целое число > 0):",
+        "price": "Введите цену в Stars (целое число ≥ 0):",
+        "gb": "Введите лимит трафика в ГБ (целое число ≥ 0; 0 = без лимита):",
+    }
+    text = prompts.get(field)
+    if text is None:
+        await callback.answer("Неизвестный шаг", show_alert=True)
+        return
+    if callback.message is not None:
+        await callback.message.answer(text, reply_markup=cancel_kb())
+    await callback.answer()
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +401,7 @@ _FIELD_LABELS = {
     "title": "новое название",
     "days": "новый срок в днях (целое > 0)",
     "price_stars": "новую цену в Stars (целое ≥ 0)",
+    "traffic_gb": "новый лимит трафика в ГБ (целое ≥ 0; 0 = без лимита)",
 }
 
 
@@ -314,6 +460,12 @@ async def st_edit_value(message: Message, state: FSMContext) -> None:
         if field == "price_stars" and n < 0:
             await message.answer(
                 "Цена не может быть отрицательной. Введите снова:",
+                reply_markup=cancel_kb(),
+            )
+            return
+        if field == "traffic_gb" and n < 0:
+            await message.answer(
+                "Лимит не может быть отрицательным. Введите снова:",
                 reply_markup=cancel_kb(),
             )
             return

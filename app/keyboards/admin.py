@@ -52,11 +52,16 @@ class PlanCB(CallbackData, prefix="admp"):
     * ``edit_menu``  — open the «choose field to edit» keyboard.
     * ``edit``       — start :class:`PlanEdit` FSM for a specific field.
     * ``deactivate`` — soft-disable the plan.
+    * ``preset``     — preset button inside the create-plan wizard
+      (``field`` = ``days``/``price``/``gb``; ``id`` carries the chosen
+      integer value).
+    * ``manual``     — «введу вручную» button inside the create-plan
+      wizard (``field`` = ``days``/``price``/``gb``).
     """
 
     action: str
     id: int = 0
-    field: str = ""  # title | days | price_stars (only for ``edit``)
+    field: str = ""  # title | days | price_stars | traffic_gb (edit); days|price|gb (preset/manual)
 
 
 class UserCB(CallbackData, prefix="admu"):
@@ -104,6 +109,12 @@ class PromoCB(CallbackData, prefix="admpr"):
     * ``redemptions`` — show redemption history for a promo.
     * ``type``        — chosen during FSM ``waiting_type`` (``field`` carries
       ``percent|flat_stars|free_days``).
+    * ``preset``      — preset button inside the create-promo wizard
+      (``field`` = ``value``/``max_uses``/``expires``; ``id`` carries the
+      chosen integer; for ``expires`` it is the number of days from now,
+      with ``0`` meaning «бессрочно»).
+    * ``manual``      — «введу вручную» button inside the create-promo
+      wizard (``field`` = ``value``/``max_uses``/``expires``).
     """
 
     action: str
@@ -187,7 +198,7 @@ def plan_card_kb(plan_id: int, *, is_active: bool = True) -> InlineKeyboardMarku
 
 
 def plan_edit_fields_kb(plan_id: int) -> InlineKeyboardMarkup:
-    """Choose which plan field to edit (title / days / price)."""
+    """Choose which plan field to edit (title / days / price / traffic_gb)."""
     builder = InlineKeyboardBuilder()
     builder.button(
         text="Название",
@@ -201,9 +212,65 @@ def plan_edit_fields_kb(plan_id: int) -> InlineKeyboardMarkup:
         text="Цена (⭐)",
         callback_data=PlanCB(action="edit", id=plan_id, field="price_stars"),
     )
+    builder.button(
+        text="Лимит трафика (ГБ)",
+        callback_data=PlanCB(action="edit", id=plan_id, field="traffic_gb"),
+    )
     builder.button(text="◀ Назад", callback_data=PlanCB(action="card", id=plan_id))
     builder.adjust(1)
     return builder.as_markup()
+
+
+# ---------------- Plan wizard presets ----------------
+
+
+def _plan_preset_kb(field: str, values: Sequence[int], labels: Sequence[str]) -> InlineKeyboardMarkup:
+    """Build a preset keyboard for one of the create-plan wizard steps.
+
+    Each preset button carries ``PlanCB(action="preset", field=<field>,
+    id=<value>)``; the «✏ Ввести вручную» button switches back to text
+    input via ``PlanCB(action="manual", field=<field>)``; finally a
+    universal cancel button drops the wizard.
+    """
+    builder = InlineKeyboardBuilder()
+    for value, label in zip(values, labels, strict=True):
+        builder.button(
+            text=label,
+            callback_data=PlanCB(action="preset", field=field, id=value),
+        )
+    builder.button(
+        text="✏ Ввести вручную",
+        callback_data=PlanCB(action="manual", field=field),
+    )
+    builder.button(text="✖ Отмена", callback_data=AdminCB(area="main", action="cancel"))
+    # 3 presets per row + manual/cancel on their own rows for a compact mobile layout.
+    builder.adjust(3, 3, 1, 1)
+    return builder.as_markup()
+
+
+def plan_days_presets_kb() -> InlineKeyboardMarkup:
+    """Preset days for ``PlanCreate.waiting_days``: 7/14/30/90/180/365."""
+    values = [7, 14, 30, 90, 180, 365]
+    labels = [f"{v} дней" for v in values]
+    return _plan_preset_kb("days", values, labels)
+
+
+def plan_price_presets_kb() -> InlineKeyboardMarkup:
+    """Preset prices for ``PlanCreate.waiting_price``: 0/50/100/200/500/1000."""
+    values = [0, 50, 100, 200, 500, 1000]
+    labels = [f"{v} ⭐" for v in values]
+    return _plan_preset_kb("price", values, labels)
+
+
+def plan_gb_presets_kb() -> InlineKeyboardMarkup:
+    """Preset traffic limits for ``PlanCreate.waiting_traffic_gb``.
+
+    ``0`` means «без лимита» (matches xui ``totalGB`` semantics); the
+    rest are common per-client monthly quotas.
+    """
+    values = [0, 10, 50, 100, 250, 500]
+    labels = ["0 (без лимита)", "10 ГБ", "50 ГБ", "100 ГБ", "250 ГБ", "500 ГБ"]
+    return _plan_preset_kb("gb", values, labels)
 
 
 # ---------------- Promos ----------------
@@ -245,6 +312,87 @@ def promo_type_kb() -> InlineKeyboardMarkup:
     builder.button(text="✖ Отмена", callback_data=AdminCB(area="main", action="cancel"))
     builder.adjust(1)
     return builder.as_markup()
+
+
+# ---------------- Promo wizard presets ----------------
+
+
+def _promo_preset_kb(
+    field: str,
+    values: Sequence[int],
+    labels: Sequence[str],
+    *,
+    adjust: Sequence[int] = (3, 2, 1, 1),
+) -> InlineKeyboardMarkup:
+    """Build a preset keyboard for one of the create-promo wizard steps.
+
+    Each preset button carries ``PromoCB(action="preset", field=<field>,
+    id=<value>)``; the «✏ Ввести вручную» button switches to text input
+    via ``PromoCB(action="manual", field=<field>)``; finally a universal
+    cancel button drops the wizard.
+    """
+    builder = InlineKeyboardBuilder()
+    for value, label in zip(values, labels, strict=True):
+        builder.button(
+            text=label,
+            callback_data=PromoCB(action="preset", field=field, id=value),
+        )
+    builder.button(
+        text="✏ Ввести вручную",
+        callback_data=PromoCB(action="manual", field=field),
+    )
+    builder.button(text="✖ Отмена", callback_data=AdminCB(area="main", action="cancel"))
+    builder.adjust(*adjust)
+    return builder.as_markup()
+
+
+def promo_value_presets_kb(promo_type: str) -> InlineKeyboardMarkup:
+    """Preset values for ``PromoCreate.waiting_value``, parameterised by type.
+
+    * ``percent``    — 5/10/15/25/50%
+    * ``flat_stars`` — 25/50/100/250/500 ⭐
+    * ``free_days``  — 1/3/7/14/30 дней
+
+    Unknown types fall back to a manual-only keyboard (no presets) so the
+    handler can still recover via the «Ввести вручную» button.
+    """
+    if promo_type == "percent":
+        values = [5, 10, 15, 25, 50]
+        labels = [f"{v}%" for v in values]
+    elif promo_type == "flat_stars":
+        values = [25, 50, 100, 250, 500]
+        labels = [f"{v} ⭐" for v in values]
+    elif promo_type == "free_days":
+        values = [1, 3, 7, 14, 30]
+        labels = [f"{v} дней" for v in values]
+    else:
+        values = []
+        labels = []
+    return _promo_preset_kb("value", values, labels, adjust=(3, 2, 1, 1))
+
+
+def promo_max_uses_presets_kb() -> InlineKeyboardMarkup:
+    """Preset max_uses for ``PromoCreate.waiting_max_uses``.
+
+    ``0`` means «без лимита» (matches DB semantics — see
+    :class:`~app.db.repos.promos.Promo`).
+    """
+    values = [0, 1, 5, 10, 50, 100]
+    labels = ["0 (∞)", "1", "5", "10", "50", "100"]
+    return _promo_preset_kb("max_uses", values, labels, adjust=(3, 3, 1, 1))
+
+
+def promo_expires_presets_kb() -> InlineKeyboardMarkup:
+    """Preset expires_at for ``PromoCreate.waiting_expires_at``.
+
+    The callback id carries the number of days from «сейчас»: ``0`` means
+    «бессрочно» (``expires_at=None``), the rest are converted by the
+    handler to an ISO-8601 string ``now + N days`` in the same format as
+    :func:`_parse_expires_at`.
+    """
+    values = [0, 7, 30, 90, 365]
+    labels = ["бессрочно", "+7д", "+30д", "+90д", "+365д"]
+    return _promo_preset_kb("expires", values, labels, adjust=(3, 2, 1, 1))
 
 
 def promo_card_kb(promo_id: int, *, is_active: bool = True) -> InlineKeyboardMarkup:
@@ -351,10 +499,16 @@ __all__ = [
     "back_to_main_kb",
     "cancel_kb",
     "plan_card_kb",
+    "plan_days_presets_kb",
     "plan_edit_fields_kb",
+    "plan_gb_presets_kb",
+    "plan_price_presets_kb",
     "plans_list_kb",
     "promo_card_kb",
+    "promo_expires_presets_kb",
+    "promo_max_uses_presets_kb",
     "promo_type_kb",
+    "promo_value_presets_kb",
     "promos_list_kb",
     "stats_kb",
     "user_card_kb",

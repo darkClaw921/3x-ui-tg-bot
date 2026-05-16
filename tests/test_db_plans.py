@@ -89,3 +89,66 @@ async def test_deactivate(db_conn):
     await plans_repo.deactivate(db_conn, p.id)
     got = await plans_repo.get(db_conn, p.id)
     assert got.is_active is False
+
+
+# --------------------------------------------------------------------------- #
+# traffic_gb coverage
+# --------------------------------------------------------------------------- #
+
+
+async def test_create_default_traffic_gb_is_zero(db_conn):
+    """When ``traffic_gb`` is omitted, the row is persisted with the SQL default 0."""
+    p = await plans_repo.create(db_conn, title="t", days=30, price_stars=100)
+    assert p.traffic_gb == 0
+    got = await plans_repo.get(db_conn, p.id)
+    assert got is not None
+    assert got.traffic_gb == 0
+
+
+async def test_create_with_explicit_traffic_gb(db_conn):
+    """Explicit ``traffic_gb`` is stored and read back."""
+    p = await plans_repo.create(
+        db_conn, title="50gb", days=30, price_stars=150, traffic_gb=50
+    )
+    assert p.traffic_gb == 50
+    got = await plans_repo.get(db_conn, p.id)
+    assert got is not None
+    assert got.traffic_gb == 50
+
+
+async def test_update_traffic_gb(db_conn):
+    p = await plans_repo.create(
+        db_conn, title="t", days=30, price_stars=100, traffic_gb=10
+    )
+    updated = await plans_repo.update(db_conn, p.id, traffic_gb=100)
+    assert updated.traffic_gb == 100
+    # Persisted value matches.
+    got = await plans_repo.get(db_conn, p.id)
+    assert got is not None
+    assert got.traffic_gb == 100
+
+
+async def test_list_active_returns_traffic_gb(db_conn):
+    await plans_repo.create(
+        db_conn, title="a", days=7, price_stars=50, traffic_gb=5
+    )
+    await plans_repo.create(
+        db_conn, title="b", days=30, price_stars=100, traffic_gb=200
+    )
+    active = await plans_repo.list_active(db_conn)
+    by_title = {p.title: p.traffic_gb for p in active}
+    assert by_title["a"] == 5
+    assert by_title["b"] == 200
+
+
+async def test_list_all_returns_traffic_gb(db_conn):
+    p1 = await plans_repo.create(
+        db_conn, title="a", days=7, price_stars=50, traffic_gb=15
+    )
+    p2 = await plans_repo.create(
+        db_conn, title="b", days=30, price_stars=100, traffic_gb=0
+    )
+    await plans_repo.deactivate(db_conn, p2.id)
+    rows = {p.id: p.traffic_gb for p in await plans_repo.list_all(db_conn)}
+    assert rows[p1.id] == 15
+    assert rows[p2.id] == 0

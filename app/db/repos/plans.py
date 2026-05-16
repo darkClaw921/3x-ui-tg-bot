@@ -17,7 +17,7 @@ import aiosqlite
 # Whitelist of columns that can be updated through :func:`update`. Anything
 # outside this set is rejected to prevent SQL injection via dynamic column
 # names.
-_UPDATABLE_COLUMNS = frozenset({"title", "days", "price_stars", "is_active"})
+_UPDATABLE_COLUMNS = frozenset({"title", "days", "price_stars", "traffic_gb", "is_active"})
 
 
 @dataclass(slots=True, frozen=True)
@@ -28,6 +28,7 @@ class Plan:
     title: str
     days: int
     price_stars: int
+    traffic_gb: int
     is_active: bool
     created_at: str
 
@@ -39,6 +40,7 @@ class Plan:
             title=row["title"],
             days=row["days"],
             price_stars=row["price_stars"],
+            traffic_gb=row["traffic_gb"],
             is_active=bool(row["is_active"]),
             created_at=row["created_at"],
         )
@@ -49,12 +51,17 @@ async def create(
     title: str,
     days: int,
     price_stars: int,
+    traffic_gb: int = 0,
 ) -> Plan:
-    """Insert a new active plan."""
+    """Insert a new active plan.
+
+    ``traffic_gb`` declares the per-client traffic limit forwarded to the
+    3x-ui panel as ``totalGB`` (0 means unlimited, matching xui semantics).
+    """
     cursor = await conn.execute(
-        "INSERT INTO plans (title, days, price_stars, is_active) "
-        "VALUES (?, ?, ?, 1)",
-        (title, days, price_stars),
+        "INSERT INTO plans (title, days, price_stars, traffic_gb, is_active) "
+        "VALUES (?, ?, ?, ?, 1)",
+        (title, days, price_stars, traffic_gb),
     )
     await conn.commit()
     new_id = cursor.lastrowid
@@ -67,7 +74,7 @@ async def create(
 async def get(conn: aiosqlite.Connection, plan_id: int) -> Plan | None:
     """Fetch a plan by primary key. Returns ``None`` if not found."""
     cursor = await conn.execute(
-        "SELECT id, title, days, price_stars, is_active, created_at "
+        "SELECT id, title, days, price_stars, traffic_gb, is_active, created_at "
         "FROM plans WHERE id = ?",
         (plan_id,),
     )
@@ -78,7 +85,7 @@ async def get(conn: aiosqlite.Connection, plan_id: int) -> Plan | None:
 async def list_active(conn: aiosqlite.Connection) -> list[Plan]:
     """Return all plans where ``is_active=1``, sorted by price ascending."""
     cursor = await conn.execute(
-        "SELECT id, title, days, price_stars, is_active, created_at "
+        "SELECT id, title, days, price_stars, traffic_gb, is_active, created_at "
         "FROM plans WHERE is_active = 1 ORDER BY price_stars ASC, id ASC"
     )
     rows = await cursor.fetchall()
@@ -88,7 +95,7 @@ async def list_active(conn: aiosqlite.Connection) -> list[Plan]:
 async def list_all(conn: aiosqlite.Connection) -> list[Plan]:
     """Return all plans (active and inactive), sorted by id."""
     cursor = await conn.execute(
-        "SELECT id, title, days, price_stars, is_active, created_at "
+        "SELECT id, title, days, price_stars, traffic_gb, is_active, created_at "
         "FROM plans ORDER BY id ASC"
     )
     rows = await cursor.fetchall()
@@ -99,9 +106,9 @@ async def update(conn: aiosqlite.Connection, plan_id: int, **fields: Any) -> Pla
     """Patch one or more columns of a plan and return the fresh row.
 
     Only columns in :data:`_UPDATABLE_COLUMNS` (``title``, ``days``,
-    ``price_stars``, ``is_active``) may be changed. Booleans are coerced to
-    ``0``/``1`` for ``is_active``. Raises :class:`ValueError` on unknown
-    columns or :class:`LookupError` if the plan does not exist.
+    ``price_stars``, ``traffic_gb``, ``is_active``) may be changed. Booleans
+    are coerced to ``0``/``1`` for ``is_active``. Raises :class:`ValueError`
+    on unknown columns or :class:`LookupError` if the plan does not exist.
     """
     if not fields:
         plan = await get(conn, plan_id)

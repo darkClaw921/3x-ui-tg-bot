@@ -146,8 +146,15 @@ def make_plan():
         title: str = "1 месяц",
         days: int = 30,
         price_stars: int = 100,
+        traffic_gb: int = 0,
     ):
-        return await plans_create(conn, title=title, days=days, price_stars=price_stars)
+        return await plans_create(
+            conn,
+            title=title,
+            days=days,
+            price_stars=price_stars,
+            traffic_gb=traffic_gb,
+        )
 
     return _make
 

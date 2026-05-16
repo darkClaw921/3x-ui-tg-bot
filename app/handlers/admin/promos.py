@@ -32,7 +32,7 @@ Redemptions (``PromoCB(action='redemptions', id=…)``):
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import aiosqlite
@@ -50,7 +50,10 @@ from app.keyboards.admin import (
     PromoCB,
     cancel_kb,
     promo_card_kb,
+    promo_expires_presets_kb,
+    promo_max_uses_presets_kb,
     promo_type_kb,
+    promo_value_presets_kb,
     promos_list_kb,
 )
 from app.states.admin import PromoCreate
@@ -311,7 +314,10 @@ async def cb_type(
         "free_days": "Количество бонусных дней (целое > 0):",
     }[promo_type]
     if callback.message is not None:
-        await callback.message.edit_text(hint, reply_markup=cancel_kb())
+        await callback.message.edit_text(
+            hint,
+            reply_markup=promo_value_presets_kb(promo_type),
+        )
     await callback.answer()
 
 
@@ -346,7 +352,7 @@ async def st_value(message: Message, state: FSMContext) -> None:
     await state.set_state(PromoCreate.waiting_max_uses)
     await message.answer(
         "Максимальное число активаций (0 = без лимита):",
-        reply_markup=cancel_kb(),
+        reply_markup=promo_max_uses_presets_kb(),
     )
 
 
@@ -372,7 +378,7 @@ async def st_max_uses(message: Message, state: FSMContext) -> None:
     await state.set_state(PromoCreate.waiting_expires_at)
     await message.answer(
         "Дата истечения (YYYY-MM-DD) или «-» / «skip» для бессрочного:",
-        reply_markup=cancel_kb(),
+        reply_markup=promo_expires_presets_kb(),
     )
 
 
@@ -388,11 +394,27 @@ async def st_expires_at(
     if parsed is False:
         await message.answer(
             "Не удалось разобрать дату. Введите YYYY-MM-DD или «-»:",
-            reply_markup=cancel_kb(),
+            reply_markup=promo_expires_presets_kb(),
         )
         return
     expires_at = cast("str | None", parsed)
+    await _finalize_promo_create(message, state, expires_at=expires_at, user=user)
 
+
+async def _finalize_promo_create(
+    message: Message,
+    state: FSMContext,
+    *,
+    expires_at: str | None,
+    user: User | None,
+) -> None:
+    """Persist the promo with collected FSM data, clear state, render its card.
+
+    Called from both the manual-text path (:func:`st_expires_at`) and the
+    preset-button path (:func:`cb_promo_preset` on the ``expires`` step).
+    All earlier wizard inputs (``code``/``type``/``value``/``max_uses``)
+    come from FSM data populated by previous steps.
+    """
     data = await state.get_data()
     created_by = user.id if user is not None else None
 
@@ -419,6 +441,113 @@ async def st_expires_at(
         f"Промокод создан ✅\n\n{_format_promo(promo)}",
         reply_markup=promo_card_kb(promo.id, is_active=_promo_is_active(promo)),
     )
+
+
+# ---------------------------------------------------------------------------
+# Preset / manual callbacks (shared across all 3 wizard input steps)
+# ---------------------------------------------------------------------------
+
+
+# Mapping: PromoCB.field (preset key) → (FSM-data key written, next state,
+# next-step prompt, next-step keyboard factory). The ``expires`` row uses
+# ``None`` for next-state because it terminates the wizard (the handler
+# persists the promo instead of moving on).
+_PRESET_FLOW: dict[str, tuple[str, object | None, str, object | None]] = {
+    "value": (
+        "value",
+        PromoCreate.waiting_max_uses,
+        "Максимальное число активаций (0 = без лимита):",
+        promo_max_uses_presets_kb,
+    ),
+    "max_uses": (
+        "max_uses",
+        PromoCreate.waiting_expires_at,
+        "Дата истечения (YYYY-MM-DD) или «-» / «skip» для бессрочного:",
+        promo_expires_presets_kb,
+    ),
+    "expires": ("expires_at", None, "", None),
+}
+
+
+def _expires_days_to_iso(days: int) -> str | None:
+    """Convert a preset «+N days» value to an ISO-8601 expires_at string.
+
+    Mirrors :func:`_parse_expires_at`: the resulting date is anchored to
+    ``23:59:59 UTC`` so the same comparison logic in
+    :func:`_promo_is_active` and the repository works unchanged. ``0``
+    means «бессрочно» → ``None``.
+    """
+    if days <= 0:
+        return None
+    d = (datetime.now(UTC) + timedelta(days=days)).replace(
+        hour=23, minute=59, second=59, microsecond=0
+    )
+    return d.isoformat(sep=" ")
+
+
+@router.callback_query(PromoCB.filter(F.action == "preset"))
+async def cb_promo_preset(
+    callback: CallbackQuery,
+    callback_data: PromoCB,
+    state: FSMContext,
+    user: User | None = None,
+) -> None:
+    """Handle a preset button click on any of the promo wizard steps.
+
+    The button carries the chosen integer in ``callback_data.id`` and the
+    step key in ``callback_data.field`` (``value``/``max_uses``/``expires``).
+    The handler writes the value into FSM data under the matching key,
+    then either moves to the next step (sending its preset keyboard) or —
+    for the terminal ``expires`` step — creates the promo and renders its
+    card.
+    """
+    field = callback_data.field
+    flow = _PRESET_FLOW.get(field)
+    if flow is None:
+        await callback.answer("Неизвестный шаг", show_alert=True)
+        return
+    data_key, next_state, prompt, kb_factory = flow
+    value = callback_data.id
+
+    # Final step: persist the promo and exit.
+    if field == "expires":
+        expires_at = _expires_days_to_iso(value)
+        if callback.message is not None:
+            await _finalize_promo_create(
+                callback.message, state, expires_at=expires_at, user=user
+            )
+        await callback.answer()
+        return
+
+    await state.update_data(**{data_key: value})
+    assert next_state is not None  # not the terminal step, narrowed above
+    await state.set_state(next_state)
+    if callback.message is not None and kb_factory is not None:
+        await callback.message.answer(prompt, reply_markup=kb_factory())
+    await callback.answer()
+
+
+@router.callback_query(PromoCB.filter(F.action == "manual"))
+async def cb_promo_manual(callback: CallbackQuery, callback_data: PromoCB) -> None:
+    """Switch a wizard step from preset-buttons to manual text entry.
+
+    State is intentionally NOT changed — we are already in the right
+    ``waiting_*`` state when the preset keyboard was shown. The handler
+    just sends a fresh prompt and the user types the value.
+    """
+    field = callback_data.field
+    prompts = {
+        "value": "Введите значение (целое число):",
+        "max_uses": "Введите максимальное число активаций (целое ≥ 0; 0 = без лимита):",
+        "expires": "Введите дату истечения (YYYY-MM-DD) или «-» для бессрочного:",
+    }
+    text = prompts.get(field)
+    if text is None:
+        await callback.answer("Неизвестный шаг", show_alert=True)
+        return
+    if callback.message is not None:
+        await callback.message.answer(text, reply_markup=cancel_kb())
+    await callback.answer()
 
 
 __all__ = ["router"]

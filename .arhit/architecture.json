@@ -1,6 +1,6 @@
 {
   "root": "/Users/igorgerasimov/claudeWorkspace/3x-ui-tg-bot",
-  "generatedAt": "2026-05-16T17:37:46.599Z",
+  "generatedAt": "2026-05-16T21:44:40.661Z",
   "nodes": [
     {
       "id": "app/__init__.py",
@@ -485,7 +485,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 51,
+          "line": 62,
           "exports": [
             "router"
           ]
@@ -495,7 +495,15 @@
           "name": "_format_plan",
           "type": "function",
           "path": "app/handlers/admin/plans.py",
-          "line": 59,
+          "line": 70,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/plans.py:_PRESET_FLOW",
+          "name": "_PRESET_FLOW",
+          "type": "variable",
+          "path": "app/handlers/admin/plans.py",
+          "line": 318,
           "exports": []
         },
         {
@@ -503,7 +511,7 @@
           "name": "_FIELD_LABELS",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 245,
+          "line": 400,
           "exports": []
         },
         {
@@ -511,7 +519,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 324,
+          "line": 486,
           "exports": []
         }
       ]
@@ -530,7 +538,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/admin/promos.py",
-          "line": 57,
+          "line": 61,
           "exports": [
             "router"
           ]
@@ -540,7 +548,7 @@
           "name": "_TYPE_LABELS",
           "type": "variable",
           "path": "app/handlers/admin/promos.py",
-          "line": 65,
+          "line": 69,
           "exports": []
         },
         {
@@ -548,7 +556,7 @@
           "name": "_format_promo",
           "type": "function",
           "path": "app/handlers/admin/promos.py",
-          "line": 72,
+          "line": 76,
           "exports": []
         },
         {
@@ -556,7 +564,7 @@
           "name": "_promo_is_active",
           "type": "function",
           "path": "app/handlers/admin/promos.py",
-          "line": 115,
+          "line": 119,
           "exports": []
         },
         {
@@ -564,7 +572,23 @@
           "name": "_parse_expires_at",
           "type": "function",
           "path": "app/handlers/admin/promos.py",
-          "line": 153,
+          "line": 157,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/promos.py:_PRESET_FLOW",
+          "name": "_PRESET_FLOW",
+          "type": "variable",
+          "path": "app/handlers/admin/promos.py",
+          "line": 455,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/promos.py:_expires_days_to_iso",
+          "name": "_expires_days_to_iso",
+          "type": "function",
+          "path": "app/handlers/admin/promos.py",
+          "line": 472,
           "exports": []
         },
         {
@@ -572,7 +596,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/admin/promos.py",
-          "line": 414,
+          "line": 553,
           "exports": []
         }
       ]
@@ -1130,8 +1154,14 @@
         "plans_list_kb",
         "plan_card_kb",
         "plan_edit_fields_kb",
+        "plan_days_presets_kb",
+        "plan_price_presets_kb",
+        "plan_gb_presets_kb",
         "promos_list_kb",
         "promo_type_kb",
+        "promo_value_presets_kb",
+        "promo_max_uses_presets_kb",
+        "promo_expires_presets_kb",
         "promo_card_kb",
         "user_card_kb",
         "stats_kb"
@@ -1162,7 +1192,7 @@
           "name": "UserCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 62,
+          "line": 67,
           "exports": [
             "UserCB"
           ]
@@ -1172,7 +1202,7 @@
           "name": "StatsCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 80,
+          "line": 85,
           "exports": [
             "StatsCB"
           ]
@@ -1182,7 +1212,7 @@
           "name": "PromoCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 96,
+          "line": 101,
           "exports": [
             "PromoCB"
           ]
@@ -1192,7 +1222,7 @@
           "name": "admin_main_menu",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 119,
+          "line": 130,
           "exports": [
             "admin_main_menu"
           ]
@@ -1202,7 +1232,7 @@
           "name": "back_to_main_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 135,
+          "line": 146,
           "exports": [
             "back_to_main_kb"
           ]
@@ -1212,7 +1242,7 @@
           "name": "cancel_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 142,
+          "line": 153,
           "exports": [
             "cancel_kb"
           ]
@@ -1222,7 +1252,7 @@
           "name": "plans_list_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 152,
+          "line": 163,
           "exports": [
             "plans_list_kb"
           ]
@@ -1232,7 +1262,7 @@
           "name": "plan_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 172,
+          "line": 183,
           "exports": [
             "plan_card_kb"
           ]
@@ -1242,9 +1272,47 @@
           "name": "plan_edit_fields_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 189,
+          "line": 200,
           "exports": [
             "plan_edit_fields_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:_plan_preset_kb",
+          "name": "_plan_preset_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 227,
+          "exports": []
+        },
+        {
+          "id": "app/keyboards/admin.py:plan_days_presets_kb",
+          "name": "plan_days_presets_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 251,
+          "exports": [
+            "plan_days_presets_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:plan_price_presets_kb",
+          "name": "plan_price_presets_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 258,
+          "exports": [
+            "plan_price_presets_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:plan_gb_presets_kb",
+          "name": "plan_gb_presets_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 265,
+          "exports": [
+            "plan_gb_presets_kb"
           ]
         },
         {
@@ -1252,7 +1320,7 @@
           "name": "promos_list_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 212,
+          "line": 279,
           "exports": [
             "promos_list_kb"
           ]
@@ -1262,9 +1330,47 @@
           "name": "promo_type_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 230,
+          "line": 297,
           "exports": [
             "promo_type_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:_promo_preset_kb",
+          "name": "_promo_preset_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 320,
+          "exports": []
+        },
+        {
+          "id": "app/keyboards/admin.py:promo_value_presets_kb",
+          "name": "promo_value_presets_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 349,
+          "exports": [
+            "promo_value_presets_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:promo_max_uses_presets_kb",
+          "name": "promo_max_uses_presets_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 374,
+          "exports": [
+            "promo_max_uses_presets_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:promo_expires_presets_kb",
+          "name": "promo_expires_presets_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 385,
+          "exports": [
+            "promo_expires_presets_kb"
           ]
         },
         {
@@ -1272,7 +1378,7 @@
           "name": "promo_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 250,
+          "line": 398,
           "exports": [
             "promo_card_kb"
           ]
@@ -1282,7 +1388,7 @@
           "name": "user_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 270,
+          "line": 418,
           "exports": [
             "user_card_kb"
           ]
@@ -1292,7 +1398,7 @@
           "name": "stats_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 310,
+          "line": 458,
           "exports": [
             "stats_kb"
           ]
@@ -1302,7 +1408,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/keyboards/admin.py",
-          "line": 344,
+          "line": 492,
           "exports": []
         }
       ]
@@ -1941,7 +2047,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/services/subscriptions.py",
-          "line": 314,
+          "line": 324,
           "exports": []
         }
       ]
@@ -1990,7 +2096,7 @@
           "name": "PlanEdit",
           "type": "class",
           "path": "app/states/admin.py",
-          "line": 27,
+          "line": 29,
           "exports": [
             "PlanEdit"
           ]
@@ -2000,7 +2106,7 @@
           "name": "AdminSearchUser",
           "type": "class",
           "path": "app/states/admin.py",
-          "line": 39,
+          "line": 41,
           "exports": [
             "AdminSearchUser"
           ]
@@ -2010,7 +2116,7 @@
           "name": "PromoCreate",
           "type": "class",
           "path": "app/states/admin.py",
-          "line": 51,
+          "line": 53,
           "exports": [
             "PromoCreate"
           ]
@@ -2020,7 +2126,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/states/admin.py",
-          "line": 68,
+          "line": 70,
           "exports": []
         }
       ]
@@ -2187,7 +2293,7 @@
           "name": "make_client_uuid",
           "type": "function",
           "path": "app/xui/clients.py",
-          "line": 38,
+          "line": 39,
           "exports": [
             "make_client_uuid"
           ]
@@ -2197,7 +2303,7 @@
           "name": "make_client_email",
           "type": "function",
           "path": "app/xui/clients.py",
-          "line": 43,
+          "line": 44,
           "exports": [
             "make_client_email"
           ]
@@ -2207,7 +2313,7 @@
           "name": "_make_sub_id",
           "type": "function",
           "path": "app/xui/clients.py",
-          "line": 54,
+          "line": 66,
           "exports": []
         },
         {
@@ -2215,7 +2321,7 @@
           "name": "_UPDATABLE_CLIENT_FIELDS",
           "type": "variable",
           "path": "app/xui/clients.py",
-          "line": 128,
+          "line": 140,
           "exports": []
         }
       ]
@@ -2429,7 +2535,7 @@
           "name": "make_promo",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 156,
+          "line": 163,
           "exports": [
             "make_promo"
           ]
@@ -2439,7 +2545,7 @@
           "name": "make_subscription",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 184,
+          "line": 191,
           "exports": [
             "make_subscription"
           ]
@@ -2449,7 +2555,7 @@
           "name": "mock_bot",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 221,
+          "line": 228,
           "exports": [
             "mock_bot"
           ]
@@ -2459,7 +2565,7 @@
           "name": "mock_xui_client",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 232,
+          "line": 239,
           "exports": [
             "mock_xui_client"
           ]
@@ -2500,7 +2606,7 @@
           "name": "test_admin_ids_csv",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 51,
+          "line": 53,
           "exports": [
             "test_admin_ids_csv"
           ]
@@ -2510,7 +2616,7 @@
           "name": "test_admin_ids_csv_with_spaces",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 56,
+          "line": 58,
           "exports": [
             "test_admin_ids_csv_with_spaces"
           ]
@@ -2520,7 +2626,7 @@
           "name": "test_admin_ids_empty",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 61,
+          "line": 63,
           "exports": [
             "test_admin_ids_empty"
           ]
@@ -2530,7 +2636,7 @@
           "name": "test_admin_ids_unset",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 66,
+          "line": 68,
           "exports": [
             "test_admin_ids_unset"
           ]
@@ -2540,7 +2646,7 @@
           "name": "test_admin_ids_json_brackets",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 72,
+          "line": 74,
           "exports": [
             "test_admin_ids_json_brackets"
           ]
@@ -2550,7 +2656,7 @@
           "name": "test_admin_ids_json_brackets_with_spaces",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 77,
+          "line": 79,
           "exports": [
             "test_admin_ids_json_brackets_with_spaces"
           ]
@@ -2560,7 +2666,7 @@
           "name": "test_admin_ids_json_brackets_empty",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 82,
+          "line": 84,
           "exports": [
             "test_admin_ids_json_brackets_empty"
           ]
@@ -2570,7 +2676,7 @@
           "name": "test_admin_ids_json_brackets_invalid_json",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 87,
+          "line": 89,
           "exports": [
             "test_admin_ids_json_brackets_invalid_json"
           ]
@@ -2580,7 +2686,7 @@
           "name": "test_admin_ids_single",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 94,
+          "line": 96,
           "exports": [
             "test_admin_ids_single"
           ]
@@ -2590,7 +2696,7 @@
           "name": "test_admin_ids_trailing_comma",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 99,
+          "line": 101,
           "exports": [
             "test_admin_ids_trailing_comma"
           ]
@@ -2600,7 +2706,7 @@
           "name": "test_admin_ids_pre_parsed_list",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 104,
+          "line": 106,
           "exports": [
             "test_admin_ids_pre_parsed_list"
           ]
@@ -2610,7 +2716,7 @@
           "name": "test_settings_defaults_present",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 121,
+          "line": 123,
           "exports": [
             "test_settings_defaults_present"
           ]
@@ -2620,7 +2726,7 @@
           "name": "test_settings_verify_ssl_false",
           "type": "function",
           "path": "tests/test_config.py",
-          "line": 128,
+          "line": 130,
           "exports": [
             "test_settings_verify_ssl_false"
           ]
@@ -2711,7 +2817,9 @@
         "test_parse_expires_at_invalid",
         "test_parse_expires_at_valid",
         "test_promo_is_active",
-        "test_promo_is_active_past_expires"
+        "test_promo_is_active_past_expires",
+        "test_expires_days_to_iso_zero_is_none",
+        "test_expires_days_to_iso_positive_returns_iso"
       ],
       "children": [
         {
@@ -2771,6 +2879,75 @@
           "exports": [
             "test_promo_is_active_past_expires"
           ]
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_expires_days_to_iso_zero_is_none",
+          "name": "test_expires_days_to_iso_zero_is_none",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 531,
+          "exports": [
+            "test_expires_days_to_iso_zero_is_none"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_promos.py:test_expires_days_to_iso_positive_returns_iso",
+          "name": "test_expires_days_to_iso_positive_returns_iso",
+          "type": "function",
+          "path": "tests/test_handlers_admin_promos.py",
+          "line": 536,
+          "exports": [
+            "test_expires_days_to_iso_positive_returns_iso"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_admin_routing.py",
+      "name": "test_handlers_admin_routing.py",
+      "type": "file",
+      "path": "tests/test_handlers_admin_routing.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_admin_routing.py:_walk",
+          "name": "_walk",
+          "type": "function",
+          "path": "tests/test_handlers_admin_routing.py",
+          "line": 52,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_routing.py:_all_buttons",
+          "name": "_all_buttons",
+          "type": "function",
+          "path": "tests/test_handlers_admin_routing.py",
+          "line": 59,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_routing.py:_sample_plan",
+          "name": "_sample_plan",
+          "type": "function",
+          "path": "tests/test_handlers_admin_routing.py",
+          "line": 107,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_routing.py:_sample_promo",
+          "name": "_sample_promo",
+          "type": "function",
+          "path": "tests/test_handlers_admin_routing.py",
+          "line": 119,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_routing.py:_all_admin_keyboards",
+          "name": "_all_admin_keyboards",
+          "type": "function",
+          "path": "tests/test_handlers_admin_routing.py",
+          "line": 133,
+          "exports": []
         }
       ]
     },
@@ -3281,7 +3458,7 @@
           "name": "_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 25,
+          "line": 26,
           "exports": []
         },
         {
@@ -3289,7 +3466,7 @@
           "name": "test_calc_price_no_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 39,
+          "line": 40,
           "exports": [
             "test_calc_price_no_promo"
           ]
@@ -3299,7 +3476,7 @@
           "name": "test_calc_price_percent_basic",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 45,
+          "line": 46,
           "exports": [
             "test_calc_price_percent_basic"
           ]
@@ -3309,7 +3486,7 @@
           "name": "test_calc_price_percent_ceiling",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 51,
+          "line": 52,
           "exports": [
             "test_calc_price_percent_ceiling"
           ]
@@ -3319,7 +3496,7 @@
           "name": "test_calc_price_percent_100_floors_to_one",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 58,
+          "line": 59,
           "exports": [
             "test_calc_price_percent_100_floors_to_one"
           ]
@@ -3329,7 +3506,7 @@
           "name": "test_calc_price_percent_clamped_high",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 63,
+          "line": 64,
           "exports": [
             "test_calc_price_percent_clamped_high"
           ]
@@ -3339,7 +3516,7 @@
           "name": "test_calc_price_percent_clamped_low",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 69,
+          "line": 70,
           "exports": [
             "test_calc_price_percent_clamped_low"
           ]
@@ -3349,7 +3526,7 @@
           "name": "test_calc_price_flat_stars",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 74,
+          "line": 75,
           "exports": [
             "test_calc_price_flat_stars"
           ]
@@ -3359,7 +3536,7 @@
           "name": "test_calc_price_flat_stars_exceeds_floor",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 79,
+          "line": 80,
           "exports": [
             "test_calc_price_flat_stars_exceeds_floor"
           ]
@@ -3369,7 +3546,7 @@
           "name": "test_calc_price_free_days_keeps_price",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 84,
+          "line": 85,
           "exports": [
             "test_calc_price_free_days_keeps_price"
           ]
@@ -3379,7 +3556,7 @@
           "name": "test_calc_price_free_days_negative_clamped",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 90,
+          "line": 91,
           "exports": [
             "test_calc_price_free_days_negative_clamped"
           ]
@@ -3389,7 +3566,7 @@
           "name": "test_calc_price_unknown_type_fallback",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 95,
+          "line": 96,
           "exports": [
             "test_calc_price_unknown_type_fallback"
           ]
@@ -3399,7 +3576,7 @@
           "name": "test_calc_price_min_one_zero_priced_plan",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 101,
+          "line": 102,
           "exports": [
             "test_calc_price_min_one_zero_priced_plan"
           ]
@@ -3409,7 +3586,7 @@
           "name": "test_build_payload_encodes_correctly",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 107,
+          "line": 108,
           "exports": [
             "test_build_payload_encodes_correctly"
           ]
@@ -3419,7 +3596,7 @@
           "name": "test_build_payload_no_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 114,
+          "line": 115,
           "exports": [
             "test_build_payload_no_promo"
           ]
@@ -3429,7 +3606,7 @@
           "name": "test_build_payload_promo_zero_treated_as_none",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 120,
+          "line": 121,
           "exports": [
             "test_build_payload_promo_zero_treated_as_none"
           ]
@@ -3439,7 +3616,7 @@
           "name": "test_parse_payload_basic",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 126,
+          "line": 127,
           "exports": [
             "test_parse_payload_basic"
           ]
@@ -3449,7 +3626,7 @@
           "name": "test_parse_payload_no_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 132,
+          "line": 133,
           "exports": [
             "test_parse_payload_no_promo"
           ]
@@ -3459,7 +3636,7 @@
           "name": "test_parse_payload_zero_promo_id_becomes_none",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 138,
+          "line": 139,
           "exports": [
             "test_parse_payload_zero_promo_id_becomes_none"
           ]
@@ -3469,7 +3646,7 @@
           "name": "test_parse_payload_bad_json",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 146,
+          "line": 147,
           "exports": [
             "test_parse_payload_bad_json"
           ]
@@ -3479,7 +3656,7 @@
           "name": "test_parse_payload_not_object",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 151,
+          "line": 152,
           "exports": [
             "test_parse_payload_not_object"
           ]
@@ -3489,7 +3666,7 @@
           "name": "test_parse_payload_missing_plan_id",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 156,
+          "line": 157,
           "exports": [
             "test_parse_payload_missing_plan_id"
           ]
@@ -3499,7 +3676,7 @@
           "name": "test_parse_payload_bad_promo_id_type",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 161,
+          "line": 162,
           "exports": [
             "test_parse_payload_bad_promo_id_type"
           ]
@@ -3509,7 +3686,7 @@
           "name": "test_payload_byte_limit_guard",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 166,
+          "line": 167,
           "exports": [
             "test_payload_byte_limit_guard"
           ]
@@ -3540,7 +3717,7 @@
           "name": "test_compute_discount_no_promo",
           "type": "function",
           "path": "tests/test_services_promos.py",
-          "line": 88,
+          "line": 89,
           "exports": [
             "test_compute_discount_no_promo"
           ]
@@ -3550,7 +3727,7 @@
           "name": "test_compute_discount_percent",
           "type": "function",
           "path": "tests/test_services_promos.py",
-          "line": 94,
+          "line": 95,
           "exports": [
             "test_compute_discount_percent"
           ]
@@ -3560,7 +3737,7 @@
           "name": "test_compute_discount_unknown_type_fallback",
           "type": "function",
           "path": "tests/test_services_promos.py",
-          "line": 112,
+          "line": 113,
           "exports": [
             "test_compute_discount_unknown_type_fallback"
           ]
@@ -3601,7 +3778,7 @@
           "name": "_promo",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 22,
+          "line": 28,
           "exports": []
         },
         {
@@ -3609,7 +3786,7 @@
           "name": "test_expiry_ms_naive_converted_to_utc",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 36,
+          "line": 42,
           "exports": [
             "test_expiry_ms_naive_converted_to_utc"
           ]
@@ -3619,7 +3796,7 @@
           "name": "test_parse_iso_t_separator",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 44,
+          "line": 50,
           "exports": [
             "test_parse_iso_t_separator"
           ]
@@ -3629,7 +3806,7 @@
           "name": "test_parse_iso_space_separator",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 51,
+          "line": 57,
           "exports": [
             "test_parse_iso_space_separator"
           ]
@@ -3639,7 +3816,7 @@
           "name": "test_parse_iso_with_microseconds_fallback",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 58,
+          "line": 64,
           "exports": [
             "test_parse_iso_with_microseconds_fallback"
           ]
@@ -3649,7 +3826,7 @@
           "name": "test_bonus_days",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 66,
+          "line": 72,
           "exports": [
             "test_bonus_days"
           ]
@@ -3671,7 +3848,14 @@
       "path": "tests/test_xui_clients.py",
       "exports": [
         "test_make_client_uuid_unique",
-        "test_make_client_email_contains_tg_id"
+        "test_make_client_email_contains_tg_id",
+        "test_make_client_email_no_username_legacy_shape",
+        "test_make_client_email_with_plain_username",
+        "test_make_client_email_normalises_special_chars",
+        "test_make_client_email_truncates_long_username",
+        "test_make_client_email_all_special_falls_back",
+        "test_make_client_email_lowercases_username",
+        "test_make_client_email_empty_username_falls_back"
       ],
       "children": [
         {
@@ -3692,6 +3876,76 @@
           "line": 29,
           "exports": [
             "test_make_client_email_contains_tg_id"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_no_username_legacy_shape",
+          "name": "test_make_client_email_no_username_legacy_shape",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 35,
+          "exports": [
+            "test_make_client_email_no_username_legacy_shape"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_with_plain_username",
+          "name": "test_make_client_email_with_plain_username",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 43,
+          "exports": [
+            "test_make_client_email_with_plain_username"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_normalises_special_chars",
+          "name": "test_make_client_email_normalises_special_chars",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 50,
+          "exports": [
+            "test_make_client_email_normalises_special_chars"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_truncates_long_username",
+          "name": "test_make_client_email_truncates_long_username",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 56,
+          "exports": [
+            "test_make_client_email_truncates_long_username"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_all_special_falls_back",
+          "name": "test_make_client_email_all_special_falls_back",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 66,
+          "exports": [
+            "test_make_client_email_all_special_falls_back"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_lowercases_username",
+          "name": "test_make_client_email_lowercases_username",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 75,
+          "exports": [
+            "test_make_client_email_lowercases_username"
+          ]
+        },
+        {
+          "id": "tests/test_xui_clients.py:test_make_client_email_empty_username_falls_back",
+          "name": "test_make_client_email_empty_username_falls_back",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 83,
+          "exports": [
+            "test_make_client_email_empty_username_falls_back"
           ]
         }
       ]

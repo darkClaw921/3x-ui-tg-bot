@@ -16,12 +16,14 @@ class PlanCreate(StatesGroup):
     """Wizard: create a new plan.
 
     Flow: ``waiting_title`` (text) → ``waiting_days`` (positive int) →
-    ``waiting_price`` (non-negative int) → DB write + clear.
+    ``waiting_price`` (non-negative int) → ``waiting_traffic_gb``
+    (non-negative int; 0 = unlimited) → DB write + clear.
     """
 
     waiting_title = State()
     waiting_days = State()
     waiting_price = State()
+    waiting_traffic_gb = State()
 
 
 class PlanEdit(StatesGroup):

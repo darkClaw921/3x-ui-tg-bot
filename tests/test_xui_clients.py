@@ -32,6 +32,60 @@ def test_make_client_email_contains_tg_id():
     assert len(email) > len("tg_42_")
 
 
+def test_make_client_email_no_username_legacy_shape():
+    """Without a username the legacy ``tg_<id>_<hex>`` shape is preserved."""
+    email = make_client_email(7, None)
+    assert email.startswith("tg_7_")
+    # 'tg_7_' + 6 hex chars
+    assert len(email) == len("tg_7_") + 6
+
+
+def test_make_client_email_with_plain_username():
+    email = make_client_email(42, "alice")
+    assert email.startswith("alice_tg_42_")
+    # Suffix is 6 hex chars.
+    assert len(email) == len("alice_tg_42_") + 6
+
+
+def test_make_client_email_normalises_special_chars():
+    """Dots, dashes and spaces collapse into underscores."""
+    email = make_client_email(1, "a.b-c d")
+    assert email.startswith("a_b_c_d_tg_1_")
+
+
+def test_make_client_email_truncates_long_username():
+    """The slug portion is capped at 32 chars."""
+    long_name = "a" * 50
+    email = make_client_email(99, long_name)
+    # The slug is exactly 32 'a's, then '_tg_99_<hex>'.
+    assert email.startswith("a" * 32 + "_tg_99_")
+    # 33rd 'a' must NOT be present before '_tg_'.
+    assert not email.startswith("a" * 33)
+
+
+def test_make_client_email_all_special_falls_back():
+    """A username made entirely of special chars normalises to empty
+    after the trim, so the helper falls back to the legacy shape."""
+    email = make_client_email(5, "...---!!!")
+    assert email.startswith("tg_5_")
+    # Must NOT have any leading slug separator.
+    assert "_tg_5_" not in email[: len("tg_5_")]
+
+
+def test_make_client_email_lowercases_username():
+    email = make_client_email(8, "Alice")
+    assert email.startswith("alice_tg_8_")
+    # No uppercase letters in the slug part.
+    slug = email.split("_tg_", 1)[0]
+    assert slug == slug.lower()
+
+
+def test_make_client_email_empty_username_falls_back():
+    """An empty-string username is treated the same as None."""
+    email = make_client_email(11, "")
+    assert email.startswith("tg_11_")
+
+
 async def test_add_client_sends_correct_payload():
     client = AsyncMock()
     client.request_json = AsyncMock(return_value={"id": "uuid", "email": "tg_1_xx"})

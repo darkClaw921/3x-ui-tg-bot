@@ -339,3 +339,206 @@ async def test_st_expires_at_integrity_error(file_db, make_user, make_promo):
     state = _state({"code": "DUP2", "type": "percent", "value": 10, "max_uses": 0})
     await promos_mod.st_expires_at(msg, state, user=u)
     state.clear.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Preset / manual callbacks for the create wizard
+# ---------------------------------------------------------------------------
+
+
+async def test_cb_promo_preset_value_percent(file_db):
+    """Value preset (percent type) writes ``value`` and moves to max_uses."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state({"type": "percent"})
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="value", id=10), state
+    )
+    state.update_data.assert_awaited_with(value=10)
+    state.set_state.assert_awaited()
+    cb.message.answer.assert_awaited()
+
+
+async def test_cb_promo_preset_value_flat_stars(file_db):
+    """Value preset (flat_stars type) writes ``value`` regardless of type."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state({"type": "flat_stars"})
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="value", id=100), state
+    )
+    state.update_data.assert_awaited_with(value=100)
+    state.set_state.assert_awaited()
+
+
+async def test_cb_promo_preset_value_free_days(file_db):
+    """Value preset (free_days type) writes ``value`` regardless of type."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state({"type": "free_days"})
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="value", id=7), state
+    )
+    state.update_data.assert_awaited_with(value=7)
+    state.set_state.assert_awaited()
+
+
+async def test_cb_promo_preset_max_uses_zero_unlimited(file_db):
+    """max_uses preset id=0 writes 0 (unlimited) and moves to expires."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state({"type": "percent", "value": 10})
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="max_uses", id=0), state
+    )
+    state.update_data.assert_awaited_with(max_uses=0)
+    state.set_state.assert_awaited()
+
+
+async def test_cb_promo_preset_max_uses_finite(file_db):
+    """max_uses preset id>0 writes the value and moves to expires."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state({"type": "percent", "value": 10})
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="max_uses", id=50), state
+    )
+    state.update_data.assert_awaited_with(max_uses=50)
+    state.set_state.assert_awaited()
+
+
+async def test_cb_promo_preset_expires_zero_creates_with_none(file_db, make_user):
+    """expires preset id=0 → expires_at=None and promo is created."""
+    from app.db.engine import get_conn
+    from app.db.repos import promos as promos_repo
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=1)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state(
+        {"code": "PE0", "type": "percent", "value": 10, "max_uses": 0}
+    )
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="expires", id=0), state, user=u
+    )
+    state.clear.assert_awaited()
+    async with get_conn() as conn:
+        promo = await promos_repo.get_by_code(conn, "PE0")
+    assert promo is not None
+    assert promo.expires_at is None
+
+
+async def test_cb_promo_preset_expires_30days_iso(file_db, make_user):
+    """expires preset id=30 → ISO string ~ now+30 days."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.db.engine import get_conn
+    from app.db.repos import promos as promos_repo
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=1)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state(
+        {"code": "PE30", "type": "percent", "value": 10, "max_uses": 5}
+    )
+    before = datetime.now(UTC)
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="expires", id=30), state, user=u
+    )
+    after = datetime.now(UTC)
+    state.clear.assert_awaited()
+    async with get_conn() as conn:
+        promo = await promos_repo.get_by_code(conn, "PE30")
+    assert promo is not None
+    assert promo.expires_at is not None
+    # Parse the stored ISO string (format: "YYYY-MM-DD HH:MM:SS+00:00")
+    stored = datetime.fromisoformat(promo.expires_at)
+    expected_lo = (before + timedelta(days=30)).replace(
+        hour=23, minute=59, second=59, microsecond=0
+    )
+    expected_hi = (after + timedelta(days=30)).replace(
+        hour=23, minute=59, second=59, microsecond=0
+    )
+    # Allow a small drift window in case the seconds wrap during execution.
+    assert (expected_lo - timedelta(seconds=2)) <= stored <= (
+        expected_hi + timedelta(seconds=2)
+    )
+
+
+async def test_cb_promo_preset_unknown_field(file_db):
+    cb = MagicMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await promos_mod.cb_promo_preset(
+        cb, PromoCB(action="preset", field="weird", id=1), state
+    )
+    cb.answer.assert_awaited_with("Неизвестный шаг", show_alert=True)
+
+
+async def test_cb_promo_manual_value(file_db):
+    """Manual button prompts text input without touching state."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="value"))
+    cb.message.answer.assert_awaited()
+
+
+async def test_cb_promo_manual_max_uses(file_db):
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="max_uses"))
+    cb.message.answer.assert_awaited()
+
+
+async def test_cb_promo_manual_expires(file_db):
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="expires"))
+    cb.message.answer.assert_awaited()
+
+
+async def test_cb_promo_manual_unknown_field(file_db):
+    cb = MagicMock()
+    cb.answer = AsyncMock()
+    await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="weird"))
+    cb.answer.assert_awaited_with("Неизвестный шаг", show_alert=True)
+
+
+def test_expires_days_to_iso_zero_is_none():
+    """``_expires_days_to_iso(0)`` returns ``None`` (бессрочно)."""
+    assert promos_mod._expires_days_to_iso(0) is None
+
+
+def test_expires_days_to_iso_positive_returns_iso():
+    """``_expires_days_to_iso(N)`` returns ISO string anchored at 23:59:59 UTC."""
+    out = promos_mod._expires_days_to_iso(7)
+    assert isinstance(out, str)
+    # Same separator/format as ``_parse_expires_at``: "YYYY-MM-DD HH:MM:SS+00:00".
+    from datetime import datetime as _dt
+
+    parsed = _dt.fromisoformat(out)
+    assert (parsed.hour, parsed.minute, parsed.second) == (23, 59, 59)

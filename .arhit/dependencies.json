@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-16T17:37:46.885Z",
+  "generatedAt": "2026-05-16T21:44:40.954Z",
   "dependencies": [
     {
       "from": "app/config.py",
@@ -392,6 +392,12 @@
       "to": "app/db/engine.py",
       "type": "call",
       "toElement": "URL"
+    },
+    {
+      "from": "app/db/engine.py",
+      "to": "app/db/engine.py",
+      "type": "call",
+      "toElement": "limit"
     },
     {
       "from": "app/db/engine.py",
@@ -2919,7 +2925,13 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "integer"
+      "toElement": "string"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "buttons"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3096,6 +3108,42 @@
       "to": "app/handlers/admin/plans.py",
       "type": "call",
       "toElement": "message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "AdminCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "cb_open"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "state.clear"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "_show_list"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.answer"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3341,7 +3389,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "cancel_kb"
+      "toElement": "plan_days_presets_kb"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3354,6 +3402,12 @@
       "to": "app/handlers/admin/plans.py",
       "type": "call",
       "toElement": "st_days"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "count"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3413,13 +3467,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "Stars"
-    },
-    {
-      "from": "app/handlers/admin/plans.py",
-      "to": "app/handlers/admin/plans.py",
-      "type": "call",
-      "toElement": "cancel_kb"
+      "toElement": "plan_price_presets_kb"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3432,6 +3480,12 @@
       "to": "app/handlers/admin/plans.py",
       "type": "call",
       "toElement": "st_price"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "price"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3468,6 +3522,114 @@
       "to": "app/handlers/admin/plans.py",
       "type": "call",
       "toElement": "cancel_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "state.update_data"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "state.set_state"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "plan_gb_presets_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "router.message"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "st_traffic_gb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "limit"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "strip"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "int"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "plan_gb_presets_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "plan_gb_presets_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "_finalize_plan_create"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "_finalize_plan_create"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "path"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "path"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "inputs"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3510,6 +3672,156 @@
       "to": "app/handlers/admin/plans.py",
       "type": "call",
       "toElement": "plan_card_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callbacks"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "PlanCB.field"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "wizard"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "PlanCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "cb_plan_preset"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "step"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "_PRESET_FLOW.get"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "_finalize_plan_create"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "state.update_data"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "state.set_state"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "kb_factory"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "PlanCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "cb_plan_manual"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "Stars"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "prompts.get"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "cancel_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "callback.answer"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -3653,6 +3965,18 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
+      "toElement": "message.answer"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
+      "toElement": "cancel_kb"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
       "toElement": "get_conn"
     },
     {
@@ -3702,6 +4026,12 @@
       "to": "datetime.py",
       "type": "import",
       "toElement": "datetime"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "datetime.py",
+      "type": "import",
+      "toElement": "timedelta"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -4177,6 +4507,42 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
+      "toElement": "AdminCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "cb_open"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "state.clear"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "_show_list"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
       "toElement": "PromoCB.filter"
     },
     {
@@ -4549,7 +4915,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "cancel_kb"
+      "toElement": "promo_value_presets_kb"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -4657,7 +5023,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "cancel_kb"
+      "toElement": "promo_max_uses_presets_kb"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -4729,7 +5095,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "cancel_kb"
+      "toElement": "promo_expires_presets_kb"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -4759,13 +5125,43 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "cancel_kb"
+      "toElement": "promo_expires_presets_kb"
     },
     {
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
       "toElement": "cast"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "_finalize_promo_create"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "_finalize_promo_create"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "path"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "path"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "inputs"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -4826,6 +5222,191 @@
       "to": "app/handlers/admin/promos.py",
       "type": "call",
       "toElement": "_promo_is_active"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callbacks"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "PromoCB.field"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "wizard"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "fromElement": "_expires_days_to_iso",
+      "toElement": "_expires_days_to_iso"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "fromElement": "_expires_days_to_iso",
+      "toElement": "datetime.now"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "fromElement": "_expires_days_to_iso",
+      "toElement": "timedelta"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "fromElement": "_expires_days_to_iso",
+      "toElement": "replace"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "fromElement": "_expires_days_to_iso",
+      "toElement": "d.isoformat"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "PromoCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "cb_promo_preset"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "step"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "_PRESET_FLOW.get"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "_expires_days_to_iso"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "_finalize_promo_create"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "state.update_data"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "state.set_state"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.message.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "kb_factory"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "PromoCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "cb_promo_manual"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "prompts.get"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.message.answer"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "cancel_kb"
+    },
+    {
+      "from": "app/handlers/admin/promos.py",
+      "to": "app/handlers/admin/promos.py",
+      "type": "call",
+      "toElement": "callback.answer"
     },
     {
       "from": "app/handlers/admin/stats.py",
@@ -9672,7 +10253,19 @@
       "from": "app/keyboards/admin.py",
       "to": "app/keyboards/admin.py",
       "type": "call",
-      "toElement": "price_stars"
+      "toElement": "wizard"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "traffic_gb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "gb"
     },
     {
       "from": "app/keyboards/admin.py",
@@ -9721,6 +10314,12 @@
       "to": "app/keyboards/admin.py",
       "type": "call",
       "toElement": "promo"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "wizard"
     },
     {
       "from": "app/keyboards/admin.py",
@@ -10105,6 +10704,20 @@
       "to": "app/keyboards/admin.py",
       "type": "call",
       "fromElement": "plan_edit_fields_kb",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_edit_fields_kb",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_edit_fields_kb",
       "toElement": "builder.adjust"
     },
     {
@@ -10113,6 +10726,139 @@
       "type": "call",
       "fromElement": "plan_edit_fields_kb",
       "toElement": "builder.as_markup"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "_plan_preset_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "InlineKeyboardBuilder"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "zip"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "builder.adjust"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_plan_preset_kb",
+      "toElement": "builder.as_markup"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_days_presets_kb",
+      "toElement": "plan_days_presets_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_days_presets_kb",
+      "toElement": "_plan_preset_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_price_presets_kb",
+      "toElement": "plan_price_presets_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_price_presets_kb",
+      "toElement": "_plan_preset_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_gb_presets_kb",
+      "toElement": "plan_gb_presets_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "plan_gb_presets_kb",
+      "toElement": "_plan_preset_kb"
     },
     {
       "from": "app/keyboards/admin.py",
@@ -10267,6 +11013,134 @@
       "type": "call",
       "fromElement": "promo_type_kb",
       "toElement": "builder.as_markup"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "_promo_preset_kb",
+      "toElement": "_promo_preset_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "InlineKeyboardBuilder"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "zip"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "builder.adjust"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "toElement": "builder.as_markup"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_value_presets_kb",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_value_presets_kb",
+      "toElement": "keyboard"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_value_presets_kb",
+      "toElement": "_promo_preset_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_max_uses_presets_kb",
+      "toElement": "promo_max_uses_presets_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_max_uses_presets_kb",
+      "toElement": "_promo_preset_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_expires_presets_kb",
+      "toElement": "promo_expires_presets_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "promo_expires_presets_kb",
+      "toElement": "_promo_preset_kb"
     },
     {
       "from": "app/keyboards/admin.py",
@@ -14098,6 +14972,12 @@
       "from": "app/services/subscriptions.py",
       "to": "app/services/subscriptions.py",
       "type": "call",
+      "toElement": "int"
+    },
+    {
+      "from": "app/services/subscriptions.py",
+      "to": "app/services/subscriptions.py",
+      "type": "call",
       "toElement": "activate_free_days"
     },
     {
@@ -14290,6 +15170,12 @@
       "from": "app/services/subscriptions.py",
       "to": "app/services/subscriptions.py",
       "type": "call",
+      "toElement": "int"
+    },
+    {
+      "from": "app/services/subscriptions.py",
+      "to": "app/services/subscriptions.py",
+      "type": "call",
       "toElement": "subs_repo.create"
     },
     {
@@ -14409,6 +15295,12 @@
       "to": "app/states/admin.py",
       "type": "call",
       "toElement": "PlanCreate"
+    },
+    {
+      "from": "app/states/admin.py",
+      "to": "app/states/admin.py",
+      "type": "call",
+      "toElement": "State"
     },
     {
       "from": "app/states/admin.py",
@@ -15165,6 +16057,11 @@
     },
     {
       "from": "app/xui/clients.py",
+      "to": "re.py",
+      "type": "import"
+    },
+    {
+      "from": "app/xui/clients.py",
       "to": "secrets.py",
       "type": "import"
     },
@@ -15238,7 +16135,35 @@
       "to": "app/xui/clients.py",
       "type": "call",
       "fromElement": "make_client_email",
+      "toElement": "normalised"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "make_client_email",
       "toElement": "secrets.token_hex"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "make_client_email",
+      "toElement": "re.sub"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "make_client_email",
+      "toElement": "strip"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "make_client_email",
+      "toElement": "lower"
     },
     {
       "from": "app/xui/clients.py",
@@ -18995,6 +19920,120 @@
       "toElement": "plans_repo.get"
     },
     {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "test_create_default_traffic_gb_is_zero"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.get"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "test_create_with_explicit_traffic_gb"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.get"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "test_update_traffic_gb"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.update"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.get"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "test_list_active_returns_traffic_gb"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.list_active"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "test_list_all_returns_traffic_gb"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.create"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.deactivate"
+    },
+    {
+      "from": "tests/test_db_plans.py",
+      "to": "tests/test_db_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.list_all"
+    },
+    {
       "from": "tests/test_db_promos.py",
       "to": "__future__.py",
       "type": "import",
@@ -20690,6 +21729,42 @@
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "plans"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "plans"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "plans"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
       "to": "app/db/engine.py",
       "type": "import",
       "toElement": "get_conn"
@@ -20723,6 +21798,36 @@
       "to": "app/db/repos.py",
       "type": "import",
       "toElement": "plans"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "plans"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "plans"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -21340,7 +22445,7 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
-      "toElement": "test_st_price_creates_plan"
+      "toElement": "test_st_price_moves_to_traffic_gb"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -21371,6 +22476,18 @@
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
       "toElement": "plans_mod.st_price"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -21436,6 +22553,12 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
+      "toElement": "state.set_state.assert_not_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
       "toElement": "test_st_price_negative"
     },
     {
@@ -21473,6 +22596,654 @@
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
       "toElement": "state.clear.assert_not_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_not_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_traffic_gb_creates_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_traffic_gb"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.list_all"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "any"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.clear.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_traffic_gb_zero_means_unlimited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_traffic_gb"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.list_all"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "any"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_traffic_gb_non_integer"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_traffic_gb"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.clear.assert_not_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "msg.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_traffic_gb_negative"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_traffic_gb"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.clear.assert_not_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "msg.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_preset_days"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_preset_price"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_preset_gb_creates_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.clear.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.list_all"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "any"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_preset_unknown_field"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_manual_days_keeps_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_manual_price_keeps_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_manual_gb_keeps_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_plan_manual_unknown_field"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_plan_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited_with"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -21943,6 +23714,246 @@
       "toElement": "plans_repo.get"
     },
     {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_cb_edit_traffic_gb_field_is_accepted"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.cb_edit"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_edit_value_traffic_gb_valid"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_edit_value"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.get"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_edit_value_traffic_gb_zero"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "value"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_edit_value"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_repo.get"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "test_st_edit_value_traffic_gb_negative"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "plans_mod.st_edit_value"
+    },
+    {
+      "from": "tests/test_handlers_admin_plans.py",
+      "to": "tests/test_handlers_admin_plans.py",
+      "type": "call",
+      "toElement": "state.clear.assert_not_awaited"
+    },
+    {
       "from": "tests/test_handlers_admin_promos.py",
       "to": "__future__.py",
       "type": "import",
@@ -22066,6 +24077,54 @@
       "to": "app/db/engine.py",
       "type": "import",
       "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "promos"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "datetime.py",
+      "type": "import",
+      "toElement": "UTC"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "datetime.py",
+      "type": "import",
+      "toElement": "datetime"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "datetime.py",
+      "type": "import",
+      "toElement": "timedelta"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "promos"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "datetime.py",
+      "type": "import",
+      "toElement": "datetime"
     },
     {
       "from": "tests/test_handlers_admin_promos.py",
@@ -23347,6 +25406,1371 @@
       "to": "tests/test_handlers_admin_promos.py",
       "type": "call",
       "toElement": "state.clear.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_value_percent"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_value_flat_stars"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_value_free_days"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_max_uses_zero_unlimited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_max_uses_finite"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_expires_zero_creates_with_none"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.clear.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_repo.get_by_code"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_expires_30days_iso"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "datetime.now"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "datetime.now"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "state.clear.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_repo.get_by_code"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "string"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "datetime.fromisoformat"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "timedelta"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "replace"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "timedelta"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "replace"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "assert"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "timedelta"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "timedelta"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_preset_unknown_field"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_preset"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_manual_value"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_manual_max_uses"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_manual_expires"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "cb.message.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "test_cb_promo_manual_unknown_field"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "promos_mod.cb_promo_manual"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "PromoCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_zero_is_none",
+      "toElement": "test_expires_days_to_iso_zero_is_none"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_zero_is_none",
+      "toElement": "_expires_days_to_iso"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_zero_is_none",
+      "toElement": "promos_mod._expires_days_to_iso"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_positive_returns_iso",
+      "toElement": "test_expires_days_to_iso_positive_returns_iso"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_positive_returns_iso",
+      "toElement": "_expires_days_to_iso"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_positive_returns_iso",
+      "toElement": "promos_mod._expires_days_to_iso"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_positive_returns_iso",
+      "toElement": "isinstance"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_positive_returns_iso",
+      "toElement": "_dt.fromisoformat"
+    },
+    {
+      "from": "tests/test_handlers_admin_promos.py",
+      "to": "tests/test_handlers_admin_promos.py",
+      "type": "call",
+      "fromElement": "test_expires_days_to_iso_positive_returns_iso",
+      "toElement": "assert"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "__future__.py",
+      "type": "import",
+      "toElement": "annotations"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "collections/abc.py",
+      "type": "import",
+      "toElement": "Iterable"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "pytest.py",
+      "type": "import"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "aiogram.py",
+      "type": "import",
+      "toElement": "Router"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "CallbackQuery"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "InlineKeyboardMarkup"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "User"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/db/repos/plans.py",
+      "type": "import",
+      "toElement": "Plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/db/repos/promos.py",
+      "type": "import",
+      "toElement": "Promo"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/handlers/admin.py",
+      "type": "import",
+      "toElement": "admin_router"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/keyboards/admin.py",
+      "type": "import",
+      "toElement": "("
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/states/admin.py",
+      "type": "import",
+      "toElement": "PromoCreate"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "its"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "import"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_walk",
+      "toElement": "_walk"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_walk",
+      "toElement": "it"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_walk",
+      "toElement": "_walk"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_buttons",
+      "toElement": "_all_buttons"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_buttons",
+      "toElement": "out.append"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "chain"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "wizard"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "CallbackQuery"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "TgUser"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_walk"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "handler.check"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_sample_plan",
+      "toElement": "_sample_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_sample_plan",
+      "toElement": "Plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_sample_promo",
+      "toElement": "_sample_promo"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_sample_promo",
+      "toElement": "Promo"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "_all_admin_keyboards"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "under"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "admin_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "cancel_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plans_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plans_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plans_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plans_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "_sample_plan"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_edit_fields_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promos_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promos_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promos_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promos_list_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "_sample_promo"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_type_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "user_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "user_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "user_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "user_card_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "pytest.mark.parametrize"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_all_admin_keyboards"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_all_admin_keyboards"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "test_every_admin_button_is_routed"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_all_buttons"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "missing.append"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "join"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "test_admin_main_menu_specifically_routes_plans_and_promos"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "test"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_all_buttons"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "admin_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "AdminCB"
     },
     {
       "from": "tests/test_handlers_admin_stats.py",
@@ -34358,6 +37782,78 @@
     },
     {
       "from": "tests/test_services_subscriptions.py",
+      "to": "app/services.py",
+      "type": "import",
+      "toElement": "subscriptions"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/services.py",
+      "type": "import",
+      "toElement": "subscriptions"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/services.py",
+      "type": "import",
+      "toElement": "subscriptions"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/services.py",
+      "type": "import",
+      "toElement": "subscriptions"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/services.py",
+      "type": "import",
+      "toElement": "subscriptions"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/services.py",
+      "type": "import",
+      "toElement": "subscriptions"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
       "to": "app/db/engine.py",
       "type": "import",
       "toElement": "get_conn"
@@ -34596,6 +38092,436 @@
       "to": "tests/test_services_subscriptions.py",
       "type": "call",
       "toElement": "subs_service.create_or_extend"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "test_provision_passes_username_to_make_client_email"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "fake_make_client_email"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "svc.create_or_extend"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "test_provision_passes_none_username_when_user_has_no_handle"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "fake_make_client_email"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "fake_make_client_email",
+      "toElement": "svc.create_or_extend"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "test_provision_passes_plan_traffic_gb_to_add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "fake_add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured.update"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kwargs.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kwargs.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "svc.create_or_extend"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "test_provision_passes_zero_traffic_gb_to_add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "fake_add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured.update"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kwargs.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kwargs.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_plan"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "svc.create_or_extend"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "test_activate_free_days_passes_zero_total_gb"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "fake_add_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured.update"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kwargs.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kwargs.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "svc.activate_free_days"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "_promo"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured.get"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "test_extend_does_not_send_total_gb_to_update_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "fake_update_client"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "captured_kwargs.append"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "dict"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "make_subscription"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "svc.create_or_extend"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "_plan"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "kw.get"
     },
     {
       "from": "tests/test_services_subscriptions.py",
@@ -35824,6 +39750,209 @@
       "type": "call",
       "fromElement": "test_make_client_email_contains_tg_id",
       "toElement": "len"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_no_username_legacy_shape",
+      "toElement": "test_make_client_email_no_username_legacy_shape"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_no_username_legacy_shape",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_no_username_legacy_shape",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_no_username_legacy_shape",
+      "toElement": "len"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_no_username_legacy_shape",
+      "toElement": "len"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_with_plain_username",
+      "toElement": "test_make_client_email_with_plain_username"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_with_plain_username",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_with_plain_username",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_with_plain_username",
+      "toElement": "len"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_with_plain_username",
+      "toElement": "len"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_normalises_special_chars",
+      "toElement": "test_make_client_email_normalises_special_chars"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_normalises_special_chars",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_normalises_special_chars",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_truncates_long_username",
+      "toElement": "test_make_client_email_truncates_long_username"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_truncates_long_username",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_truncates_long_username",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_truncates_long_username",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_all_special_falls_back",
+      "toElement": "test_make_client_email_all_special_falls_back"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_all_special_falls_back",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_all_special_falls_back",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_all_special_falls_back",
+      "toElement": "len"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_lowercases_username",
+      "toElement": "test_make_client_email_lowercases_username"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_lowercases_username",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_lowercases_username",
+      "toElement": "email.startswith"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_lowercases_username",
+      "toElement": "email.split"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_lowercases_username",
+      "toElement": "slug.lower"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_empty_username_falls_back",
+      "toElement": "test_make_client_email_empty_username_falls_back"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_empty_username_falls_back",
+      "toElement": "make_client_email"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "test_make_client_email_empty_username_falls_back",
+      "toElement": "email.startswith"
     },
     {
       "from": "tests/test_xui_clients.py",

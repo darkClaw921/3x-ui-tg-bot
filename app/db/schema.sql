@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS plans (
     title        TEXT NOT NULL,
     days         INTEGER NOT NULL CHECK (days > 0),
     price_stars  INTEGER NOT NULL CHECK (price_stars >= 0),
+    traffic_gb   INTEGER NOT NULL DEFAULT 0 CHECK (traffic_gb >= 0),
     is_active    INTEGER NOT NULL DEFAULT 1,
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

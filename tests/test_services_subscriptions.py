@@ -15,7 +15,13 @@ from app.xui import XuiError
 
 def _plan(price=100, days=30, plan_id=1):
     return Plan(
-        id=plan_id, title="t", days=days, price_stars=price, is_active=True, created_at="2025"
+        id=plan_id,
+        title="t",
+        days=days,
+        price_stars=price,
+        traffic_gb=0,
+        is_active=True,
+        created_at="2025",
     )
 
 
@@ -89,6 +95,180 @@ async def test_create_or_extend_creates_new(file_db, make_user, make_plan):
     assert sub.plan_id == plan.id
     # add_client was called.
     assert xui.request_json.await_count >= 1
+
+
+async def test_provision_passes_username_to_make_client_email(
+    file_db, make_user, make_plan, monkeypatch
+):
+    """Fresh provisioning must forward user.username to make_client_email
+    so the panel-side email label includes the human-readable handle."""
+    from app.db.engine import get_conn
+    from app.services import subscriptions as svc
+
+    captured: dict[str, object] = {}
+
+    def fake_make_client_email(tg_id, username=None):
+        captured["tg_id"] = tg_id
+        captured["username"] = username
+        return f"fake_tg_{tg_id}_xxxxxx"
+
+    monkeypatch.setattr(svc, "make_client_email", fake_make_client_email)
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"id": "uuid", "email": "e"})
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=42, username="Alice")
+        plan = await make_plan(conn, days=30, price_stars=100)
+        await svc.create_or_extend(
+            conn=conn, xui=xui, user=user, plan=plan, promo=None
+        )
+
+    assert captured["tg_id"] == 42
+    assert captured["username"] == "Alice"
+
+
+async def test_provision_passes_none_username_when_user_has_no_handle(
+    file_db, make_user, make_plan, monkeypatch
+):
+    """Users without a Telegram @handle get username=None passed through."""
+    from app.db.engine import get_conn
+    from app.services import subscriptions as svc
+
+    captured: dict[str, object] = {}
+
+    def fake_make_client_email(tg_id, username=None):
+        captured["tg_id"] = tg_id
+        captured["username"] = username
+        return f"fake_tg_{tg_id}_xxxxxx"
+
+    monkeypatch.setattr(svc, "make_client_email", fake_make_client_email)
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"id": "uuid", "email": "e"})
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=99, username=None)
+        plan = await make_plan(conn, days=30, price_stars=100)
+        await svc.create_or_extend(
+            conn=conn, xui=xui, user=user, plan=plan, promo=None
+        )
+
+    assert captured["tg_id"] == 99
+    assert captured["username"] is None
+
+
+async def test_provision_passes_plan_traffic_gb_to_add_client(
+    file_db, make_user, make_plan, monkeypatch
+):
+    """create_or_extend with plan.traffic_gb=50 → add_client(total_gb=50)."""
+    from app.db.engine import get_conn
+    from app.services import subscriptions as svc
+
+    captured: dict[str, object] = {}
+
+    async def fake_add_client(client, **kwargs):
+        captured.update(kwargs)
+        return {"id": kwargs.get("client_uuid"), "email": kwargs.get("email")}
+
+    monkeypatch.setattr(svc, "add_client", fake_add_client)
+
+    xui = AsyncMock()
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=11)
+        plan = await make_plan(conn, days=30, price_stars=100, traffic_gb=50)
+        await svc.create_or_extend(
+            conn=conn, xui=xui, user=user, plan=plan, promo=None
+        )
+
+    assert captured.get("total_gb") == 50
+
+
+async def test_provision_passes_zero_traffic_gb_to_add_client(
+    file_db, make_user, make_plan, monkeypatch
+):
+    """create_or_extend with plan.traffic_gb=0 → add_client(total_gb=0)."""
+    from app.db.engine import get_conn
+    from app.services import subscriptions as svc
+
+    captured: dict[str, object] = {}
+
+    async def fake_add_client(client, **kwargs):
+        captured.update(kwargs)
+        return {"id": kwargs.get("client_uuid"), "email": kwargs.get("email")}
+
+    monkeypatch.setattr(svc, "add_client", fake_add_client)
+
+    xui = AsyncMock()
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=12)
+        plan = await make_plan(conn, days=30, price_stars=100, traffic_gb=0)
+        await svc.create_or_extend(
+            conn=conn, xui=xui, user=user, plan=plan, promo=None
+        )
+
+    assert captured.get("total_gb") == 0
+
+
+async def test_activate_free_days_passes_zero_total_gb(
+    file_db, make_user, monkeypatch
+):
+    """activate_free_days has no plan → add_client(total_gb=0)."""
+    from app.db.engine import get_conn
+    from app.services import subscriptions as svc
+
+    captured: dict[str, object] = {}
+
+    async def fake_add_client(client, **kwargs):
+        captured.update(kwargs)
+        return {"id": kwargs.get("client_uuid"), "email": kwargs.get("email")}
+
+    monkeypatch.setattr(svc, "add_client", fake_add_client)
+
+    xui = AsyncMock()
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=13)
+        await svc.activate_free_days(
+            conn=conn, xui=xui, user=user, promo=_promo("free_days", 14)
+        )
+
+    assert captured.get("total_gb") == 0
+
+
+async def test_extend_does_not_send_total_gb_to_update_client(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """When extending an existing sub, update_client must NOT receive totalGB
+    in kwargs — we deliberately preserve the user's accumulated quota."""
+    from app.db.engine import get_conn
+    from app.services import subscriptions as svc
+
+    captured_kwargs: list[dict[str, object]] = []
+
+    async def fake_update_client(client, *, inbound_id, client_uuid, **kwargs):
+        captured_kwargs.append(dict(kwargs))
+        return {"id": client_uuid}
+
+    monkeypatch.setattr(svc, "update_client", fake_update_client)
+
+    xui = AsyncMock()
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=14)
+        await make_subscription(conn, user_id=user.id)
+        await svc.create_or_extend(
+            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None
+        )
+
+    assert captured_kwargs, "update_client was not invoked on extend"
+    for kw in captured_kwargs:
+        assert "totalGB" not in kw, (
+            f"update_client received totalGB={kw.get('totalGB')!r}; "
+            "this would reset the user's traffic quota on renewal"
+        )
 
 
 async def test_create_or_extend_extends_existing(file_db, make_user, make_subscription):

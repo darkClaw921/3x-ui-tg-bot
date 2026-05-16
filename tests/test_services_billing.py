@@ -17,6 +17,7 @@ def _plan(price=100, days=30, plan_id=1, active=True):
         title="t",
         days=days,
         price_stars=price,
+        traffic_gb=0,
         is_active=active,
         created_at="2025",
     )

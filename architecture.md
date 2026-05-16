@@ -292,8 +292,12 @@ troubleshooting (зависший installer, неактивный сервис x
 
 Таблицы:
 - `users` (id PK, tg_id UNIQUE, username, first_name, is_admin, created_at).
-- `plans` (id PK, title, days, price_stars, is_active, created_at) — тарифы;
-  `CHECK days > 0`, `CHECK price_stars >= 0`.
+- `plans` (id PK, title, days, price_stars, traffic_gb, is_active, created_at) — тарифы;
+  `CHECK days > 0`, `CHECK price_stars >= 0`, `CHECK traffic_gb >= 0`.
+  `traffic_gb` — лимит трафика тарифа в ГБ (0 = без лимита), пробрасывается в
+  3x-ui как `totalGB` при `add_client`. Колонка добавлена идемпотентной миграцией
+  `ALTER TABLE plans ADD COLUMN traffic_gb INTEGER NOT NULL DEFAULT 0` в
+  `_apply_migrations`.
 - `promos` (id PK, code UNIQUE, type CHECK IN ('percent','flat_stars','free_days'),
   value, max_uses, used_count, expires_at NULL, created_at,
   created_by FK users.id ON DELETE SET NULL).
@@ -368,16 +372,20 @@ Async-движок поверх `aiosqlite`.
 ### [app/db/repos/plans.py](./app/db/repos/plans.py)
 Репозиторий тарифов.
 
-- Dataclass `Plan(id, title, days, price_stars, is_active, created_at)`.
-- Константа `_UPDATABLE_COLUMNS = {"title","days","price_stars","is_active"}` —
+- Dataclass `Plan(id, title, days, price_stars, traffic_gb, is_active, created_at)`.
+  Поле `traffic_gb: int` — лимит трафика тарифа в ГБ (0 = без лимита); читается
+  через `Plan.from_row`.
+- Константа `_UPDATABLE_COLUMNS = {"title","days","price_stars","traffic_gb","is_active"}` —
   whitelist колонок для `update`.
-- `async def create(conn, title, days, price_stars) -> Plan`.
+- `async def create(conn, title, days, price_stars, traffic_gb=0) -> Plan` —
+  `traffic_gb` опционален (по умолчанию 0 = без лимита).
 - `async def get(conn, plan_id) -> Plan | None`.
 - `async def list_active(conn) -> list[Plan]` — `is_active=1`, сортировка
   по `price_stars ASC`.
 - `async def list_all(conn) -> list[Plan]`.
 - `async def update(conn, plan_id, **fields) -> Plan` — только колонки
-  из whitelist; `ValueError` на остальные; `LookupError` если нет такого id.
+  из whitelist (включая `traffic_gb`); `ValueError` на остальные;
+  `LookupError` если нет такого id.
 - `async def deactivate(conn, plan_id)` — мягкое отключение (`is_active=0`).
 
 ### [app/db/repos/promos.py](./app/db/repos/promos.py)
@@ -504,18 +512,31 @@ Async-движок поверх `aiosqlite`.
 Хэндлеры CRUD тарифов с FSM-флоу.
 
 - `router = Router(name="admin_plans")`.
-- Helpers: `_format_plan(plan)` — HTML-карточка; `_show_card(message,
-  plan_id, edit=True)`, `_show_list(message, edit=True)` — сортировка
-  active→inactive.
+- Helpers: `_format_plan(plan)` — HTML-карточка (показывает в том числе
+  `traffic_gb`); `_show_card(message, plan_id, edit=True)`,
+  `_show_list(message, edit=True)` — сортировка active→inactive.
 - Callbacks: `cb_list` (`PlanCB.action=list`, очищает state),
   `cb_card` (`action=card`), `cb_edit_menu` (`action=edit_menu`),
   `cb_deactivate` (`action=deactivate`).
-- Wizard `PlanCreate`: `cb_create` → `st_title` → `st_days` → `st_price`.
-  Валидация: title непустой, days>0, price_stars≥0. При невалидном вводе
-  переспрашивает без сброса FSM.
-- Wizard `PlanEdit`: `cb_edit` (`PlanCB.field` in title/days/price_stars)
-  → `st_edit_value`. `plans_repo.update`, `LookupError` на отсутствующий
-  plan_id.
+- Wizard `PlanCreate`: `cb_create` → `st_title` → `st_days` → `st_price`
+  → `st_traffic_gb`. На каждом численном шаге показывается пресет-
+  клавиатура (`plan_days_presets_kb` / `plan_price_presets_kb` /
+  `plan_gb_presets_kb`), но ручной текстовый ввод тоже работает.
+  Валидация: title непустой, days>0, price_stars≥0, traffic_gb≥0.
+  При невалидном вводе переспрашивает без сброса FSM. Финализация —
+  `_finalize_plan_create` (общая точка для preset- и manual-путей):
+  вызывает `plans_repo.create(title, days, price_stars, traffic_gb)`
+  и рендерит карточку.
+- Общие preset/manual callback-и (`PlanCB.action ∈ {preset, manual}`,
+  `field ∈ {days, price, gb}`): `cb_plan_preset` пишет выбранное
+  значение в FSM-data, переключает state и шлёт клавиатуру следующего
+  шага (или финализирует на `gb`); `cb_plan_manual` переключает шаг
+  на ручной текстовый ввод (оставляет тот же `waiting_*` state и
+  показывает подсказку). Мапа `_PLAN_STEP_FLOW` связывает `field`
+  пресета с FSM-data ключом, следующим состоянием и фабрикой клавиатуры.
+- Wizard `PlanEdit`: `cb_edit` (`PlanCB.field` ∈
+  title/days/price_stars/traffic_gb) → `st_edit_value`. `plans_repo.update`,
+  `LookupError` на отсутствующий plan_id.
 - Константа `_FIELD_LABELS` — подсказки при редактировании.
 
 ### [app/handlers/admin/promos.py](./app/handlers/admin/promos.py)
@@ -537,6 +558,21 @@ Async-движок поверх `aiosqlite`.
   0 = unlimited) → `st_expires_at` (parse + `promos_repo.create` с
   `created_by=user.id`). На `aiosqlite.IntegrityError` — fallback с
   сообщением об ошибке.
+
+  На каждом из шагов value / max_uses / expires_at показывается пресет-
+  клавиатура (`promo_value_presets_kb(promo_type)` /
+  `promo_max_uses_presets_kb` / `promo_expires_presets_kb`), но ручной
+  текстовый ввод сохранён. Финализация шага expires вынесена в
+  `_finalize_promo_create` — общая точка для preset- и manual-путей.
+
+- Общие preset/manual callback-и (`PromoCB.action ∈ {preset, manual}`,
+  `field ∈ {value, max_uses, expires}`): `cb_promo_preset` пишет
+  выбранное значение в FSM-data и переходит к следующему шагу (для
+  `expires` конвертирует `+N дней` через `_expires_days_to_iso(days)`,
+  где `0 → None` = бессрочно, и сразу финализирует промокод);
+  `cb_promo_manual` переключает шаг на ручной текстовый ввод. Мапа
+  `_PROMO_STEP_FLOW` связывает `field` пресета с FSM-data ключом,
+  следующим состоянием и фабрикой клавиатуры.
 
 ### [app/handlers/admin/users.py](./app/handlers/admin/users.py)
 Админский экран «Пользователи»: поиск + карточка пользователя.
@@ -618,9 +654,16 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
 - `AdminCB(prefix="adm", area, action)` — навигация
   (`area` ∈ main/plans/promos/users/stats, `action` ∈ open/back/cancel).
 - `PlanCB(prefix="admp", action, id=0, field="")` — list/create/card/
-  edit_menu/edit/deactivate; `field` ∈ title/days/price_stars.
+  edit_menu/edit/deactivate/**preset**/**manual**;
+  `field` ∈ title/days/price_stars/traffic_gb (edit) или
+  days/price/gb (preset/manual). Для `preset` поле `id` несёт выбранное
+  целочисленное значение шага мастера.
 - `PromoCB(prefix="admpr", action, id=0, field="")` — list/create/card/
-  deactivate/redemptions/type; `field` ∈ percent/flat_stars/free_days.
+  deactivate/redemptions/type/**preset**/**manual**;
+  `field` ∈ percent/flat_stars/free_days (type) или
+  value/max_uses/expires (preset/manual). Для `preset` `id` несёт
+  выбранное значение (для `expires` это число дней от «сейчас»,
+  0 = «бессрочно»).
 - `UserCB(prefix="admu", action, id=0, user_id=0)` — поиск/карточка/мутации
   в админском «Пользователи»; `action` ∈ search/card/revoke/toggle_admin.
   Для `revoke` — `id=sub_id`, `user_id=users.id`.
@@ -636,10 +679,34 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
   Inactive с префиксом 🔒.
 - `plan_card_kb(plan_id, is_active=True)` — Редактировать / Деактивировать
   (если активен) / Назад.
-- `plan_edit_fields_kb(plan_id)` — выбор поля (Название/Срок/Цена) + Назад.
+- `plan_edit_fields_kb(plan_id)` — выбор поля
+  (Название/Срок/Цена/**Лимит трафика (ГБ)**) + Назад.
+- Пресет-клавиатуры мастера тарифа (используют `PlanCB(action="preset",
+  field=<step>, id=<value>)` для значений и `PlanCB(action="manual",
+  field=<step>)` для перехода к ручному вводу; общий помощник
+  `_plan_preset_kb`):
+  - `plan_days_presets_kb()` — пресеты для `PlanCreate.waiting_days`
+    (7/14/30/90/180/365).
+  - `plan_price_presets_kb()` — пресеты для `PlanCreate.waiting_price`
+    (0/50/100/200/500/1000 ⭐).
+  - `plan_gb_presets_kb()` — пресеты для `PlanCreate.waiting_traffic_gb`
+    (0/10/50/100/250/500 ГБ; `0` = без лимита).
 - `promos_list_kb(promos)` — список промокодов + «Создать» + «В меню».
   Исчерпанные с префиксом 🔒.
 - `promo_type_kb()` — percent / flat_stars / free_days + Отмена.
+- Пресет-клавиатуры мастера промокода (используют `PromoCB(action="preset",
+  field=<step>, id=<value>)` для значений и `PromoCB(action="manual",
+  field=<step>)` для перехода к ручному вводу; общий помощник
+  `_promo_preset_kb`):
+  - `promo_value_presets_kb(promo_type)` — для `PromoCreate.waiting_value`,
+    набор пресетов зависит от типа: percent (5/10/15/25/50%),
+    flat_stars (25/50/100/250/500 ⭐), free_days (1/3/7/14/30 дней).
+    Неизвестный тип → manual-only клавиатура.
+  - `promo_max_uses_presets_kb()` — для `PromoCreate.waiting_max_uses`
+    (0/1/5/10/50/100; `0` = без лимита).
+  - `promo_expires_presets_kb()` — для `PromoCreate.waiting_expires_at`
+    (бессрочно/+7д/+30д/+90д/+365д); `id` несёт число дней от now,
+    `0` = `expires_at=None`.
 - `promo_card_kb(promo_id, is_active=True)` — Redemptions / Деактивировать
   / Назад.
 - `user_card_kb(user_id, *, active_sub_id=None, is_admin=False)` — кнопки
@@ -693,8 +760,10 @@ Re-export `PlanCreate`, `PlanEdit`, `PromoCreate` из `app.states.admin`
 ### [app/states/admin.py](./app/states/admin.py)
 FSM-стейты админ-флоу (aiogram `StatesGroup`).
 
-- `PlanCreate(waiting_title, waiting_days, waiting_price)` — wizard
-  создания тарифа.
+- `PlanCreate(waiting_title, waiting_days, waiting_price, waiting_traffic_gb)` —
+  wizard создания тарифа. После ввода цены добавлен шаг
+  `waiting_traffic_gb` (non-negative int; 0 = без лимита) — соответствует
+  `plans.traffic_gb` и пробрасывается в `xui.add_client(total_gb=...)`.
 - `PlanEdit(waiting_field, waiting_value)` — wizard редактирования одного
   поля; `plan_id` и `field` хранятся в `FSMContext` data.
 - `PromoCreate(waiting_code, waiting_type, waiting_value, waiting_max_uses,
@@ -754,7 +823,14 @@ Async REST-клиент панели 3x-ui плюс билдеры vless-ссы�
 Операции над клиентами inbound'а.
 
 - Helper `make_client_uuid() -> str` — `str(uuid4())`.
-- Helper `make_client_email(tg_id) -> str` — `tg_<tg_id>_<6hex>`.
+- Helper `make_client_email(tg_id: int, username: str | None = None) -> str` —
+  генерирует уникальный label клиента для панели. Если задан `username`,
+  он нормализуется (lowercase; все символы вне `[A-Za-z0-9_]` заменяются на
+  `_`; trim ведущих/хвостовых `_`; cap 32 символа) и формат принимает вид
+  `<safe_username>_tg_<tg_id>_<6hex>`. Если username пуст или нормализация
+  дала пустую строку — fallback на `tg_<tg_id>_<6hex>`. Suffix
+  `secrets.token_hex(3)` (6 hex) обеспечивает уникальность при
+  пере-подписке после `del_client`.
 - Helper `_make_sub_id() -> str` — `secrets.token_hex(8)` (16 hex).
 - `async def add_client(client, inbound_id, client_uuid, email, expiry_ts_ms,
   total_gb=0, sub_id=None, flow="", enable=True, limit_ip=0, tg_id="",
@@ -920,16 +996,21 @@ Standalone smoke-тест 3x-ui REST-клиента.
   (0 для всех типов кроме `free_days`); `_make_sub_id()` (делегирует в
   `app.xui.clients`).
 - `async def create_or_extend(conn, xui, user, plan, promo) -> Subscription` —
-  считает `delta = plan.days + bonus_days(promo)`, делегирует в
-  `_provision`.
+  считает `delta = plan.days + bonus_days(promo)`, делегирует в `_provision`
+  с `total_gb=int(plan.traffic_gb)`.
 - `async def activate_free_days(conn, xui, user, promo) -> Subscription` —
   для standalone-флоу. `ValueError` если `promo.type != "free_days"`.
-  `delta = promo.value`, `plan_id=None`.
-- `async def _provision(conn, xui, user, delta_days, plan_id) -> Subscription` —
-  получает существующую активную подписку через
-  `subs_repo.get_active_for_user`. Если есть — `update_client(expiryTime=..., enable=True)`
-  затем `subs_repo.extend`; если нет — генерирует uuid+email+sub_id,
-  `add_client` (xui-first), затем `subs_repo.create(xui_sub_id=...)`.
+  `delta = promo.value`, `plan_id=None`, `total_gb=0` (квота не задаётся).
+- `async def _provision(*, conn, xui, user, delta_days, plan_id, total_gb=0) -> Subscription` —
+  получает существующую активную подписку через `subs_repo.get_active_for_user`.
+  Если есть — `update_client(expiryTime=..., enable=True)` (важно: `totalGB`
+  намеренно НЕ передаётся при extend, чтобы накопленная квота /
+  потраченный трафик пользователя не сбрасывались при продлении), затем
+  `subs_repo.extend`. Если нет — генерирует uuid + email (через
+  `make_client_email(user.tg_id, user.username)`) + sub_id, вызывает
+  `add_client(..., total_gb=total_gb)` (xui-first), затем
+  `subs_repo.create(xui_sub_id=...)`. `total_gb` применяется ТОЛЬКО при
+  свежем provisioning.
 - `async def revoke(xui, sub) -> None` — `update_client(enable=False)`
   (best-effort, ловит исключения и логирует) + `subs_repo.set_status(sub.id, "revoked")`.
 

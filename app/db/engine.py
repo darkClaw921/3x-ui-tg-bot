@@ -67,6 +67,12 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
         # the public subscription URL (``/sub/<sub_id>``). Older databases
         # created before this column existed must be upgraded in-place.
         "ALTER TABLE subscriptions ADD COLUMN xui_sub_id TEXT NOT NULL DEFAULT ''",
+        # Plans: ``traffic_gb`` declares the per-client traffic limit (GB) that
+        # the bot forwards to the 3x-ui panel as ``totalGB``. 0 means unlimited
+        # (matches xui semantics). Older databases created before this column
+        # existed must be upgraded in-place; existing plans default to 0 (no
+        # limit) for backwards-compatible behaviour.
+        "ALTER TABLE plans ADD COLUMN traffic_gb INTEGER NOT NULL DEFAULT 0",
     )
     for stmt in migrations:
         try:

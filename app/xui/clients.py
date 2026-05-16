@@ -21,6 +21,7 @@ Endpoints used:
 from __future__ import annotations
 
 import json
+import re
 import secrets
 from typing import Any
 from uuid import uuid4
@@ -40,15 +41,26 @@ def make_client_uuid() -> str:
     return str(uuid4())
 
 
-def make_client_email(tg_id: int) -> str:
+def make_client_email(tg_id: int, username: str | None = None) -> str:
     """Generate a unique-ish client label for the panel.
 
     3x-ui requires the ``email`` field to be unique across an inbound.
     We embed the Telegram id for traceability and append a short random
     suffix so re-subscribing a user (after a delete) does not collide
     with stale traffic snapshots.
+
+    When ``username`` is provided, it is normalised (lowercased; chars
+    outside ``[A-Za-z0-9_]`` collapsed to ``_``; trimmed; capped at 32)
+    and prepended for human-readable identification in the panel. If
+    the resulting normalised slug is empty, the function falls back to
+    the legacy ``tg_<id>_<hex>`` shape.
     """
-    return f"tg_{tg_id}_{secrets.token_hex(3)}"
+    suffix = secrets.token_hex(3)
+    if username:
+        safe = re.sub(r"[^A-Za-z0-9_]", "_", username).strip("_").lower()[:32]
+        if safe:
+            return f"{safe}_tg_{tg_id}_{suffix}"
+    return f"tg_{tg_id}_{suffix}"
 
 
 def _make_sub_id() -> str:

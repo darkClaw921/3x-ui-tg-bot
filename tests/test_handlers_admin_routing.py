@@ -110,6 +110,7 @@ def _sample_plan(plan_id: int = 7, *, is_active: bool = True) -> Plan:
         title="1 месяц",
         days=30,
         price_stars=100,
+        traffic_gb=0,
         is_active=is_active,
         created_at="2026-01-01 00:00:00",
     )
