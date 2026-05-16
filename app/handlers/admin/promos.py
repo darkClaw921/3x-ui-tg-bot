@@ -46,6 +46,7 @@ from app.db.repos import users as users_repo
 from app.db.repos.promos import Promo, PromoType
 from app.db.repos.users import User
 from app.keyboards.admin import (
+    AdminCB,
     PromoCB,
     cancel_kb,
     promo_card_kb,
@@ -173,6 +174,15 @@ def _parse_expires_at(raw: str) -> str | None | bool:
 # ---------------------------------------------------------------------------
 # Navigation callbacks
 # ---------------------------------------------------------------------------
+
+
+@router.callback_query(AdminCB.filter((F.area == "promos") & (F.action == "open")))
+async def cb_open(callback: CallbackQuery, state: FSMContext) -> None:
+    """Entry point from the admin main menu: render the promo list."""
+    await state.clear()
+    if callback.message is not None:
+        await _show_list(callback.message, edit=True)
+    await callback.answer()
 
 
 @router.callback_query(PromoCB.filter(F.action == "list"))

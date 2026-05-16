@@ -40,6 +40,7 @@ from app.db.engine import get_conn
 from app.db.repos import plans as plans_repo
 from app.db.repos.plans import Plan
 from app.keyboards.admin import (
+    AdminCB,
     PlanCB,
     cancel_kb,
     plan_card_kb,
@@ -103,6 +104,15 @@ async def _show_list(message: Message, *, edit: bool = True) -> None:
 # ---------------------------------------------------------------------------
 # Navigation callbacks
 # ---------------------------------------------------------------------------
+
+
+@router.callback_query(AdminCB.filter((F.area == "plans") & (F.action == "open")))
+async def cb_open(callback: CallbackQuery, state: FSMContext) -> None:
+    """Entry point from the admin main menu: render the plan list."""
+    await state.clear()
+    if callback.message is not None:
+        await _show_list(callback.message, edit=True)
+    await callback.answer()
 
 
 @router.callback_query(PlanCB.filter(F.action == "list"))

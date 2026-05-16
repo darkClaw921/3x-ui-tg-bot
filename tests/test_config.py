@@ -45,7 +45,9 @@ def _fresh_settings(monkeypatch, **env):
 
     from app.config import Settings
 
-    return Settings()  # type: ignore[call-arg]
+    # Pin `_env_file=None` so a checked-out / deployed .env on the developer
+    # machine does not leak values into the test and break the "unset" cases.
+    return Settings(_env_file=None)  # type: ignore[call-arg]
 
 
 def test_admin_ids_csv(monkeypatch):
