@@ -364,9 +364,16 @@ install_3x_ui() {
     #   - "Bind the panel to 127.0.0.1 only? [y/N]" → "4" != y → не биндить
     #     (потом сами забиндим в setup_nginx_panel если SSL_MODE=nginx)
     info "Запускаю установщик 3x-ui (отвечаю '4' на все вопросы → skip SSL, no bind)..."
-    if ! yes 4 | bash "$installer" 2>&1 | tee -a "$LOG_FILE"; then
+    # Важно: `yes 4` получит SIGPIPE (exit 141) когда установщик закроет stdin,
+    # а с `set -o pipefail` это уронит весь пайплайн даже при успехе установщика.
+    # Поэтому смотрим именно на exit code установщика через PIPESTATUS.
+    set +o pipefail
+    yes 4 2>/dev/null | bash "$installer" 2>&1 | tee -a "$LOG_FILE"
+    local installer_rc="${PIPESTATUS[1]}"
+    set -o pipefail
+    if [[ "$installer_rc" -ne 0 ]]; then
         rm -f "$installer"
-        fatal "Установщик 3x-ui завершился с ошибкой."
+        fatal "Установщик 3x-ui завершился с ошибкой (exit=$installer_rc)."
     fi
     rm -f "$installer"
 
