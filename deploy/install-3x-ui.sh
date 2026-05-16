@@ -27,6 +27,7 @@ COOKIE_FILE="$(mktemp -t xui-cookie.XXXXXX)"
 readonly COOKIE_FILE
 readonly BOT_DIR="/opt/3x-ui-tg-bot"
 readonly XUI_DB="/etc/x-ui/x-ui.db"
+readonly XUI_BIN="/usr/local/x-ui/x-ui"
 
 # Очистка временных файлов и истории
 cleanup() {
@@ -422,13 +423,17 @@ configure_panel_settings() {
     web_base_path_clean="${PANEL_PATH#/}"
     web_base_path_clean="${web_base_path_clean%/}"
 
-    info "x-ui setting -username/-password/-port/-webBasePath..."
-    if ! x-ui setting \
+    # Важно: вызываем именно бинарь /usr/local/x-ui/x-ui, а НЕ шелл-обёртку
+    # /usr/bin/x-ui. У обёртки v2.9.4 нет подкоманды "setting" (только "settings"
+    # без параметров), поэтому `x-ui setting -port 2053 ...` падает в *) show_usage
+    # и наши флаги молча игнорируются.
+    info "$XUI_BIN setting -username/-password/-port/-webBasePath..."
+    if ! "$XUI_BIN" setting \
         -username "$PANEL_USER" \
         -password "$PANEL_PASS" \
         -port "$PANEL_PORT" \
         -webBasePath "$web_base_path_clean" 2>&1 | tee -a "$LOG_FILE"; then
-        fatal "x-ui setting (основные параметры) завершилась с ошибкой."
+        fatal "$XUI_BIN setting (основные параметры) завершилась с ошибкой."
     fi
 
     # Полная очистка наследия от установщика 3x-ui (он мог выпустить LE-cert,
@@ -452,7 +457,7 @@ SQL
     # поддерживают на уровне CLI; пробуем, при отсутствии флага — настроим
     # через REST API панели.
     info "Пробую настроить subPort/subPath через CLI..."
-    if x-ui setting -subPort "$SUB_PORT" -subPath "$SUB_PATH" >/dev/null 2>&1; then
+    if "$XUI_BIN" setting -subPort "$SUB_PORT" -subPath "$SUB_PATH" >/dev/null 2>&1; then
         ok "subPort/subPath заданы через CLI."
         SUB_CONFIGURED_VIA_CLI="true"
     else
@@ -540,9 +545,14 @@ REALITY_SHORT_ID=""
 generate_reality_keys() {
     info "Шаг 6: генерация Reality x25519 ключей."
 
-    # Попытка 1: через API панели
+    # Попытка 1: через API панели.
+    # В 3x-ui v2.9.4 endpoint переехал с /server/getNewX25519Cert на
+    # /panel/api/server/getNewX25519Cert. Пробуем оба пути для совместимости.
     local resp success
-    resp="$(panel_curl GET /server/getNewX25519Cert 2>/dev/null || true)"
+    resp="$(panel_curl GET /panel/api/server/getNewX25519Cert 2>/dev/null || true)"
+    if [[ -z "$resp" ]] || [[ "$(jq -r '.success // false' <<<"$resp" 2>/dev/null)" != "true" ]]; then
+        resp="$(panel_curl GET /server/getNewX25519Cert 2>/dev/null || true)"
+    fi
     if [[ -n "$resp" ]]; then
         success="$(jq -r '.success // false' <<<"$resp" 2>/dev/null || echo false)"
         if [[ "$success" == "true" ]]; then
@@ -565,8 +575,10 @@ generate_reality_keys() {
         if [[ -n "$xray_bin" ]]; then
             local kp
             kp="$("$xray_bin" x25519 2>/dev/null || true)"
-            REALITY_PRIVATE_KEY="$(awk -F': *' '/^Private key:/{print $2}' <<<"$kp")"
-            REALITY_PUBLIC_KEY="$(awk -F': *' '/^Public key:/{print $2}' <<<"$kp")"
+            # Старый xray: "Private key: ..." / "Public key: ..."
+            # Новый xray (3x-ui v2.9.4): "PrivateKey: ..." / "Password (PublicKey): ..."
+            REALITY_PRIVATE_KEY="$(awk -F': *' '/^(Private[Kk]ey|Private key)/{print $2; exit}' <<<"$kp")"
+            REALITY_PUBLIC_KEY="$(awk -F': *' '/^(Public[Kk]ey|Public key|Password \(PublicKey\))/{print $NF; exit}' <<<"$kp")"
             if [[ -n "$REALITY_PRIVATE_KEY" && -n "$REALITY_PUBLIC_KEY" ]]; then
                 ok "Ключи получены через $xray_bin x25519."
             fi
@@ -687,8 +699,9 @@ configure_sub_via_api() {
         return 0
     fi
     info "Настраиваю subPort/subPath через API панели..."
+    # В 3x-ui v2.9.4 /panel/setting/all обслуживается только методом POST.
     local resp
-    resp="$(panel_curl GET /panel/setting/all 2>/dev/null || true)"
+    resp="$(panel_curl POST /panel/setting/all 2>/dev/null || true)"
     if [[ -z "$resp" ]] || [[ "$(jq -r '.success // false' <<<"$resp")" != "true" ]]; then
         warn "API /panel/setting/all недоступно — пропускаю; subscription может остаться на дефолтном порту/пути."
         warn "Настройте subPort=$SUB_PORT и subPath=$SUB_PATH вручную в админ-панели."
