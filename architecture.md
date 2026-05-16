@@ -139,8 +139,8 @@ Systemd unit для запуска бота как сервиса на Linux. О
   (`--bot-token`, `--admin-id`, `--domain`, `--panel-port`, `--panel-user`,
   `--panel-pass`, `--panel-path`, `--vless-port`, `--reality-dest`,
   `--reality-sni`, `--sub-port`, `--sub-path`, `--install-bot`,
-  `--bot-repo`, `--ssl-mode` (auto|nginx|skip), `--le-email`,
-  `--nginx-port` (auto|число), `--non-interactive`, `--help`).
+  `--bot-repo`, `--ssl-mode` (auto|on|off), `--le-email`,
+  `--non-interactive`, `--help`).
 - `info/ok/warn/err/fatal()` — цветные логи в stderr + tee в
   `/var/log/install-3x-ui.log`.
 - `cleanup()` (trap EXIT) — удаление cookie-файла + подсказка по
@@ -150,8 +150,9 @@ Systemd unit для запуска бота как сервиса на Linux. О
   утилиты.
 - `ensure_root()`, `ensure_os()` — префлайт.
 - `preflight()` — apt-зависимости (curl, jq, openssl, qrencode и пр.).
-- `configure_ufw()` — открытие портов 22 / vless + (80/NGINX_PORT в
-  nginx-режиме либо panel/sub в skip-режиме) в ufw (если активен).
+- `configure_ufw()` — открытие портов 22, VLESS, PANEL, SUB
+  (+ 80 в режиме `ssl-mode=on` — только на время выпуска LE-сертификата
+  через certbot --standalone) в ufw (если активен).
 - `install_3x_ui()` — скачивает и запускает официальный installer
   3x-ui от MHSanaei (v3+), подавая ему серию из трёх ответов:
   не кастомизировать порт → выбрать SSL=skip → bind 127.0.0.1
@@ -160,9 +161,11 @@ Systemd unit для запуска бота как сервиса на Linux. О
 - `configure_panel_settings()` — `x-ui setting -username/-password/-port
   /-webBasePath` + попытка `-subPort/-subPath` (если CLI поддерживает).
 - `build_panel_urls()`, `panel_curl()`, `panel_login()` — обёртки REST
-  API панели. После установщика панель HTTP-only, поэтому
-  `PANEL_BASE_LOCAL=http://127.0.0.1:PORT...`. `PANEL_BASE_PUBLIC` строится
-  с учётом `SSL_MODE` (nginx → https с NGINX_PORT, skip → http с PANEL_PORT).
+  API панели. `PANEL_BASE_LOCAL=http://127.0.0.1:PORT/...` — все REST-вызовы
+  делаются по HTTP (TLS включается в `setup_panel_tls` уже после всех
+  API-вызовов). `PANEL_BASE_PUBLIC` строится с учётом `SSL_MODE`
+  (on → https://DOMAIN:PANEL_PORT/..., off → http://...). `panel_login`
+  дожидается реальной готовности порта через `wait_port_listening`.
 - `configure_sub_via_api()` — fallback для subPort/subPath через
   `/panel/setting/all` + `/panel/setting/update`, если CLI не справился.
 - `generate_reality_keys()` — получение x25519 ключей через
@@ -170,21 +173,19 @@ Systemd unit для запуска бота как сервиса на Linux. О
 - `create_inbound()` — `POST /panel/api/inbounds/add` с VLESS+Reality
   payload (network=tcp, security=reality, sniffing http/tls/quic);
   парсит `obj.id` (с fallback на `/panel/api/inbounds/list`).
-- `setup_nginx_panel()` — (только при `SSL_MODE=nginx`) ставит nginx +
-  certbot, останавливает nginx для освобождения порта 80, выпускает
-  Let's Encrypt сертификат `certbot certonly --standalone -d DOMAIN`
-  (с `--register-unsafely-without-email` если `LE_EMAIL` не задан),
-  генерит `/etc/nginx/sites-available/3x-ui-panel.conf` с двумя
-  server-блоками (80 → redirect, NGINX_PORT ssl → proxy_pass на
-  127.0.0.1:PANEL_PORT для `<panel_path>/` и на 127.0.0.1:SUB_PORT
-  для `<sub_path>/`), делает symlink в `sites-enabled/`, отключает
-  `default`, `nginx -t` + restart. Принудительно `x-ui setting
-  -listenIP 127.0.0.1`. Создаёт renewal-hook
-  `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh`.
-- `write_env()` — генерация `.env`. В nginx-режиме:
-  `XUI_BASE_URL=https://DOMAIN[:NGINX_PORT]/<panel_path>/`,
-  `XUI_SUB_BASE_URL=https://DOMAIN[:NGINX_PORT]/<sub_path>/`,
-  `XUI_VERIFY_SSL=true`. В skip-режиме: `http://DOMAIN:PANEL_PORT/...`,
+- `setup_panel_tls()` — (только при `SSL_MODE=on`) ставит `certbot`,
+  выпускает Let's Encrypt сертификат через `certbot certonly --standalone
+  -d DOMAIN` (с `--register-unsafely-without-email` если `LE_EMAIL` не
+  задан), записывает пути `/etc/letsencrypt/live/<DOMAIN>/{fullchain,privkey}.pem`
+  в SQLite (`settings.webCertFile/webKeyFile/subCertFile/subKeyFile`)
+  атомарной транзакцией DELETE+INSERT, перезапускает x-ui. Создаёт
+  renewal-hook `/etc/letsencrypt/renewal-hooks/deploy/restart-x-ui.sh`
+  (после `certbot renew` рестартует x-ui чтобы он подхватил новый cert).
+  Reverse-proxy не используется — TLS обслуживает сама панель.
+- `write_env()` — генерация `.env`. При `SSL_MODE=on`:
+  `XUI_BASE_URL=https://DOMAIN:PANEL_PORT/<panel_path>/`,
+  `XUI_SUB_BASE_URL=https://DOMAIN:SUB_PORT/<sub_path>/`,
+  `XUI_VERIFY_SSL=true`. При `off`: те же URL по http,
   `XUI_VERIFY_SSL=false`. Кладёт в `/opt/3x-ui-tg-bot/.env` при
   `--install-bot`, иначе в `/root/3x-ui-tg-bot.env`. chmod 600.
 - `install_bot()` — при `--install-bot`: ставит python3.12 (через

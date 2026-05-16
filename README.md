@@ -50,13 +50,13 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/
   вопросы установщика),
 - задаст логин/пароль/порт/`webBasePath`,
 - сгенерирует x25519-ключи Reality и создаст inbound,
-- при `--ssl-mode=nginx` (включается автоматически если `--domain` — это
-  FQDN): поставит nginx + certbot, выпустит Let's Encrypt сертификат,
-  поднимет reverse-proxy `https://<domain>/<panel-path>/` →
-  `127.0.0.1:<panel-port>`, забиндит панель только на 127.0.0.1
-  и пропишет deploy-hook для авто-перезагрузки nginx при renew,
-- если VLESS-порт совпал с nginx-портом (по умолчанию 443) —
-  автоматически унесёт nginx на 8443 (управляется `--nginx-port`),
+- при `--ssl-mode=on` (включается автоматически если `--domain` — это
+  FQDN): поставит `certbot`, выпустит Let's Encrypt сертификат
+  через HTTP-01 challenge на `:80` и пропишет пути в SQLite-настройках
+  3x-ui (`webCertFile`/`webKeyFile`/`subCertFile`/`subKeyFile`) — панель
+  и subscription-сервер сразу будут работать по HTTPS, без reverse-proxy.
+  Renewal-hook (`/etc/letsencrypt/renewal-hooks/deploy/restart-x-ui.sh`)
+  перезапускает x-ui после `certbot renew`,
 - запишет готовый `.env` для бота с корректными `XUI_BASE_URL`,
   `XUI_SUB_BASE_URL`, `XUI_VERIFY_SSL`,
 - по флагу `--install-bot` склонирует репозиторий, создаст venv и поднимет
@@ -64,13 +64,10 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/
 
 Полезные дополнительные флаги:
 
-- `--ssl-mode=auto|nginx|skip` — `auto` (по умолчанию): FQDN →
-  `nginx`+LE, IP → `skip`. `skip` оставляет панель HTTP-only на публичном
-  порту (`XUI_VERIFY_SSL=false`).
+- `--ssl-mode=auto|on|off` — `auto` (по умолчанию): FQDN → выпускается
+  LE-сертификат, IP → панель остаётся HTTP-only (`XUI_VERIFY_SSL=false`).
 - `--le-email=<addr>` — email для Let's Encrypt. Если не задан, сертификат
   выпускается с `--register-unsafely-without-email`.
-- `--nginx-port=<int>` — порт HTTPS у nginx (по умолчанию 443; авто 8443
-  если VLESS на 443).
 
 Подробное описание всех аргументов, troubleshooting и обновление —
 в [`deploy/install-3x-ui.md`](./deploy/install-3x-ui.md).

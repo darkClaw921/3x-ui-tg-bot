@@ -111,9 +111,8 @@ SUB_PATH="/sub/"
 INSTALL_BOT="false"
 BOT_REPO=""
 NON_INTERACTIVE="false"
-SSL_MODE="auto"           # auto|nginx|skip
+SSL_MODE="auto"           # auto|on|off — TLS у самой панели 3x-ui через Let's Encrypt
 LE_EMAIL=""
-NGINX_PORT="auto"         # auto = 443 если VLESS!=443, иначе 8443
 
 usage() {
     cat >&2 <<USAGE
@@ -136,12 +135,12 @@ ${C_BOLD}$SCRIPT_NAME${C_RESET} — установка 3x-ui и настройк
   --sub-path=<str>            Path подписок. По умолчанию: /sub/.
   --install-bot               Также установить бота как systemd-сервис.
   --bot-repo=<url>            git URL проекта бота (нужен с --install-bot).
-  --ssl-mode=<mode>           auto|nginx|skip. По умолчанию: auto
-                              (FQDN -> nginx+LE, IP -> skip).
+  --ssl-mode=<mode>           auto|on|off. TLS у самой панели 3x-ui.
+                              По умолчанию auto: если --domain — FQDN,
+                              выпускается LE-сертификат и панель работает
+                              по HTTPS; если IP — HTTP-only.
   --le-email=<email>          Email для Let's Encrypt. По умолчанию: без email
                               (--register-unsafely-without-email).
-  --nginx-port=<int>          Порт HTTPS для nginx reverse-proxy. По умолчанию: auto
-                              (443; если VLESS=443 — берётся 8443).
   --non-interactive           Не задавать вопросов; падать при недостаче параметров.
   --help                      Показать эту справку и выйти.
 
@@ -175,7 +174,6 @@ parse_args() {
             --bot-repo=*)        BOT_REPO="${1#*=}";        shift ;;
             --ssl-mode=*)        SSL_MODE="${1#*=}";        shift ;;
             --le-email=*)        LE_EMAIL="${1#*=}";        shift ;;
-            --nginx-port=*)      NGINX_PORT="${1#*=}";      shift ;;
             --non-interactive)   NON_INTERACTIVE="true";    shift ;;
             --help|-h)           usage; exit 0 ;;
             *)
@@ -315,15 +313,9 @@ configure_ufw() {
         warn "ufw неактивен — пропускаю."
         return 0
     fi
-    local ports=("22/tcp" "$VLESS_PORT/tcp")
-    # Если nginx-режим — открываем 80 (HTTP→HTTPS redirect + ACME) и NGINX_PORT.
-    # Панель и sub-сервер биндим на 127.0.0.1, наружу торчит только nginx.
-    if [[ "$SSL_MODE" == "nginx" ]]; then
-        ports+=("80/tcp" "$NGINX_PORT/tcp")
-    else
-        # skip-режим: панель торчит наружу напрямую
-        ports+=("$PANEL_PORT/tcp" "$SUB_PORT/tcp")
-    fi
+    local ports=("22/tcp" "$VLESS_PORT/tcp" "$PANEL_PORT/tcp" "$SUB_PORT/tcp")
+    # 80 нужен только на время выпуска LE сертификата через certbot --standalone
+    [[ "$SSL_MODE" == "on" ]] && ports+=("80/tcp")
     for p in "${ports[@]}"; do
         info "ufw allow $p"
         ufw allow "$p" >/dev/null || warn "Не удалось открыть $p в ufw."
@@ -483,13 +475,12 @@ PANEL_BASE_PUBLIC=""   # публичный URL для отображения в
 build_panel_urls() {
     local path_clean="${PANEL_PATH%/}"
     [[ -z "$path_clean" ]] || [[ "${path_clean:0:1}" == "/" ]] || path_clean="/$path_clean"
-    # Сама панель 3x-ui после установщика — HTTP-only (мы выбрали "skip SSL").
-    # TLS терминирует либо nginx (наш setup_nginx_panel), либо его нет вовсе.
+    # Сразу после установщика панель всегда HTTP-only (мы передаём "skip SSL"
+    # в установщик и сами выпускаем cert через certbot позже). На этапе REST-
+    # вызовов из этого скрипта мы всегда ходим по http://127.0.0.1.
     PANEL_BASE_LOCAL="http://127.0.0.1:${PANEL_PORT}${path_clean}"
-    if [[ "$SSL_MODE" == "nginx" ]]; then
-        local port_suffix=""
-        [[ "$NGINX_PORT" != "443" ]] && port_suffix=":${NGINX_PORT}"
-        PANEL_BASE_PUBLIC="https://${DOMAIN}${port_suffix}${path_clean}"
+    if [[ "$SSL_MODE" == "on" ]]; then
+        PANEL_BASE_PUBLIC="https://${DOMAIN}:${PANEL_PORT}${path_clean}"
     else
         PANEL_BASE_PUBLIC="http://${DOMAIN}:${PANEL_PORT}${path_clean}"
     fi
@@ -728,44 +719,35 @@ configure_sub_via_api() {
 }
 
 # ---------------------------------------------------------------------- #
-# Шаг 7.5: nginx reverse-proxy + Let's Encrypt (только если SSL_MODE=nginx)
+# Шаг 7.5: выпуск Let's Encrypt сертификата и установка его в саму
+# панель 3x-ui (без reverse-proxy). Сертификат используется и для веб-
+# интерфейса, и для subscription-сервера.
 # ---------------------------------------------------------------------- #
 
-NGINX_SITE_CONF="/etc/nginx/sites-available/3x-ui-panel.conf"
-NGINX_SITE_LINK="/etc/nginx/sites-enabled/3x-ui-panel.conf"
 LE_CERT_DIR=""
 
-setup_nginx_panel() {
-    if [[ "$SSL_MODE" != "nginx" ]]; then
-        info "SSL_MODE=$SSL_MODE — пропускаю настройку nginx."
+setup_panel_tls() {
+    if [[ "$SSL_MODE" != "on" ]]; then
+        info "SSL_MODE=$SSL_MODE — пропускаю выпуск TLS (панель останется HTTP-only)."
         return 0
     fi
 
-    info "Шаг 7.5: установка nginx + выпуск Let's Encrypt сертификата для $DOMAIN."
+    info "Шаг 7.5: выпуск Let's Encrypt сертификата для $DOMAIN и подключение его к 3x-ui."
 
-    # 1. Проверка/установка nginx и certbot
-    if command -v nginx >/dev/null 2>&1; then
-        ok "nginx уже установлен ($(nginx -v 2>&1 | awk '{print $3}'))."
-    else
-        info "Устанавливаю nginx..."
-        apt-get install -y -qq --no-install-recommends nginx
-    fi
+    # 1. Установить certbot, если ещё нет
     if ! command -v certbot >/dev/null 2>&1; then
         info "Устанавливаю certbot..."
         apt-get install -y -qq --no-install-recommends certbot
     fi
-    systemctl enable nginx >/dev/null 2>&1 || true
 
     # 2. Освобождаем порт 80 для HTTP-01 challenge (standalone)
-    info "Останавливаю nginx на время выпуска сертификата (нужен свободный :80)..."
-    systemctl stop nginx >/dev/null 2>&1 || true
     if port_in_use 80; then
         local who
         who="$(ss -tlnpH 'sport = :80' 2>/dev/null | head -1)"
-        fatal "Порт 80 занят (не nginx). Освободите и перезапустите. Занят: $who"
+        fatal "Порт 80 занят, certbot --standalone не сможет принять challenge. Занят: $who"
     fi
 
-    # 3. certbot certonly --standalone
+    # 3. certbot certonly --standalone (HTTP-01 challenge)
     local certbot_args=(
         certonly --standalone
         -d "$DOMAIN"
@@ -780,8 +762,11 @@ setup_nginx_panel() {
     fi
 
     info "certbot ${certbot_args[*]}"
-    if ! certbot "${certbot_args[@]}" 2>&1 | tee -a "$LOG_FILE"; then
-        systemctl start nginx >/dev/null 2>&1 || true
+    set +o pipefail
+    certbot "${certbot_args[@]}" 2>&1 | tee -a "$LOG_FILE"
+    local certbot_rc="${PIPESTATUS[0]}"
+    set -o pipefail
+    if (( certbot_rc != 0 )); then
         fatal "Не удалось получить Let's Encrypt сертификат для $DOMAIN. \
 Проверьте: (1) A-запись DOMAIN указывает на этот сервер, (2) порт 80 доступен извне, (3) DNS пропагирован."
     fi
@@ -789,111 +774,39 @@ setup_nginx_panel() {
     [[ -f "$LE_CERT_DIR/fullchain.pem" ]] || fatal "$LE_CERT_DIR/fullchain.pem не найден после certbot."
     ok "Сертификат выпущен: $LE_CERT_DIR"
 
-    # 4. Пишем nginx server-блок
-    info "Создаю $NGINX_SITE_CONF..."
-    local sub_path_clean="$SUB_PATH"
-    [[ "${sub_path_clean:0:1}" == "/" ]] || sub_path_clean="/$sub_path_clean"
-    [[ "${sub_path_clean: -1}" == "/" ]] || sub_path_clean="${sub_path_clean}/"
-    local panel_path_clean="${PANEL_PATH%/}"
-    [[ "${panel_path_clean:0:1}" == "/" ]] || panel_path_clean="/$panel_path_clean"
-
-    cat >"$NGINX_SITE_CONF" <<NGINX
-# Сгенерировано $SCRIPT_NAME $(date -Iseconds)
-
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $DOMAIN;
-
-    # Оставляем /.well-known/acme-challenge/ для будущих renew через webroot.
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen $NGINX_PORT ssl;
-    listen [::]:$NGINX_PORT ssl;
-    http2 on;
-    server_name $DOMAIN;
-
-    ssl_certificate     $LE_CERT_DIR/fullchain.pem;
-    ssl_certificate_key $LE_CERT_DIR/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
-
-    # Заголовки безопасности
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header X-Content-Type-Options nosniff always;
-
-    client_max_body_size 50m;
-
-    # 3x-ui admin panel
-    location ${panel_path_clean}/ {
-        proxy_pass http://127.0.0.1:${PANEL_PORT}${panel_path_clean}/;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 3600s;
-    }
-
-    # 3x-ui subscription server (XUI_SUB_BASE_URL)
-    location ${sub_path_clean} {
-        proxy_pass http://127.0.0.1:${SUB_PORT}${sub_path_clean};
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location = / {
-        return 404;
-    }
-}
-NGINX
-    mkdir -p /etc/nginx/sites-enabled
-    ln -sf "$NGINX_SITE_CONF" "$NGINX_SITE_LINK"
-
-    # 5. Сносим default-сайт если занимает :80/:443 — мы свой redirect уже отдаём
-    if [[ -L /etc/nginx/sites-enabled/default ]]; then
-        info "Отключаю /etc/nginx/sites-enabled/default (конфликт по server_name _)."
-        rm -f /etc/nginx/sites-enabled/default
+    # 4. Прописываем пути сертификата в SQLite базе 3x-ui — для web и для sub.
+    #    `x-ui setting` CLI принимает -webCertFile/-webKeyFile в новых версиях,
+    #    но для надёжности и для sub*-полей идём прямо в БД.
+    if [[ ! -f "$XUI_DB" ]]; then
+        fatal "$XUI_DB не найден — не могу прописать сертификат в панель."
     fi
+    info "Записываю пути сертификата в $XUI_DB и перезапускаю x-ui..."
+    systemctl stop x-ui >/dev/null 2>&1 || true
+    # В схеме 3x-ui settings.key не UNIQUE, поэтому идём через DELETE+INSERT
+    # внутри транзакции (атомарно, без дублей).
+    sqlite3 "$XUI_DB" <<SQL 2>&1 | tee -a "$LOG_FILE" || fatal "Не удалось обновить $XUI_DB."
+BEGIN;
+DELETE FROM settings WHERE key IN ('webCertFile','webKeyFile','subCertFile','subKeyFile');
+INSERT INTO settings(key,value) VALUES
+    ('webCertFile','$LE_CERT_DIR/fullchain.pem'),
+    ('webKeyFile','$LE_CERT_DIR/privkey.pem'),
+    ('subCertFile','$LE_CERT_DIR/fullchain.pem'),
+    ('subKeyFile','$LE_CERT_DIR/privkey.pem');
+COMMIT;
+SQL
+    systemctl start x-ui
+    wait_service_active x-ui 60
+    ok "3x-ui перезапущен с включённым TLS."
 
-    # 6. Проверка и запуск nginx
-    info "nginx -t"
-    if ! nginx -t 2>&1 | tee -a "$LOG_FILE"; then
-        fatal "nginx -t завершилась с ошибкой. Конфиг: $NGINX_SITE_CONF"
-    fi
-    systemctl restart nginx
-    wait_service_active nginx 30
-    ok "nginx запущен, панель доступна по $PANEL_BASE_PUBLIC/"
-
-    # 7. Гарантируем что 3x-ui биндится только на 127.0.0.1 (на случай, если установщик не справился)
-    info "Принудительно биндю панель 3x-ui на 127.0.0.1..."
-    x-ui setting -listenIP "127.0.0.1" >/dev/null 2>&1 || warn "x-ui setting -listenIP не поддержан в этой версии CLI."
-    systemctl restart x-ui >/dev/null 2>&1 || true
-
-    # 8. Renew-hook: после успешного обновления сертификата перезагружать nginx
+    # 5. Renew-hook: после успешного renew перезапускать x-ui (он держит
+    #    cert в памяти, без рестарта не подхватит новый файл)
     mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-    cat >/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh <<'HOOK'
+    cat >/etc/letsencrypt/renewal-hooks/deploy/restart-x-ui.sh <<'HOOK'
 #!/usr/bin/env bash
-systemctl reload nginx 2>/dev/null || true
+systemctl restart x-ui 2>/dev/null || true
 HOOK
-    chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
-    ok "Renew-hook для nginx установлен."
+    chmod +x /etc/letsencrypt/renewal-hooks/deploy/restart-x-ui.sh
+    ok "Renew-hook для x-ui установлен (/etc/letsencrypt/renewal-hooks/deploy/restart-x-ui.sh)."
 }
 
 # ---------------------------------------------------------------------- #
@@ -931,14 +844,11 @@ write_env() {
     fi
 
     local xui_base_url xui_sub_base_url xui_verify_ssl
-    if [[ "$SSL_MODE" == "nginx" ]]; then
-        local port_suffix=""
-        [[ "$NGINX_PORT" != "443" ]] && port_suffix=":${NGINX_PORT}"
-        xui_base_url="https://${DOMAIN}${port_suffix}${path_clean}"
-        xui_sub_base_url="https://${DOMAIN}${port_suffix}${sub_path_with_slash}"
+    if [[ "$SSL_MODE" == "on" ]]; then
+        xui_base_url="https://${DOMAIN}:${PANEL_PORT}${path_clean}"
+        xui_sub_base_url="https://${DOMAIN}:${SUB_PORT}${sub_path_with_slash}"
         xui_verify_ssl="true"
     else
-        # skip-режим: панель HTTP-only, торчит напрямую
         xui_base_url="http://${DOMAIN}:${PANEL_PORT}${path_clean}"
         xui_sub_base_url="http://${DOMAIN}:${SUB_PORT}${sub_path_with_slash}"
         xui_verify_ssl="false"
@@ -1085,18 +995,15 @@ UNIT
 final_report() {
     # Готовим динамические куски заранее, чтобы не плодить nested heredoc внутри $(...)
     local sub_url ssl_block extra_checks=""
-    if [[ "$SSL_MODE" == "nginx" ]]; then
-        local _ps=""
-        [[ "$NGINX_PORT" != "443" ]] && _ps=":${NGINX_PORT}"
-        sub_url="https://${DOMAIN}${_ps}${SUB_PATH}"
-        ssl_block="  Nginx:      listen :${NGINX_PORT} ssl, конфиг ${NGINX_SITE_CONF}
-  Сертификат: ${LE_CERT_DIR}/fullchain.pem (Let s Encrypt)
-  Renew:      systemd timer certbot.timer (deploy-hook перезагружает nginx)"
-        extra_checks="  systemctl status nginx
-  certbot certificates"
+    if [[ "$SSL_MODE" == "on" ]]; then
+        sub_url="https://${DOMAIN}:${SUB_PORT}${SUB_PATH}"
+        ssl_block="  TLS:        включён, выпущен Let s Encrypt сертификат
+  Сертификат: ${LE_CERT_DIR}/fullchain.pem
+  Renew:      systemd timer certbot.timer (deploy-hook перезапускает x-ui)"
+        extra_checks="  certbot certificates"
     else
         sub_url="http://${DOMAIN}:${SUB_PORT}${SUB_PATH}"
-        ssl_block="  Без TLS. Панель торчит на ${PANEL_BASE_PUBLIC}/ наружу — поставьте reverse-proxy или используйте SSH-туннель."
+        ssl_block="  Без TLS. Панель и sub-сервер работают по HTTP. Используйте SSH-туннель или поставьте reverse-proxy."
     fi
 
     cat >&2 <<REPORT
@@ -1119,7 +1026,7 @@ ${C_BOLD}VLESS+Reality inbound${C_RESET}
 ${C_BOLD}Subscription${C_RESET}
   URL: ${sub_url}
 
-${C_BOLD}SSL / nginx${C_RESET}
+${C_BOLD}SSL${C_RESET}
   Режим:     ${SSL_MODE}
 ${ssl_block}
 
@@ -1180,45 +1087,25 @@ finalize_params() {
         REALITY_SNI="${REALITY_DEST%%:*}"
     fi
 
-    # SSL_MODE: auto -> nginx если DOMAIN это FQDN, иначе skip
+    # SSL_MODE: auto -> on если DOMAIN это FQDN, иначе off
     case "$SSL_MODE" in
         auto)
             if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                SSL_MODE="skip"
-                warn "DOMAIN=$DOMAIN похож на IP — переключаю SSL_MODE=skip (LE для IP не поддержано в этом скрипте)."
+                SSL_MODE="off"
+                warn "DOMAIN=$DOMAIN похож на IP — SSL_MODE=off (LE для IP в этом скрипте не выпускается)."
             elif [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
-                SSL_MODE="nginx"
+                SSL_MODE="on"
             else
-                SSL_MODE="skip"
-                warn "DOMAIN=$DOMAIN не похож ни на FQDN, ни на IP — SSL_MODE=skip."
+                SSL_MODE="off"
+                warn "DOMAIN=$DOMAIN не похож ни на FQDN, ни на IP — SSL_MODE=off."
             fi
             ;;
-        nginx|skip) ;;
-        *) fatal "Неизвестный --ssl-mode=$SSL_MODE (допустимо auto|nginx|skip)." ;;
+        on|off) ;;
+        *) fatal "Неизвестный --ssl-mode=$SSL_MODE (допустимо auto|on|off)." ;;
     esac
 
-    # NGINX_PORT: auto. Если nginx-режим и VLESS=443 — берём 8443; иначе 443.
-    if [[ "$SSL_MODE" == "nginx" ]]; then
-        if [[ "$NGINX_PORT" == "auto" ]]; then
-            if [[ "$VLESS_PORT" == "443" ]]; then
-                NGINX_PORT="8443"
-                warn "VLESS_PORT=443 и nginx по умолчанию занимает 443 — переношу nginx на 8443."
-                warn "Если хотите наоборот (nginx на 443, VLESS на 8443) — задайте --vless-port=8443 --nginx-port=443."
-            else
-                NGINX_PORT="443"
-            fi
-        fi
-        if [[ "$NGINX_PORT" == "$VLESS_PORT" ]]; then
-            fatal "NGINX_PORT=$NGINX_PORT совпадает с VLESS_PORT=$VLESS_PORT. Задайте разные."
-        fi
-    else
-        NGINX_PORT=""
-    fi
-
     # Валидация числовых полей
-    local port_vars=(PANEL_PORT VLESS_PORT SUB_PORT)
-    [[ -n "$NGINX_PORT" ]] && port_vars+=(NGINX_PORT)
-    for var in "${port_vars[@]}"; do
+    for var in PANEL_PORT VLESS_PORT SUB_PORT; do
         local v="${!var}"
         if ! [[ "$v" =~ ^[0-9]+$ ]] || (( v < 1 || v > 65535 )); then
             fatal "$var=$v — не валидный порт (1..65535)."
@@ -1277,7 +1164,6 @@ main() {
     info "  install_bot    = $INSTALL_BOT"
     info "  admin_ids      = $ADMIN_IDS"
     info "  ssl_mode       = $SSL_MODE"
-    info "  nginx_port     = ${NGINX_PORT:-n/a}"
     info "  le_email       = ${LE_EMAIL:-<none>}"
 
     preflight
@@ -1288,7 +1174,7 @@ main() {
     configure_sub_via_api
     generate_reality_keys
     create_inbound
-    setup_nginx_panel
+    setup_panel_tls
     write_env
     install_bot
     final_report
