@@ -116,20 +116,27 @@ async def create_or_extend(
     promo: Promo | None,
     *,
     inbound_id: int,
+    extend_sub_id: int | None = None,
 ) -> Subscription:
-    """Provision or extend a paid subscription for ``user``.
+    """Provision a fresh subscription, or extend a specific existing one.
 
-    Steps:
+    Behaviour is now explicit and controlled by ``extend_sub_id``:
 
-    1. Compute the delta in days: ``plan.days + bonus_days(promo)``.
-    2. If the user has an active subscription, push its ``expires_at``
-       forward by the delta, then call
-       :func:`app.xui.clients.update_client` with the new
-       ``expiryTime`` so the panel matches the DB. The existing xui
-       client is reused — no new UUID/email is generated.
-    3. Otherwise, allocate a fresh UUID + email + sub-id, call
-       :func:`app.xui.clients.add_client` (xui-first), then insert the
-       row into the local ``subscriptions`` table.
+    * ``extend_sub_id is None`` (default) → **always** allocate a fresh
+      UUID + email + sub-id, call :func:`app.xui.clients.add_client`
+      (xui-first), then insert a brand-new row into
+      ``subscriptions``. This holds even when the user already has one
+      or more active subscriptions — the caller is responsible for
+      deciding whether to create-new vs extend (the UI surfaces a
+      "Продлить / Новая" choice screen).
+    * ``extend_sub_id is int`` → load the subscription via
+      :func:`app.db.repos.subscriptions.get`, verify it belongs to
+      ``user`` and is ``status='active'``; push its ``expires_at``
+      forward by the delta and call
+      :func:`app.xui.clients.update_client` with the new
+      ``expiryTime``. ``inbound_id`` is **ignored** on extend — the
+      existing subscription's ``xui_inbound_id`` is reused (a mismatch
+      is logged at WARNING).
 
     Parameters
     ----------
@@ -138,7 +145,7 @@ async def create_or_extend(
     xui
         Authenticated 3x-ui client.
     user
-        Domain user (``users.id`` is used for the FK).
+        Domain user (``users.id`` is used for the FK / ownership check).
     plan
         The plan being purchased; ``plan.days`` drives the delta.
     promo
@@ -147,10 +154,11 @@ async def create_or_extend(
         :mod:`app.services.billing`) but not the duration.
     inbound_id
         3x-ui inbound where a fresh client must be provisioned. **Only
-        consulted when creating a brand-new subscription.** When the
-        user already has an active subscription, extension reuses
-        ``existing.xui_inbound_id`` and the caller's value is ignored
-        (a mismatch is logged at WARNING).
+        consulted when creating a brand-new subscription** — ignored
+        for extend (existing inbound is reused).
+    extend_sub_id
+        ``None`` → always create new. ``int`` → extend that specific
+        subscription with ownership / status validation.
 
     Returns
     -------
@@ -159,6 +167,9 @@ async def create_or_extend(
 
     Raises
     ------
+    ValueError
+        If ``extend_sub_id`` is given but the subscription does not
+        exist, belongs to another user, or is not in ``status='active'``.
     app.xui.XuiError
         Bubble up from the panel call — the caller (buy handler) is
         responsible for refunding / notifying.
@@ -172,6 +183,7 @@ async def create_or_extend(
         plan_id=plan.id,
         total_gb=int(plan.traffic_gb),
         inbound_id=int(inbound_id),
+        extend_sub_id=extend_sub_id,
     )
 
 
@@ -182,6 +194,7 @@ async def activate_free_days(
     promo: Promo,
     *,
     inbound_id: int,
+    extend_sub_id: int | None = None,
 ) -> Subscription:
     """Grant ``promo.value`` free days without involving Telegram Stars.
 
@@ -196,6 +209,10 @@ async def activate_free_days(
     ``inbound_id`` is the 3x-ui inbound the user picked from the promo
     flow; consulted only when creating a fresh subscription and ignored
     (with a WARNING log on mismatch) when extending an existing one.
+
+    ``extend_sub_id`` mirrors :func:`create_or_extend`: ``None`` always
+    creates a brand-new subscription; an ``int`` extends that specific
+    one with ownership / status validation.
     """
     if promo.type != "free_days":
         raise ValueError(
@@ -211,6 +228,7 @@ async def activate_free_days(
         plan_id=None,
         total_gb=0,
         inbound_id=int(inbound_id),
+        extend_sub_id=extend_sub_id,
     )
 
 
@@ -253,11 +271,28 @@ async def _provision(
     plan_id: int | None,
     total_gb: int = 0,
     inbound_id: int,
+    extend_sub_id: int | None,
 ) -> Subscription:
-    """Either extend the user's active subscription or create a new one.
+    """Create a fresh subscription, or extend a caller-specified one.
 
     Common path shared by :func:`create_or_extend` and
     :func:`activate_free_days`. Always xui-first, DB-after.
+
+    Branch selection is **fully explicit** via ``extend_sub_id``:
+
+    * ``extend_sub_id is None`` → fresh provisioning (new UUID + email
+      + sub-id, :func:`app.xui.clients.add_client`,
+      :func:`app.db.repos.subscriptions.create`). The presence of
+      other active subscriptions for the same user is irrelevant — the
+      caller decides whether to create-new or extend by passing
+      ``extend_sub_id`` or not.
+    * ``extend_sub_id is int`` → load the row with
+      :func:`app.db.repos.subscriptions.get` and validate ownership
+      (``sub.user_id == user.id``) plus ``status == 'active'``. On
+      failure raise :class:`ValueError` (the caller treats this as
+      "subscription not available"). On success, extend the existing
+      xui client (no new UUID) and bump ``expires_at`` via
+      :func:`app.db.repos.subscriptions.extend`.
 
     The ``total_gb`` argument is only applied when provisioning a fresh
     client — on extend we deliberately leave ``totalGB`` untouched in
@@ -265,21 +300,31 @@ async def _provision(
     traffic quota / remainder is not reset when their subscription is
     renewed.
 
-    ``inbound_id`` selects the 3x-ui inbound to provision into. On
-    extend the value is intentionally ignored — the existing
-    subscription's ``xui_inbound_id`` is reused so the panel keeps a
-    single client per user — but a mismatch with the requested
-    ``inbound_id`` is logged at WARNING so the discrepancy is visible in
-    logs (it almost always means the user picked a different inbound on
-    a second purchase and the UI should have hidden the selector).
+    ``inbound_id`` is honoured only when creating fresh. On extend it
+    is intentionally ignored — the existing subscription's
+    ``xui_inbound_id`` is reused so the panel keeps a single client per
+    subscription — but a mismatch with the requested ``inbound_id`` is
+    logged at WARNING so the discrepancy is visible in logs.
     """
     delta = timedelta(days=max(0, delta_days))
     now = datetime.now(UTC).replace(microsecond=0)
 
-    existing = await subs_repo.get_active_for_user(conn, user.id)
+    if extend_sub_id is not None:
+        # ---- Extend a caller-specified subscription -------------------------
+        existing = await subs_repo.get(conn, int(extend_sub_id))
+        if existing is None:
+            raise ValueError(
+                f"subscription {extend_sub_id} not available for extend"
+            )
+        if existing.user_id != user.id:
+            raise ValueError(
+                f"subscription {extend_sub_id} not available for extend"
+            )
+        if existing.status != "active":
+            raise ValueError(
+                f"subscription {extend_sub_id} not available for extend"
+            )
 
-    if existing is not None:
-        # ---- Extend in place ------------------------------------------------
         if int(existing.xui_inbound_id) != int(inbound_id):
             logger.warning(
                 "sub-extend: requested inbound_id={} differs from existing "
@@ -344,11 +389,12 @@ async def _provision(
         xui_sub_id=sub_id,
     )
     logger.info(
-        "sub-create user={} sub={} uuid={} email={} expires={}",
+        "sub-create user={} sub={} uuid={} email={} sub_id={} expires={}",
         user.tg_id,
         sub.id,
         client_uuid,
         email,
+        sub_id,
         new_expiry.isoformat(),
     )
     return sub

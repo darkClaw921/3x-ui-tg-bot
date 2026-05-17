@@ -62,11 +62,20 @@ from app.db.repos import payments as payments_repo
 from app.db.repos import plans as plans_repo
 from app.db.repos import promos as promos_repo
 from app.db.repos import subscriptions as subs_repo
+from app.db.repos import users as users_repo
 from app.db.repos.plans import Plan
 from app.db.repos.promos import Promo
+from app.db.repos.subscriptions import Subscription
 from app.db.repos.users import User
 from app.handlers.user._keys import deliver_keys
-from app.keyboards.user import BuyCB, InboundCB, confirm_kb, inbound_select_kb, plans_kb
+from app.keyboards.user import (
+    BuyCB,
+    InboundCB,
+    buy_action_kb,
+    confirm_kb,
+    inbound_select_kb,
+    plans_kb,
+)
 from app.services import billing, promos as promos_service, subscriptions as subs_service
 from app.services.inbounds import InboundOption, list_user_inbounds
 from app.states.user import BuyFlow
@@ -84,28 +93,46 @@ def _format_confirm(
     plan: Plan,
     promo: Promo | None,
     inbound_remark: str | None = None,
-    has_active_sub: bool = False,
+    extending_sub: Subscription | None = None,
 ) -> str:
     """Render the confirmation card text (HTML).
 
     Shows the plan, the applied promo (if any), the chosen inbound
-    (server) and the resulting price. When the user already has an
-    active subscription a warning is added explaining that extension
-    reuses the existing inbound and the freshly-picked one will be
-    ignored (mirrors the behaviour of
-    :func:`app.services.subscriptions.create_or_extend`).
+    (server) and the resulting price. The header explicitly states
+    whether this is a brand-new subscription («🆕 Новая подписка на …»)
+    or an extension of an existing one («🔄 Продление подписки #N · remark
+    до DATE»). For the extend case ``inbound_remark`` should be the
+    extending subscription's inbound remark so the user can verify they
+    are extending the right server.
 
     The numbers come from :func:`app.services.billing.calc_price` so
     what the user sees matches what gets charged.
     """
     price = billing.calc_price(plan, promo)
-    lines = [
-        f"<b>Тариф:</b> {plan.title}",
-        f"<b>Срок:</b> {plan.days} дн."
-        + (f" + {price.extra_days} бонусных дн." if price.extra_days else ""),
-    ]
-    if inbound_remark:
-        lines.append(f"<b>Подключение:</b> {inbound_remark}")
+    total_days = plan.days + (price.extra_days or 0)
+    if extending_sub is not None:
+        header = (
+            f"🔄 <b>Продление подписки #{extending_sub.id}</b>"
+            + (f" · {inbound_remark}" if inbound_remark else "")
+        )
+        new_expiry = _shift_expiry(extending_sub.expires_at, total_days)
+        lines = [
+            header,
+            f"<b>Тариф:</b> {plan.title}",
+            f"<b>Срок:</b> {plan.days} дн."
+            + (f" + {price.extra_days} бонусных дн." if price.extra_days else ""),
+            f"<b>Действует до:</b> {new_expiry}",
+        ]
+    else:
+        header = "🆕 <b>Новая подписка</b>" + (
+            f" на {inbound_remark}" if inbound_remark else ""
+        )
+        lines = [
+            header,
+            f"<b>Тариф:</b> {plan.title}",
+            f"<b>Срок:</b> {plan.days} дн."
+            + (f" + {price.extra_days} бонусных дн." if price.extra_days else ""),
+        ]
     if promo is not None:
         lines.append(f"<b>Промокод:</b> <code>{promo.code}</code>")
         if promo.type == "percent":
@@ -116,13 +143,25 @@ def _format_confirm(
             lines.append(f"<b>Бонус:</b> +{promo.value} дн.")
     lines.append("")
     lines.append(f"<b>К оплате:</b> {price.stars}⭐")
-    if has_active_sub:
-        lines.append("")
-        lines.append(
-            "⚠️ У вас уже есть активная подписка — она будет продлена на "
-            "текущем подключении, выбор сервера сейчас не применится."
-        )
     return "\n".join(lines)
+
+
+def _shift_expiry(current_expires_at: str, plus_days: int) -> str:
+    """Return ``current_expires_at + plus_days`` in YYYY-MM-DD format.
+
+    Used by :func:`_format_confirm` for the "Действует до DATE" line on
+    the extend confirmation card. Falls back to the raw string when the
+    timestamp cannot be parsed (defensive — should never happen for a
+    well-formed DB row).
+    """
+    from datetime import datetime, timedelta
+
+    try:
+        # Stored format: 'YYYY-MM-DD HH:MM:SS' (UTC, seconds resolution).
+        dt = datetime.fromisoformat(str(current_expires_at).replace(" ", "T"))
+    except ValueError:
+        return str(current_expires_at)
+    return (dt + timedelta(days=int(plus_days))).date().isoformat()
 
 
 async def _fetch_plan(conn: aiosqlite.Connection, plan_id: int) -> Plan | None:
@@ -168,9 +207,53 @@ def _promo_is_usable(promo: Promo | None) -> bool:
 
 
 @router.callback_query(BuyCB.filter(F.action == "open"))
-async def cb_open(callback: CallbackQuery, state: FSMContext) -> None:
-    """Open the plan list and enter :class:`BuyFlow.choosing_plan`."""
+async def cb_open(
+    callback: CallbackQuery,
+    state: FSMContext,
+    user: User | None = None,
+) -> None:
+    """Entry point of the buy flow.
+
+    When the user already has one or more active subscriptions, show the
+    "продлить vs новая" action screen (:class:`BuyFlow.choosing_action`)
+    so they can pick a specific subscription to extend. Otherwise fall
+    through to the regular plan list (:class:`BuyFlow.choosing_plan`).
+
+    The action-screen branch resolves each active sub's inbound remark
+    via the cached :func:`app.services.inbounds.list_user_inbounds`
+    helper — on a panel error the remarks fall back to ``#<inbound_id>``
+    placeholders but the screen still renders so the user is not
+    blocked from purchasing.
+    """
     await state.clear()
+    active: list[Subscription] = []
+    if user is not None:
+        async with get_conn() as conn:
+            active = await subs_repo.list_active_for_user(conn, user.id)
+
+    if active:
+        # Action screen — resolve inbound remarks (best-effort).
+        remarks: dict[int, str] = {}
+        try:
+            xui = await get_xui_client()
+            options = await list_user_inbounds(xui)
+            remarks = {o.id: o.remark or f"#{o.id}" for o in options}
+        except XuiError as exc:
+            logger.warning(
+                "cb_open: list_user_inbounds failed, rendering action screen "
+                "with raw inbound ids: {}",
+                exc,
+            )
+        await state.set_state(BuyFlow.choosing_action)
+        if callback.message is not None:
+            await callback.message.edit_text(
+                "У вас есть активные подписки. Выберите действие:",
+                reply_markup=buy_action_kb(active, remarks),
+            )
+        await callback.answer()
+        return
+
+    # No active subs — go straight to plan list.
     await state.set_state(BuyFlow.choosing_plan)
     async with get_conn() as conn:
         plans = await plans_repo.list_active(conn)
@@ -189,15 +272,103 @@ async def cb_open(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-async def _has_active_sub(conn: aiosqlite.Connection, user_id: int) -> bool:
-    """Return ``True`` if ``user_id`` currently has an active subscription.
+async def _send_plan_list(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """Helper: enter :class:`BuyFlow.choosing_plan` and render plans_kb.
 
-    Used by the confirmation card to surface a warning that extension
-    reuses the existing inbound regardless of which one was picked
-    here.
+    Shared by :func:`cb_pick_action_extend` and :func:`cb_pick_action_new`
+    so the action-screen → plan-list transition stays consistent.
     """
-    sub = await subs_repo.get_active_for_user(conn, user_id)
-    return sub is not None
+    await state.set_state(BuyFlow.choosing_plan)
+    async with get_conn() as conn:
+        plans = await plans_repo.list_active(conn)
+    if callback.message is None:
+        return
+    if not plans:
+        await callback.message.edit_text(
+            "Сейчас нет доступных тарифов. Загляните позже.",
+        )
+        return
+    await callback.message.edit_text(
+        "Выберите тариф:",
+        reply_markup=plans_kb(plans),
+    )
+
+
+# ---------------------------------------------------------------------- #
+# Action picker (only shown when the user has 1+ active subscriptions)
+# ---------------------------------------------------------------------- #
+
+
+@router.callback_query(BuyCB.filter(F.action == "extend"))
+async def cb_pick_action_extend(
+    callback: CallbackQuery,
+    callback_data: BuyCB,
+    state: FSMContext,
+    user: User | None = None,
+) -> None:
+    """User picked "🔄 Продлить #N" — pin the sub_id and jump to plans.
+
+    This handler is registered WITHOUT a state filter so it works both
+    from the action screen (:class:`BuyFlow.choosing_action`) and as a
+    standalone entry point from the «Моя подписка» card (Phase 4) where
+    no FSM state has been set yet.
+
+    Validates ownership defensively: even though the keyboard only
+    surfaces the caller's own subscriptions, a stale keyboard or a hand-
+    crafted callback from another chat must not allow extending a
+    foreign sub. On a mismatch we ``answer`` with an alert and leave the
+    FSM untouched.
+    """
+    if user is None:
+        await callback.answer("Нужно нажать /start.", show_alert=True)
+        return
+    sub_id = int(callback_data.sub_id or 0)
+    if sub_id <= 0:
+        await callback.answer("Подписка не указана.", show_alert=True)
+        return
+
+    async with get_conn() as conn:
+        sub = await subs_repo.get(conn, sub_id)
+    if (
+        sub is None
+        or sub.user_id != user.id
+        or sub.status != "active"
+    ):
+        await callback.answer(
+            "Подписка недоступна для продления.", show_alert=True
+        )
+        return
+
+    await state.update_data(
+        sub_id=sub.id,
+        inbound_id=int(sub.xui_inbound_id),
+        # Wipe any stale plan/promo from a previous attempt.
+        plan_id=0,
+        promo_id=0,
+        inbound_options=None,
+    )
+    await _send_plan_list(callback, state)
+    await callback.answer()
+
+
+@router.callback_query(BuyCB.filter(F.action == "new"))
+async def cb_pick_action_new(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """User picked "🆕 Новая подписка" — clear FSM and show plans.
+
+    Registered without a state filter so it can be invoked both from the
+    action screen and (for symmetry with ``cb_pick_action_extend``) from
+    other entry points that want to force "new sub" semantics.
+    """
+    await state.clear()
+    await state.update_data(sub_id=0)
+    await _send_plan_list(callback, state)
+    await callback.answer()
 
 
 def _remark_for(options: list[InboundOption] | list[dict], inbound_id: int) -> str:
@@ -254,6 +425,10 @@ async def cb_pick_plan(
 
     Routing:
 
+    * ``sub_id > 0`` in the FSM (extend flow) → always skip the inbound
+      selection step (the inbound is inherited from the existing
+      subscription, even for multi-inbound plans); jump straight to
+      ``BuyFlow.confirming`` with the extend-aware confirmation card.
     * Plan has **exactly one** inbound → skip the selection step,
       store the only ``inbound_id`` in the FSM and jump straight to
       ``BuyFlow.confirming`` with the confirmation card.
@@ -286,6 +461,69 @@ async def cb_pick_plan(
             promo = None
             promo_id = 0
 
+    sub_id = int(data.get("sub_id") or 0)
+
+    # ---- Extend branch — bypass inbound selection entirely. ----
+    if sub_id > 0:
+        extending_sub: Subscription | None = None
+        if user is not None:
+            async with get_conn() as conn:
+                extending_sub = await subs_repo.get(conn, sub_id)
+            if (
+                extending_sub is None
+                or extending_sub.user_id != user.id
+                or extending_sub.status != "active"
+            ):
+                await callback.answer(
+                    "Подписка недоступна для продления.", show_alert=True
+                )
+                await state.clear()
+                return
+        # Inbound is pinned to the existing sub.
+        inbound_id = int(extending_sub.xui_inbound_id) if extending_sub else int(
+            data.get("inbound_id") or 0
+        )
+        remark: str | None = None
+        try:
+            xui = await get_xui_client()
+            options = await list_user_inbounds(xui)
+            remark = next(
+                (o.remark for o in options if o.id == inbound_id),
+                None,
+            )
+        except XuiError as exc:
+            logger.warning(
+                "cb_pick_plan(extend): panel unreachable, rendering confirm "
+                "without inbound remark for plan {}: {}",
+                plan.id,
+                exc,
+            )
+        await state.update_data(
+            plan_id=plan.id,
+            promo_id=promo_id,
+            inbound_id=inbound_id,
+            sub_id=sub_id,
+            inbound_options=None,
+        )
+        await state.set_state(BuyFlow.confirming)
+        if callback.message is not None:
+            await callback.message.edit_text(
+                _format_confirm(
+                    plan, promo,
+                    inbound_remark=remark,
+                    extending_sub=extending_sub,
+                ),
+                reply_markup=confirm_kb(
+                    plan.id,
+                    promo_id=promo_id,
+                    inbound_id=inbound_id,
+                    sub_id=sub_id,
+                ),
+            )
+        await callback.answer()
+        return
+
+    # ---- New-subscription branch (original logic). ----
     async with get_conn() as conn:
         inbound_ids = await plans_repo.get_inbounds(conn, plan.id)
 
@@ -301,7 +539,7 @@ async def cb_pick_plan(
         only_inbound_id = int(inbound_ids[0])
         # Try to resolve the remark for a nicer confirm card; falls back
         # to a placeholder on panel error.
-        remark: str | None = None
+        remark = None
         try:
             xui = await get_xui_client()
             options = await list_user_inbounds(xui)
@@ -317,21 +555,17 @@ async def cb_pick_plan(
                 exc,
             )
 
-        has_sub = False
-        if user is not None:
-            async with get_conn() as conn:
-                has_sub = await _has_active_sub(conn, user.id)
-
         await state.update_data(
             plan_id=plan.id,
             promo_id=promo_id,
             inbound_id=only_inbound_id,
+            sub_id=0,
             inbound_options=None,
         )
         await state.set_state(BuyFlow.confirming)
         if callback.message is not None:
             await callback.message.edit_text(
-                _format_confirm(plan, promo, inbound_remark=remark, has_active_sub=has_sub),
+                _format_confirm(plan, promo, inbound_remark=remark, extending_sub=None),
                 reply_markup=confirm_kb(plan.id, promo_id=promo_id, inbound_id=only_inbound_id),
             )
         await callback.answer()
@@ -364,6 +598,7 @@ async def cb_pick_plan(
         plan_id=plan.id,
         promo_id=promo_id,
         inbound_id=0,
+        sub_id=0,
         inbound_options=_options_to_jsonable(filtered),
     )
     await state.set_state(BuyFlow.choosing_inbound)
@@ -432,19 +667,17 @@ async def cb_pick_inbound(
     )
     remark = _remark_for(options, inbound_id) if options else f"#{inbound_id}"
 
-    has_sub = False
-    if user is not None:
-        async with get_conn() as conn:
-            has_sub = await _has_active_sub(conn, user.id)
-
+    sub_id = int(data.get("sub_id") or 0)
     await state.update_data(
-        plan_id=plan.id, promo_id=promo_id, inbound_id=inbound_id
+        plan_id=plan.id, promo_id=promo_id, inbound_id=inbound_id, sub_id=sub_id
     )
     await state.set_state(BuyFlow.confirming)
     if callback.message is not None:
         await callback.message.edit_text(
-            _format_confirm(plan, promo, inbound_remark=remark, has_active_sub=has_sub),
-            reply_markup=confirm_kb(plan.id, promo_id=promo_id, inbound_id=inbound_id),
+            _format_confirm(plan, promo, inbound_remark=remark, extending_sub=None),
+            reply_markup=confirm_kb(
+                plan.id, promo_id=promo_id, inbound_id=inbound_id, sub_id=sub_id
+            ),
         )
     await callback.answer()
 
@@ -494,12 +727,17 @@ async def cb_apply_promo(
     """
     data = await state.get_data()
     inbound_id = int(callback_data.inbound_id or data.get("inbound_id") or 0)
-    await state.update_data(plan_id=callback_data.plan_id, inbound_id=inbound_id)
+    sub_id = int(callback_data.sub_id or data.get("sub_id") or 0)
+    await state.update_data(
+        plan_id=callback_data.plan_id, inbound_id=inbound_id, sub_id=sub_id
+    )
     await state.set_state(BuyFlow.entering_promo)
     if callback.message is not None:
         await callback.message.edit_text(
             "Введите промокод одним сообщением:",
-            reply_markup=confirm_kb(callback_data.plan_id, inbound_id=inbound_id),
+            reply_markup=confirm_kb(
+                callback_data.plan_id, inbound_id=inbound_id, sub_id=sub_id
+            ),
         )
     await callback.answer()
 
@@ -524,6 +762,7 @@ async def msg_promo_code(
     data = await state.get_data()
     plan_id = int(data.get("plan_id") or 0)
     inbound_id = int(data.get("inbound_id") or 0)
+    sub_id = int(data.get("sub_id") or 0)
     async with get_conn() as conn:
         plan = await _fetch_plan(conn, plan_id)
         if not _plan_is_buyable(plan):
@@ -538,11 +777,13 @@ async def msg_promo_code(
     if not result.is_valid or result.promo is None:
         await message.answer(
             (result.error or "Промокод недействителен.") + " Введите ещё раз:",
-            reply_markup=confirm_kb(plan.id, inbound_id=inbound_id),
+            reply_markup=confirm_kb(plan.id, inbound_id=inbound_id, sub_id=sub_id),
         )
         return
 
-    await state.update_data(promo_id=result.promo.id, inbound_id=inbound_id)
+    await state.update_data(
+        promo_id=result.promo.id, inbound_id=inbound_id, sub_id=sub_id
+    )
     await state.set_state(BuyFlow.confirming)
 
     # Resolve the chosen inbound's remark (best-effort — falls back to
@@ -563,16 +804,31 @@ async def msg_promo_code(
                 exc,
             )
 
-    async with get_conn() as conn:
-        has_sub = await _has_active_sub(conn, user.id)
+    # Re-resolve the extending subscription (if any) so the confirm card
+    # shows "🔄 Продление подписки #N · до DATE" rather than the "new"
+    # variant. Ownership/status was already checked when entering the
+    # extend branch in cb_pick_plan, but it's cheap to verify again.
+    extending_sub: Subscription | None = None
+    if sub_id > 0:
+        async with get_conn() as conn:
+            extending_sub = await subs_repo.get(conn, sub_id)
+        if extending_sub is not None and (
+            extending_sub.user_id != user.id or extending_sub.status != "active"
+        ):
+            extending_sub = None
 
     await message.answer(
         "✅ Промокод применён.\n\n"
         + _format_confirm(
-            plan, result.promo, inbound_remark=remark, has_active_sub=has_sub
+            plan, result.promo,
+            inbound_remark=remark,
+            extending_sub=extending_sub,
         ),
         reply_markup=confirm_kb(
-            plan.id, promo_id=result.promo.id, inbound_id=inbound_id
+            plan.id,
+            promo_id=result.promo.id,
+            inbound_id=inbound_id,
+            sub_id=sub_id,
         ),
     )
 
@@ -588,6 +844,7 @@ async def cb_confirm(
     callback_data: BuyCB,
     state: FSMContext,
     bot: Bot,
+    user: User | None = None,
 ) -> None:
     """Re-validate, send the Stars invoice, and clear FSM state.
 
@@ -597,19 +854,35 @@ async def cb_confirm(
     ``pre_checkout`` will validate again at payment time.
 
     The ``inbound_id`` is sourced from the callback payload (the
-    keyboard threads it through :class:`BuyCB`) and re-validated against
+    keyboard threads it through :class:`BuyCB`) and — for the new-sub
+    branch only — re-validated against
     :func:`app.db.repos.plans.get_inbounds`. On mismatch we send the user
     back to the inbound-selection step instead of issuing the invoice.
+
+    When ``sub_id > 0`` (extend flow):
+
+    * The allow-list check is **intentionally skipped** — an existing
+      subscription may live on an inbound that has since been detached
+      from any plan, and extending it must still succeed.
+    * Ownership of ``sub_id`` is re-verified (the keyboard is server-
+      trusted but defence-in-depth: a stale keyboard mid-session must
+      not let a user extend someone else's sub).
+    * ``inbound_id`` is taken from the existing subscription if missing
+      from the payload (legacy keyboards).
     """
     plan_id = callback_data.plan_id
     promo_id = callback_data.promo_id or 0
     inbound_id = int(callback_data.inbound_id or 0)
-    if not inbound_id:
-        # Fallback: the FSM should always have the inbound by this
-        # point, but if it doesn't (e.g. a stale keyboard from before
-        # the inbound-selection rollout), recover from state data.
+    sub_id = int(callback_data.sub_id or 0)
+    if not inbound_id or not sub_id:
+        # Fallback: the FSM should always have these by this point, but
+        # if it doesn't (e.g. a stale keyboard from before the rollout),
+        # recover from state data.
         data = await state.get_data()
-        inbound_id = int(data.get("inbound_id") or 0)
+        if not inbound_id:
+            inbound_id = int(data.get("inbound_id") or 0)
+        if not sub_id:
+            sub_id = int(data.get("sub_id") or 0)
 
     async with get_conn() as conn:
         plan = await _fetch_plan(conn, plan_id)
@@ -631,6 +904,38 @@ async def cb_confirm(
         promo = None
         promo_id = 0
 
+    # ---- Extend branch — verify ownership, skip allow-list. ----
+    if sub_id > 0:
+        if user is None:
+            await callback.answer("Нужно нажать /start.", show_alert=True)
+            return
+        async with get_conn() as conn:
+            sub = await subs_repo.get(conn, sub_id)
+        if sub is None or sub.user_id != user.id or sub.status != "active":
+            await callback.answer(
+                "Подписка недоступна для продления.", show_alert=True
+            )
+            await state.clear()
+            return
+        if not inbound_id:
+            inbound_id = int(sub.xui_inbound_id)
+        chat_id = callback.message.chat.id if callback.message is not None else None
+        if chat_id is None:
+            await callback.answer("Не удалось определить чат.", show_alert=True)
+            return
+        await billing.send_invoice(
+            bot,
+            chat_id=chat_id,
+            plan=plan,
+            promo=promo,
+            inbound_id=inbound_id,
+            sub_id=sub_id,
+        )
+        await state.clear()
+        await callback.answer()
+        return
+
+    # ---- New-subscription branch — original allow-list check. ----
     if not inbound_id or inbound_id not in allowed_inbounds:
         # Inbound was either never set or no longer attached to the plan.
         # Drop the user back to the selection step so they can pick a
@@ -679,10 +984,16 @@ async def cb_confirm(
         return
 
     await billing.send_invoice(
-        bot, chat_id=chat_id, plan=plan, promo=promo, inbound_id=inbound_id
+        bot,
+        chat_id=chat_id,
+        plan=plan,
+        promo=promo,
+        inbound_id=inbound_id,
+        sub_id=0,
     )
     # The state has done its job — the invoice payload carries plan_id,
-    # promo_id and inbound_id through to pre_checkout / successful_payment.
+    # promo_id, inbound_id and sub_id (0 for new) through to
+    # pre_checkout / successful_payment.
     await state.clear()
     await callback.answer()
 
@@ -701,7 +1012,7 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
     half-applied promo.
     """
     try:
-        plan_id, promo_id, inbound_id = billing.parse_invoice_payload(
+        plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(
             query.invoice_payload
         )
     except ValueError as exc:
@@ -730,6 +1041,41 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
             error_message="Промокод стал недействителен.",
         )
         return
+
+    # Extend flow: validate ownership of sub_id, skip allow-list check
+    # (an existing sub may live on an inbound that's no longer attached
+    # to any plan).
+    if int(sub_id) > 0:
+        tg_id = query.from_user.id if query.from_user is not None else None
+        if tg_id is None:
+            await bot.answer_pre_checkout_query(
+                query.id, ok=False, error_message="Не удалось определить пользователя."
+            )
+            return
+        async with get_conn() as conn:
+            buyer = await users_repo.get_by_tg_id(conn, int(tg_id))
+            sub = await subs_repo.get(conn, int(sub_id)) if buyer is not None else None
+        if (
+            buyer is None
+            or sub is None
+            or sub.user_id != buyer.id
+            or sub.status != "active"
+        ):
+            logger.warning(
+                "pre_checkout: extend rejected (tg_id={}, sub_id={})",
+                tg_id,
+                sub_id,
+            )
+            await bot.answer_pre_checkout_query(
+                query.id,
+                ok=False,
+                error_message="Подписка недоступна для продления.",
+            )
+            return
+        await bot.answer_pre_checkout_query(query.id, ok=True)
+        return
+
+    # New-subscription flow — original allow-list check.
     if int(inbound_id) not in allowed_inbounds:
         logger.warning(
             "pre_checkout: inbound_id={} not in plan {} allow-list {}",
@@ -795,7 +1141,7 @@ async def on_successful_payment(
 
     # Step 2 — payload.
     try:
-        plan_id, promo_id, inbound_id = billing.parse_invoice_payload(
+        plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(
             payment.invoice_payload
         )
     except ValueError as exc:
@@ -856,6 +1202,17 @@ async def on_successful_payment(
     xui = await get_xui_client()
     sub = None
     xui_failed = False
+    extend_sub_id = int(sub_id) if int(sub_id) > 0 else None
+    if extend_sub_id is not None:
+        logger.info(
+            "successful_payment: extend sub {} (charge {})",
+            extend_sub_id,
+            charge_id,
+        )
+    else:
+        logger.info(
+            "successful_payment: create new sub (charge {})", charge_id
+        )
     try:
         async with get_conn() as conn:
             sub = await subs_service.create_or_extend(
@@ -865,6 +1222,7 @@ async def on_successful_payment(
                 plan=plan,
                 promo=promo,
                 inbound_id=int(inbound_id),
+                extend_sub_id=extend_sub_id,
             )
     except XuiError as exc:
         xui_failed = True

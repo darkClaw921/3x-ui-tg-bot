@@ -1,6 +1,6 @@
 {
   "root": "/Users/igorgerasimov/claudeWorkspace/3x-ui-tg-bot",
-  "generatedAt": "2026-05-17T09:22:50.557Z",
+  "generatedAt": "2026-05-17T11:04:31.435Z",
   "nodes": [
     {
       "id": "app/__init__.py",
@@ -307,7 +307,7 @@
           "name": "NotificationKind",
           "type": "variable",
           "path": "app/db/repos/subscriptions.py",
-          "line": 284,
+          "line": 311,
           "exports": [
             "NotificationKind"
           ]
@@ -886,7 +886,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/user/buy.py",
-          "line": 75,
+          "line": 84,
           "exports": [
             "router"
           ]
@@ -896,7 +896,15 @@
           "name": "_format_confirm",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 83,
+          "line": 92,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:_shift_expiry",
+          "name": "_shift_expiry",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 149,
           "exports": []
         },
         {
@@ -904,7 +912,7 @@
           "name": "_plan_is_buyable",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 138,
+          "line": 177,
           "exports": []
         },
         {
@@ -912,7 +920,7 @@
           "name": "_promo_is_usable",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 143,
+          "line": 182,
           "exports": []
         },
         {
@@ -920,7 +928,7 @@
           "name": "_remark_for",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 203,
+          "line": 374,
           "exports": []
         },
         {
@@ -928,7 +936,7 @@
           "name": "_options_to_jsonable",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 221,
+          "line": 392,
           "exports": []
         },
         {
@@ -936,7 +944,7 @@
           "name": "_jsonable_to_options",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 233,
+          "line": 404,
           "exports": []
         },
         {
@@ -944,7 +952,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/user/buy.py",
-          "line": 927,
+          "line": 1285,
           "exports": []
         }
       ]
@@ -1037,7 +1045,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 62,
+          "line": 84,
           "exports": [
             "router"
           ]
@@ -1047,7 +1055,7 @@
           "name": "_BYTE_UNITS",
           "type": "variable",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 70,
+          "line": 92,
           "exports": []
         },
         {
@@ -1055,7 +1063,7 @@
           "name": "_format_bytes",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 73,
+          "line": 95,
           "exports": []
         },
         {
@@ -1063,7 +1071,7 @@
           "name": "_parse_iso",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 99,
+          "line": 121,
           "exports": []
         },
         {
@@ -1071,7 +1079,7 @@
           "name": "_days_delta",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 112,
+          "line": 134,
           "exports": []
         },
         {
@@ -1079,7 +1087,7 @@
           "name": "_is_active",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 129,
+          "line": 151,
           "exports": []
         },
         {
@@ -1087,7 +1095,7 @@
           "name": "_format_days_line",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 136,
+          "line": 158,
           "exports": []
         },
         {
@@ -1095,7 +1103,7 @@
           "name": "_format_status_line",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 151,
+          "line": 173,
           "exports": []
         },
         {
@@ -1103,15 +1111,39 @@
           "name": "_format_sub_card",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 216,
+          "line": 238,
           "exports": []
         },
         {
-          "id": "app/handlers/user/my_subscription.py:_sub_card_kb",
-          "name": "_sub_card_kb",
+          "id": "app/handlers/user/my_subscription.py:_MAX_VISIBLE_SUBS",
+          "name": "_MAX_VISIBLE_SUBS",
+          "type": "variable",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 263,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_sort_subs",
+          "name": "_sort_subs",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 241,
+          "line": 266,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_build_subs_keyboard",
+          "name": "_build_subs_keyboard",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 290,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_btn",
+          "name": "_btn",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 330,
           "exports": []
         },
         {
@@ -1119,7 +1151,15 @@
           "name": "_no_subscription_kb",
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 271,
+          "line": 344,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/my_subscription.py:_pluralize_subs",
+          "name": "_pluralize_subs",
+          "type": "function",
+          "path": "app/handlers/user/my_subscription.py",
+          "line": 423,
           "exports": []
         },
         {
@@ -1127,7 +1167,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/user/my_subscription.py",
-          "line": 427,
+          "line": 507,
           "exports": []
         }
       ]
@@ -1159,7 +1199,7 @@
           "name": "The",
           "type": "variable",
           "path": "app/handlers/user/promo.py",
-          "line": 34,
+          "line": 49,
           "exports": [
             "The"
           ]
@@ -1169,7 +1209,7 @@
           "name": "to",
           "type": "variable",
           "path": "app/handlers/user/promo.py",
-          "line": 38,
+          "line": 53,
           "exports": [
             "to"
           ]
@@ -1179,7 +1219,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/user/promo.py",
-          "line": 68,
+          "line": 90,
           "exports": [
             "router"
           ]
@@ -1189,7 +1229,7 @@
           "name": "_options_to_jsonable",
           "type": "function",
           "path": "app/handlers/user/promo.py",
-          "line": 76,
+          "line": 98,
           "exports": []
         },
         {
@@ -1197,7 +1237,7 @@
           "name": "_jsonable_to_options",
           "type": "function",
           "path": "app/handlers/user/promo.py",
-          "line": 89,
+          "line": 111,
           "exports": []
         },
         {
@@ -1205,7 +1245,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/user/promo.py",
-          "line": 399,
+          "line": 699,
           "exports": []
         }
       ]
@@ -1522,6 +1562,8 @@
         "plans_kb",
         "inbound_select_kb",
         "confirm_kb",
+        "buy_action_kb",
+        "promo_action_kb",
         "subscription_kb"
       ],
       "children": [
@@ -1530,7 +1572,7 @@
           "name": "UserCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 42,
+          "line": 43,
           "exports": [
             "UserCB"
           ]
@@ -1540,7 +1582,7 @@
           "name": "BuyCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 48,
+          "line": 49,
           "exports": [
             "BuyCB"
           ]
@@ -1550,7 +1592,7 @@
           "name": "InboundCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 67,
+          "line": 86,
           "exports": [
             "InboundCB"
           ]
@@ -1560,7 +1602,7 @@
           "name": "SubCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 85,
+          "line": 104,
           "exports": [
             "SubCB"
           ]
@@ -1570,7 +1612,7 @@
           "name": "PromoActCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 97,
+          "line": 116,
           "exports": [
             "PromoActCB"
           ]
@@ -1580,7 +1622,7 @@
           "name": "user_main_menu",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 113,
+          "line": 151,
           "exports": [
             "user_main_menu"
           ]
@@ -1590,7 +1632,7 @@
           "name": "back_to_menu_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 137,
+          "line": 175,
           "exports": [
             "back_to_menu_kb"
           ]
@@ -1600,7 +1642,7 @@
           "name": "cancel_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 144,
+          "line": 182,
           "exports": [
             "cancel_kb"
           ]
@@ -1610,7 +1652,7 @@
           "name": "plans_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 151,
+          "line": 189,
           "exports": [
             "plans_kb"
           ]
@@ -1620,7 +1662,7 @@
           "name": "inbound_select_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 168,
+          "line": 206,
           "exports": [
             "inbound_select_kb"
           ]
@@ -1630,9 +1672,29 @@
           "name": "confirm_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 203,
+          "line": 241,
           "exports": [
             "confirm_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:buy_action_kb",
+          "name": "buy_action_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 284,
+          "exports": [
+            "buy_action_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:promo_action_kb",
+          "name": "promo_action_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 316,
+          "exports": [
+            "promo_action_kb"
           ]
         },
         {
@@ -1640,7 +1702,7 @@
           "name": "subscription_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 240,
+          "line": 352,
           "exports": [
             "subscription_kb"
           ]
@@ -1650,7 +1712,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/keyboards/user.py",
-          "line": 252,
+          "line": 364,
           "exports": []
         }
       ]
@@ -1971,7 +2033,7 @@
           "name": "parse_invoice_payload",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 123,
+          "line": 134,
           "exports": [
             "parse_invoice_payload"
           ]
@@ -1981,7 +2043,7 @@
           "name": "_invoice_title",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 200,
+          "line": 227,
           "exports": []
         },
         {
@@ -1989,7 +2051,7 @@
           "name": "_invoice_description",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 205,
+          "line": 232,
           "exports": []
         },
         {
@@ -1997,7 +2059,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/services/billing.py",
-          "line": 263,
+          "line": 311,
           "exports": []
         }
       ]
@@ -2241,7 +2303,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/services/subscriptions.py",
-          "line": 357,
+          "line": 403,
           "exports": []
         }
       ]
@@ -2350,7 +2412,7 @@
           "name": "PromoActivate",
           "type": "class",
           "path": "app/states/user.py",
-          "line": 36,
+          "line": 42,
           "exports": [
             "PromoActivate"
           ]
@@ -2360,7 +2422,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/states/user.py",
-          "line": 49,
+          "line": 61,
           "exports": []
         }
       ]
@@ -3333,8 +3395,8 @@
       "type": "file",
       "path": "tests/test_handlers_user_buy.py",
       "exports": [
-        "test_format_confirm_warning_when_active_sub_exists",
-        "test_format_confirm_no_warning_when_no_active_sub"
+        "test_format_confirm_renders_extending_card",
+        "test_format_confirm_renders_new_card"
       ],
       "children": [
         {
@@ -3370,23 +3432,31 @@
           "exports": []
         },
         {
-          "id": "tests/test_handlers_user_buy.py:test_format_confirm_warning_when_active_sub_exists",
-          "name": "test_format_confirm_warning_when_active_sub_exists",
+          "id": "tests/test_handlers_user_buy.py:_make_sub_obj",
+          "name": "_make_sub_obj",
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 851,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_buy.py:test_format_confirm_renders_extending_card",
+          "name": "test_format_confirm_renders_extending_card",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 869,
           "exports": [
-            "test_format_confirm_warning_when_active_sub_exists"
+            "test_format_confirm_renders_extending_card"
           ]
         },
         {
-          "id": "tests/test_handlers_user_buy.py:test_format_confirm_no_warning_when_no_active_sub",
-          "name": "test_format_confirm_no_warning_when_no_active_sub",
+          "id": "tests/test_handlers_user_buy.py:test_format_confirm_renders_new_card",
+          "name": "test_format_confirm_renders_new_card",
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
-          "line": 864,
+          "line": 887,
           "exports": [
-            "test_format_confirm_no_warning_when_no_active_sub"
+            "test_format_confirm_renders_new_card"
           ]
         }
       ]
@@ -3421,9 +3491,13 @@
         "test_parse_iso_with_space",
         "test_days_delta_future",
         "test_days_delta_past",
+        "test_pluralize_subs_one",
+        "test_pluralize_subs_few",
+        "test_pluralize_subs_many",
         "test_format_status_lines",
         "test_format_days_line_today",
-        "test_format_days_line_yesterday"
+        "test_format_days_line_yesterday",
+        "test_sort_subs_active_then_inactive"
       ],
       "children": [
         {
@@ -3431,7 +3505,7 @@
           "name": "test_format_bytes_zero",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 16,
+          "line": 35,
           "exports": [
             "test_format_bytes_zero"
           ]
@@ -3441,7 +3515,7 @@
           "name": "test_format_bytes_kb",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 20,
+          "line": 39,
           "exports": [
             "test_format_bytes_kb"
           ]
@@ -3451,7 +3525,7 @@
           "name": "test_format_bytes_gb",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 24,
+          "line": 43,
           "exports": [
             "test_format_bytes_gb"
           ]
@@ -3461,7 +3535,7 @@
           "name": "test_format_bytes_negative_clamped",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 28,
+          "line": 47,
           "exports": [
             "test_format_bytes_negative_clamped"
           ]
@@ -3471,7 +3545,7 @@
           "name": "test_parse_iso_with_space",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 32,
+          "line": 51,
           "exports": [
             "test_parse_iso_with_space"
           ]
@@ -3481,7 +3555,7 @@
           "name": "test_days_delta_future",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 37,
+          "line": 56,
           "exports": [
             "test_days_delta_future"
           ]
@@ -3491,17 +3565,71 @@
           "name": "test_days_delta_past",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 42,
+          "line": 61,
           "exports": [
             "test_days_delta_past"
           ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_pluralize_subs_one",
+          "name": "test_pluralize_subs_one",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 66,
+          "exports": [
+            "test_pluralize_subs_one"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_pluralize_subs_few",
+          "name": "test_pluralize_subs_few",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 70,
+          "exports": [
+            "test_pluralize_subs_few"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_pluralize_subs_many",
+          "name": "test_pluralize_subs_many",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 75,
+          "exports": [
+            "test_pluralize_subs_many"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:_kb_buttons",
+          "name": "_kb_buttons",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 86,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:_flat_buttons",
+          "name": "_flat_buttons",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 94,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:_mock_callback",
+          "name": "_mock_callback",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 103,
+          "exports": []
         },
         {
           "id": "tests/test_handlers_user_my_subscription.py:test_format_status_lines",
           "name": "test_format_status_lines",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 221,
+          "line": 570,
           "exports": [
             "test_format_status_lines"
           ]
@@ -3511,7 +3639,7 @@
           "name": "test_format_days_line_today",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 250,
+          "line": 597,
           "exports": [
             "test_format_days_line_today"
           ]
@@ -3521,9 +3649,27 @@
           "name": "test_format_days_line_yesterday",
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
-          "line": 264,
+          "line": 610,
           "exports": [
             "test_format_days_line_yesterday"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:_make_sub",
+          "name": "_make_sub",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 712,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_my_subscription.py:test_sort_subs_active_then_inactive",
+          "name": "test_sort_subs_active_then_inactive",
+          "type": "function",
+          "path": "tests/test_handlers_user_my_subscription.py",
+          "line": 725,
+          "exports": [
+            "test_sort_subs_active_then_inactive"
           ]
         }
       ]
@@ -3842,7 +3988,9 @@
         "test_parse_payload_legacy_missing_inbound_falls_back",
         "test_parse_payload_legacy_uses_patched_default",
         "test_payload_byte_limit_guard",
-        "test_payload_fits_in_128_bytes_for_large_ids"
+        "test_payload_fits_in_128_bytes_for_large_ids",
+        "test_billing_payload_roundtrip_with_sub_id",
+        "test_billing_payload_legacy_without_s_returns_zero"
       ],
       "children": [
         {
@@ -4139,6 +4287,26 @@
           "line": 228,
           "exports": [
             "test_payload_fits_in_128_bytes_for_large_ids"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_billing_payload_roundtrip_with_sub_id",
+          "name": "test_billing_payload_roundtrip_with_sub_id",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 317,
+          "exports": [
+            "test_billing_payload_roundtrip_with_sub_id"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_billing_payload_legacy_without_s_returns_zero",
+          "name": "test_billing_payload_legacy_without_s_returns_zero",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 339,
+          "exports": [
+            "test_billing_payload_legacy_without_s_returns_zero"
           ]
         }
       ]

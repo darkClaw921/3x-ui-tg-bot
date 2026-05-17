@@ -3,13 +3,30 @@
 Handlers
 --------
 
-* :func:`cb_open_my` — callback ``UserCB(area='my')``: render the
-  user's current subscription card. If the user has no subscription at
-  all — show a friendly "no subscription yet" screen with a "Купить"
-  shortcut. If the user has multiple active subscriptions (shouldn't
-  happen with the current :func:`app.services.subscriptions.create_or_extend`
-  semantics, but be defensive), pick the one with the latest
-  ``expires_at`` for the headline card and list the rest below.
+* :func:`cb_open_my` — callback ``UserCB(area='my')``: render a single
+  message containing per-subscription cards for **all** of the user's
+  subscriptions. Active subscriptions are listed first (sorted by
+  ``expires_at`` DESC), then expired / revoked ones (sorted by
+  ``created_at`` DESC, which matches ``list_for_user`` ordering). The
+  first five subscriptions are rendered in full; if more exist, the
+  card list is capped with a ``«… и ещё N подписок»`` footer so the
+  message stays under Telegram's 4096-byte limit.
+
+  The inline keyboard mirrors the cards:
+
+  * a single ``«🆕 Купить новую подписку»`` row at the top (always
+    visible — it doubles as the only CTA when every existing sub is
+    expired);
+  * one row per visible subscription with two side-by-side buttons:
+    ``«🔑 Ключи #N»`` (re-deliver keys, ``SubCB(action='keys')``) and
+    ``«🛒 Продлить #N»`` (jump into the buy flow pre-pinned to that
+    subscription, ``BuyCB(action='extend', sub_id=N)``). The «Продлить»
+    button is shown **only for active subscriptions** because the
+    subscription service rejects extending non-active rows;
+  * a trailing ``«◀ В меню»`` row.
+
+  When the user has no subscriptions at all the friendly «У вас пока
+  нет подписки» screen is shown instead, with the same buy CTA.
 
 * :func:`cb_resend_keys` — callback ``SubCB(action='keys', sub_id)``:
   re-deliver vless URI + QR + Subscription URL for the chosen
@@ -20,12 +37,11 @@ Handlers
 Status / traffic line
 ---------------------
 
-For an active sub we hit
+For every rendered card we hit
 :func:`app.xui.clients.get_client_traffics` to pull live counters from
 the panel. If the panel call fails (network blip, client deleted out of
 band, etc.) we still render the DB-side info — the user always sees
-status + expiry — and append a soft notice instead of crashing. This is
-also the case the parent task explicitly calls out.
+status + expiry — and append a soft notice instead of crashing.
 
 Days-left line
 --------------
@@ -35,10 +51,16 @@ Days-left line
 * Negative deltas are formatted using ``abs(delta)`` so the absolute
   number reads naturally.
 
-The «Купить / Продлить» button is shown when the subscription is
-expired (or there is no active subscription). It points at
-:class:`BuyCB(action='open')` — the same entry point as the main menu
-"Купить" button.
+Buy / extend entry points
+-------------------------
+
+The buy flow exposes two stateless callbacks
+(:class:`BuyCB(action='extend', sub_id=N)` and
+:class:`BuyCB(action='new')`) registered without an FSM state filter
+specifically so the «Моя подписка» screen can route directly into the
+plan picker — skipping the «продлить vs новая» action screen that the
+main-menu «🛒 Купить» button shows when the user already has multiple
+active subscriptions.
 """
 
 from __future__ import annotations
@@ -238,34 +260,85 @@ def _format_sub_card(sub: Subscription, traffic: tuple[int | None, int | None, b
     return "\n".join(lines)
 
 
-def _sub_card_kb(sub: Subscription, *, expired: bool) -> InlineKeyboardBuilder:
-    """Return a builder with the action buttons for one subscription card.
+_MAX_VISIBLE_SUBS = 5
 
-    Buttons:
 
-    * 🔑 «Получить ключ ещё раз» — re-deliver vless / QR / subscription URL
-      (always present, even for expired subs — the user may want to copy
-      the URI before purchasing again).
-    * 🛒 «Продлить» / «Купить» — only shown when the sub is expired or
-      revoked. Routes through :class:`BuyCB(action='open')`.
-    * ◀ «В меню» — back-to-menu.
+def _sort_subs(subs: list[Subscription]) -> list[Subscription]:
+    """Return ``subs`` sorted active-first.
 
-    Returned as a builder (not a markup) so the caller can compose the
-    buttons of multiple subscriptions onto one keyboard if needed.
+    Order:
+
+    * Active subscriptions (status ``active`` AND not yet expired) come
+      first, sorted by ``expires_at`` DESC so the latest extension is
+      at the top.
+    * The remainder (``expired``, ``revoked``, or ``active`` rows whose
+      ``expires_at`` is already in the past — the expire job hasn't run
+      yet) follow, sorted by ``created_at`` DESC.
+
+    Ties are broken by ``id`` DESC for determinism. The ordering is
+    pinned by tests in
+    :mod:`tests.test_handlers_user_my_subscription` so future
+    sort-key tweaks need a matching test update.
+    """
+    active = [s for s in subs if _is_active(s)]
+    inactive = [s for s in subs if not _is_active(s)]
+    active.sort(key=lambda s: (s.expires_at, s.id), reverse=True)
+    inactive.sort(key=lambda s: (s.created_at, s.id), reverse=True)
+    return active + inactive
+
+
+def _build_subs_keyboard(visible: list[Subscription]) -> InlineKeyboardBuilder:
+    """Build the inline keyboard for the «Моя подписка» screen.
+
+    Layout (top → bottom):
+
+    1. ``🆕 Купить новую подписку`` (``BuyCB(action='new')``) — always
+       rendered, even when every existing sub is expired. This is the
+       canonical entry point into the buy flow with ``sub_id=0``.
+    2. For each visible subscription — one row with
+       ``🔑 Ключи #N`` (``SubCB(action='keys', sub_id=N)``) and, when
+       the subscription is currently active, ``🛒 Продлить #N``
+       (``BuyCB(action='extend', sub_id=N)``). For inactive subs the
+       row contains only the keys button — ``cb_pick_action_extend``
+       in :mod:`app.handlers.user.buy` rejects non-active rows.
+    3. ``◀ В меню`` (``UserCB(area='menu')``) — back to the main menu.
+
+    ``visible`` MUST already be capped to :data:`_MAX_VISIBLE_SUBS` by
+    the caller — this helper does not enforce the cap so it can be
+    reused for screens that paginate differently.
     """
     builder = InlineKeyboardBuilder()
     builder.button(
-        text="🔑 Получить ключ ещё раз",
-        callback_data=SubCB(action="keys", sub_id=sub.id),
+        text="🆕 Купить новую подписку",
+        callback_data=BuyCB(action="new"),
     )
-    if expired:
-        builder.button(
-            text="🛒 Продлить",
-            callback_data=BuyCB(action="open"),
-        )
-    builder.button(text="◀ В меню", callback_data=UserCB(area="menu"))
     builder.adjust(1)
+    for sub in visible:
+        if _is_active(sub):
+            builder.row(
+                _btn(f"🔑 Ключи #{sub.id}", SubCB(action="keys", sub_id=sub.id)),
+                _btn(f"🛒 Продлить #{sub.id}", BuyCB(action="extend", sub_id=sub.id)),
+            )
+        else:
+            builder.row(
+                _btn(f"🔑 Ключи #{sub.id}", SubCB(action="keys", sub_id=sub.id)),
+            )
+    builder.row(_btn("◀ В меню", UserCB(area="menu")))
     return builder
+
+
+def _btn(text: str, cb):
+    """Tiny helper: build an ``InlineKeyboardButton`` from a callback factory.
+
+    ``InlineKeyboardBuilder.row(*buttons)`` expects already-constructed
+    buttons, so we materialise them here instead of going through
+    ``builder.button(...)`` (which appends to the implicit pending row).
+    Centralising this keeps the keyboard composition in
+    :func:`_build_subs_keyboard` compact and easy to audit.
+    """
+    from aiogram.types import InlineKeyboardButton
+
+    return InlineKeyboardButton(text=text, callback_data=cb.pack())
 
 
 def _no_subscription_kb() -> InlineKeyboardBuilder:
@@ -284,17 +357,19 @@ def _no_subscription_kb() -> InlineKeyboardBuilder:
 
 @router.callback_query(UserCB.filter(F.area == "my"))
 async def cb_open_my(callback: CallbackQuery, user: User | None = None) -> None:
-    """Render the "Моя подписка" screen.
+    """Render the "Моя подписка" screen — list of all subscriptions.
 
-    Three branches:
+    Branches:
 
     1. **No user / no subscriptions ever** — show the "no subscription"
        screen with a single "Купить" CTA.
-    2. **Exactly one subscription** (the common case) — show its card
-       with traffic + days line.
-    3. **Multiple subscriptions** — show the freshest active (or, if none
-       active, the freshest by ``created_at``) card and list the rest
-       briefly below.
+    2. **One or more subscriptions** — list per-subscription cards
+       (active first, then expired/revoked) with per-sub action buttons
+       in the keyboard. The card list is capped to
+       :data:`_MAX_VISIBLE_SUBS` entries; when the user has more, a
+       trailing ``«… и ещё N подписок»`` line indicates the remainder.
+       The capped subset is also what the keyboard reflects, so the
+       button count never exceeds Telegram's per-message limit.
     """
     if user is None:
         await callback.answer("Сначала нажмите /start.", show_alert=True)
@@ -316,45 +391,50 @@ async def cb_open_my(callback: CallbackQuery, user: User | None = None) -> None:
         await callback.answer()
         return
 
-    # Pick the headline: latest *active* sub if any, otherwise the most
-    # recently created one (so the user always sees something useful).
-    active_subs = [s for s in all_subs if _is_active(s)]
-    if active_subs:
-        # list_for_user already returns newest first, but
-        # ``_is_active`` filtering may leave a stale order — pick the
-        # latest ``expires_at`` deterministically.
-        primary = max(active_subs, key=lambda s: s.expires_at)
-    else:
-        primary = all_subs[0]  # newest by created_at
+    ordered = _sort_subs(all_subs)
+    visible = ordered[:_MAX_VISIBLE_SUBS]
+    hidden_count = max(0, len(ordered) - _MAX_VISIBLE_SUBS)
 
-    traffic = await _fetch_traffics(primary)
-    card = _format_sub_card(primary, traffic)
-    expired = not _is_active(primary)
+    # Render one card per visible subscription. We fetch traffic per
+    # sub so a healthy panel surfaces live counters for every line; if
+    # the panel is down or a particular client is missing,
+    # ``_fetch_traffics`` returns ``ok=False`` and ``_format_sub_card``
+    # falls back to the soft notice. Cards are separated by a divider
+    # line so the user can scan boundaries quickly even with hyphens
+    # rendered in monospace by some clients.
+    blocks: list[str] = []
+    for sub in visible:
+        traffic = await _fetch_traffics(sub)
+        blocks.append(_format_sub_card(sub, traffic))
+    body = "\n\n━━━━━━━━━━━━━━━\n\n".join(blocks)
+    if hidden_count:
+        body = (
+            f"{body}\n\n"
+            f"… и ещё {hidden_count} "
+            f"{_pluralize_subs(hidden_count)}"
+        )
 
-    # If the user has more than one sub (rare), append a short list of the
-    # others. We keep it terse — clicking «Получить ключ ещё раз» on the
-    # primary card is the most common goal; rarely-used historical subs
-    # only need to be visible, not interactive.
-    extras = [s for s in all_subs if s.id != primary.id]
-    if extras:
-        lines = [card, "", "<b>Другие подписки:</b>"]
-        for s in extras[:5]:  # cap to keep the message under Telegram's 4096
-            status_glyph = "✅" if _is_active(s) else (
-                "🚫" if s.status == "revoked" else "❌"
-            )
-            lines.append(
-                f"{status_glyph} #{s.id} · до <code>{s.expires_at}</code> UTC"
-            )
-        if len(extras) > 5:
-            lines.append(f"… и ещё {len(extras) - 5}")
-        body = "\n".join(lines)
-    else:
-        body = card
-
-    kb = _sub_card_kb(primary, expired=expired).as_markup()
+    kb = _build_subs_keyboard(visible).as_markup()
     if callback.message is not None:
         await callback.message.edit_text(body, reply_markup=kb)
     await callback.answer()
+
+
+def _pluralize_subs(n: int) -> str:
+    """Return the Russian plural form for «подписка» given ``n``.
+
+    Russian uses three plural forms: 1 / 2-4 / 5-20. ``n`` is the
+    *displayed* count (always positive in our caller), so the function
+    only needs to cover the three nominal buckets — there is no zero
+    branch.
+    """
+    mod10 = n % 10
+    mod100 = n % 100
+    if mod10 == 1 and mod100 != 11:
+        return "подписка"
+    if 2 <= mod10 <= 4 and not (12 <= mod100 <= 14):
+        return "подписки"
+    return "подписок"
 
 
 @router.callback_query(SubCB.filter(F.action == "keys"))

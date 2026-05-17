@@ -1,0 +1,3 @@
+# app/handlers/user/promo.py::cb_pick_action_new_promo
+
+Callback handler bound to (PromoActivate.choosing_action, PromoActCB(action='new')). User picked '🆕 Новая подписка' on the free-days action screen. Loads promo_id from FSM (session-expired if missing). Reuses inbound_options snapshot from FSM (populated in msg_code before showing the action screen); when missing for any reason, re-fetches via list_user_inbounds with XuiError + empty-list defensive branches. Transitions to PromoActivate.choosing_inbound and renders inbound_select_kb — the existing cb_pick_inbound_for_promo then handles the final activation with extend_sub_id=None (new-sub branch).

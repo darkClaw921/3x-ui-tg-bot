@@ -176,6 +176,33 @@ async def list_for_user(
     return [Subscription.from_row(r) for r in rows]
 
 
+async def list_active_for_user(
+    conn: aiosqlite.Connection, user_id: int
+) -> list[Subscription]:
+    """Return all currently-active subscriptions for ``user_id``.
+
+    Active means ``status='active'`` AND ``expires_at > now``. Ordered by
+    ``expires_at`` descending (newest expiry first), so the freshest
+    extension appears at the top of UI lists. Ties broken by ``id`` desc
+    for determinism.
+
+    Sibling of :func:`get_active_for_user`, which returns at most one
+    subscription. This function exists to support users that hold
+    multiple concurrent subscriptions (one per device/inbound) —
+    introduced together with the explicit ``extend_sub_id`` argument in
+    :func:`app.services.subscriptions.create_or_extend`.
+    """
+    now = _utcnow_iso()
+    cursor = await conn.execute(
+        f"{_SELECT} "
+        "WHERE user_id = ? AND status = 'active' AND expires_at > ? "
+        "ORDER BY expires_at DESC, id DESC",
+        (user_id, now),
+    )
+    rows = await cursor.fetchall()
+    return [Subscription.from_row(r) for r in rows]
+
+
 async def extend(
     conn: aiosqlite.Connection,
     sub_id: int,

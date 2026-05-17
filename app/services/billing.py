@@ -88,6 +88,8 @@ def build_invoice_payload(
     plan_id: int,
     promo_id: int | None,
     inbound_id: int,
+    *,
+    sub_id: int = 0,
 ) -> str:
     """Encode the persistent state needed by ``successful_payment``.
 
@@ -97,20 +99,29 @@ def build_invoice_payload(
     * ``message.successful_payment.invoice_payload``
 
     It is the only place we can stash ``plan_id`` / ``promo_id`` /
-    ``inbound_id`` because the user's FSM state may have been cleared
-    (or moved on) between invoice creation and payment.
+    ``inbound_id`` / ``sub_id`` because the user's FSM state may have
+    been cleared (or moved on) between invoice creation and payment.
 
     Schema (compact JSON, single-letter keys to stay under the 128-byte
     Telegram limit even for large ids)::
 
-        {"p": <plan_id>, "r": <promo_id_or_null>, "i": <inbound_id>}
+        {"p": <plan_id>, "r": <promo_id_or_null>, "i": <inbound_id>,
+         "s": <sub_id_to_extend>}
+
+    The ``"s"`` key is **omitted entirely** when ``sub_id == 0`` (the
+    "create new subscription" case) — both for byte-budget hygiene and
+    so legacy payloads without ``"s"`` parse as ``sub_id=0`` without
+    needing a separate compatibility branch.
     """
+    obj: dict[str, object] = {
+        "p": int(plan_id),
+        "r": int(promo_id) if promo_id else None,
+        "i": int(inbound_id),
+    }
+    if sub_id:
+        obj["s"] = int(sub_id)
     payload = json.dumps(
-        {
-            "p": int(plan_id),
-            "r": int(promo_id) if promo_id else None,
-            "i": int(inbound_id),
-        },
+        obj,
         separators=(",", ":"),  # compact form keeps us well under 128 bytes
     )
     if len(payload.encode("utf-8")) > _PAYLOAD_BYTE_LIMIT:
@@ -120,21 +131,24 @@ def build_invoice_payload(
     return payload
 
 
-def parse_invoice_payload(payload: str) -> tuple[int, int | None, int]:
+def parse_invoice_payload(payload: str) -> tuple[int, int | None, int, int]:
     """Decode the JSON written by :func:`build_invoice_payload`.
 
-    Returns ``(plan_id, promo_id_or_None, inbound_id)``. Raises
+    Returns ``(plan_id, promo_id_or_None, inbound_id, sub_id)``. Raises
     :class:`ValueError` on a malformed payload — the buy handler treats
     this as "answer pre_checkout with ok=False".
 
     Backwards compatibility:
 
-    * The new payload uses short keys ``p`` / ``r`` / ``i``. Old payloads
-      (pre-inbound-selection rollout) use the long keys ``plan_id`` /
-      ``promo_id`` and have no ``i`` field; we still accept them and
-      fall back to :attr:`settings.XUI_INBOUND_ID` with a WARNING log so
-      operators see exactly how many in-flight invoices were affected by
-      the deploy.
+    * The new payload uses short keys ``p`` / ``r`` / ``i`` / ``s``.
+      Old payloads (pre-inbound-selection rollout) use the long keys
+      ``plan_id`` / ``promo_id`` and have no ``i`` field; we still
+      accept them and fall back to :attr:`settings.XUI_INBOUND_ID` with
+      a WARNING log so operators see exactly how many in-flight invoices
+      were affected by the deploy.
+    * The ``s`` key (sub_id-to-extend) is optional. Payloads without it
+      — both legacy and current "create new subscription" payloads —
+      decode as ``sub_id=0``.
     """
     try:
         data = json.loads(payload)
@@ -189,7 +203,20 @@ def parse_invoice_payload(payload: str) -> tuple[int, int | None, int]:
                 f"invoice payload bad inbound_id: {payload!r}"
             ) from exc
 
-    return plan_id, promo_id, inbound_id
+    # sub_id — optional ("s" key). Missing / 0 → 0 (legacy and new payloads
+    # that create a brand-new subscription).
+    raw_sub = data.get("s")
+    if raw_sub is None:
+        sub_id = 0
+    else:
+        try:
+            sub_id = int(raw_sub)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"invoice payload bad sub_id: {payload!r}"
+            ) from exc
+
+    return plan_id, promo_id, inbound_id, sub_id
 
 
 # ---------------------------------------------------------------------- #
@@ -202,9 +229,23 @@ def _invoice_title(plan: Plan) -> str:
     return f"VPN · {plan.title}"
 
 
-def _invoice_description(plan: Plan, price: InvoicePrice, promo: Promo | None) -> str:
-    """Return a human-readable description shown inside the invoice card."""
-    parts = [f"Доступ на {plan.days} дн."]
+def _invoice_description(
+    plan: Plan,
+    price: InvoicePrice,
+    promo: Promo | None,
+    *,
+    sub_id: int = 0,
+) -> str:
+    """Return a human-readable description shown inside the invoice card.
+
+    When ``sub_id > 0`` the description signals "продление подписки
+    #N" so the user sees in the Stars confirmation that this charge
+    extends an existing subscription rather than creating a new one.
+    """
+    if sub_id:
+        parts = [f"Продление подписки #{int(sub_id)} на {plan.days} дн."]
+    else:
+        parts = [f"Доступ на {plan.days} дн."]
     if price.extra_days:
         parts.append(f"+{price.extra_days} бонусных дн.")
     if promo is not None and promo.type != "free_days":
@@ -224,6 +265,7 @@ async def send_invoice(
     promo: Promo | None,
     *,
     inbound_id: int,
+    sub_id: int = 0,
 ) -> Message:
     """Send a Stars invoice for ``plan`` (with optional ``promo``).
 
@@ -232,6 +274,11 @@ async def send_invoice(
     provision into the right inbound without re-reading the FSM state
     (which Telegram may have cleared between invoice creation and
     payment).
+
+    ``sub_id`` is the existing subscription this purchase should extend
+    (``0`` = create a brand-new subscription). It is embedded into the
+    payload and surfaced in the human-readable description so the user
+    sees "Продление подписки #N" in the Stars confirmation card.
 
     Telegram quirks accounted for:
 
@@ -246,13 +293,14 @@ async def send_invoice(
         plan_id=plan.id,
         promo_id=promo.id if promo else None,
         inbound_id=int(inbound_id),
+        sub_id=int(sub_id),
     )
     prices = [LabeledPrice(label=plan.title, amount=price.stars)]
 
     return await bot.send_invoice(
         chat_id=chat_id,
         title=_invoice_title(plan),
-        description=_invoice_description(plan, price, promo),
+        description=_invoice_description(plan, price, promo, sub_id=int(sub_id)),
         payload=payload,
         provider_token="",
         currency="XTR",

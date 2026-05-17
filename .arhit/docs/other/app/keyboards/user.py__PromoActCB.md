@@ -1,0 +1,3 @@
+# app/keyboards/user.py::PromoActCB
+
+CallbackData factory (prefix 'up') for standalone promo activation. Fields: action (str: open|extend|new|cancel), inbound_id (int, default 0 — reserved), sub_id (int, default 0; >0 = extend the existing subscription with this id). Actions: 'open' = entry point ('Активировать промокод' from main menu); 'extend' = picked '🔄 Продлить #N' on the free-days action screen, sub_id identifies the sub; 'new' = picked '🆕 Новая подписка' on the action screen, sub_id stays 0 (proceeds to inbound selection); 'cancel' = abort. Packed payload format: 'up:<action>:<inbound_id>:<sub_id>' (e.g. up:open:0:0, up:extend:0:42, up:new:0:0).

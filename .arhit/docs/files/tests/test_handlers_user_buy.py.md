@@ -1,19 +1,3 @@
 # tests/test_handlers_user_buy.py
 
-Тесты для app.handlers.user.buy — полный buy-flow с выбором inbound.
-
-Покрытие хендлеров:
-- cb_open: с/без планов.
-- cb_pick_plan: skip-логика для 1 inbound (auto-confirm), multi-inbound селектор, no-inbounds misconfig (alert), xui unavailable, сохранение promo_id из FSM.
-- cb_pick_inbound: валидный выбор, inbound не в плане (alert), back-callback.
-- cb_apply_promo: переход в waiting_promo_code с сохранением inbound_id.
-- msg_promo_code: valid/invalid/no-user/deactivated-plan.
-- cb_confirm: send_invoice + payload c inbound_id, recovery при inbound не в плане (route обратно на selector), invalid plan, no chat_id.
-- on_pre_checkout: ok, bad payload, deactivated plan, invalid promo, inbound не в плане, legacy payload (fallback), missing plan.
-- on_successful_payment: happy path, legacy payload fallback, idempotency (duplicate charge), bad payload, no user, xui failure (records payment с subscription_id=None), promo redemption, plan deleted.
-- _format_confirm: warning при наличии активной подписки (с/без).
-
-Использует мок plans_repo.get_inbounds, мок list_user_inbounds (services.inbounds), AsyncMock get_xui_client.
-Autouse фикстура _clear_inbounds_cache сбрасывает TTL-кэш между тестами.
-
-См. также: app/handlers/user/buy.py.
+Unit tests for app/handlers/user/buy.py — covers buy flow + inbound selection + extend flow. 50 tests: cb_open (no plans / with plans / action screen for users with active subs / skips action screen otherwise), cb_pick_plan (single inbound / multi inbound / no inbounds / xui error / preserves promo / extend branch skips inbound selection), cb_pick_action_extend (sets sub_id+inbound in FSM, jumps to plans / rejects foreign sub), cb_pick_action_new (clears FSM, jumps to plans), cb_pick_inbound (valid / not in plan / back), cb_apply_promo + msg_promo_code (valid/invalid/no user/plan unavailable), cb_confirm (sends invoice / inbound not in plan / extend passes sub_id / extend skips allow-list / extend rejects foreign sub / invalid plan / no chat), pre_checkout (ok/bad payload/plan deactivated/promo invalid/inbound not in plan/legacy/missing plan/extend ownership/extend allow-list bypass), successful_payment (happy path/legacy/idempotent/bad payload/no user/xui fail/with promo/plan deleted/extend passes extend_sub_id=N/new passes extend_sub_id=None), _format_confirm (extend card with 🔄 Продление подписки #N + new expiry date / new card with 🆕 Новая подписка). Fixtures: file_db, make_user, make_plan, make_promo, make_subscription, mock_bot. Inbounds cache cleared between tests.

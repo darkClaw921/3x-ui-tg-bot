@@ -135,7 +135,7 @@ def test_build_payload_promo_zero_treated_as_none():
 
 def test_parse_payload_basic():
     p = billing.build_invoice_payload(7, 9, inbound_id=4)
-    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    plan_id, promo_id, inbound_id, _sub_id = billing.parse_invoice_payload(p)
     assert plan_id == 7
     assert promo_id == 9
     assert inbound_id == 4
@@ -143,7 +143,7 @@ def test_parse_payload_basic():
 
 def test_parse_payload_no_promo():
     p = billing.build_invoice_payload(7, None, inbound_id=4)
-    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    plan_id, promo_id, inbound_id, _sub_id = billing.parse_invoice_payload(p)
     assert promo_id is None
     assert inbound_id == 4
 
@@ -151,7 +151,7 @@ def test_parse_payload_no_promo():
 def test_parse_payload_zero_promo_id_becomes_none():
     """An explicit ``r=0`` in the payload is normalised to None."""
     p = json.dumps({"p": 1, "r": 0, "i": 2})
-    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    plan_id, promo_id, inbound_id, _sub_id = billing.parse_invoice_payload(p)
     assert plan_id == 1
     assert promo_id is None
     assert inbound_id == 2
@@ -189,7 +189,7 @@ def test_parse_payload_bad_inbound_id_type():
 def test_parse_payload_legacy_long_keys():
     """Old payloads with ``plan_id``/``promo_id`` long keys still parse."""
     p = json.dumps({"plan_id": 7, "promo_id": 9})
-    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    plan_id, promo_id, inbound_id, _sub_id = billing.parse_invoice_payload(p)
     assert plan_id == 7
     assert promo_id == 9
     # Missing ``i`` falls back to settings.XUI_INBOUND_ID.
@@ -199,7 +199,7 @@ def test_parse_payload_legacy_long_keys():
 def test_parse_payload_legacy_missing_inbound_falls_back():
     """Any payload missing ``i`` falls back to settings.XUI_INBOUND_ID."""
     p = json.dumps({"p": 1, "r": None})
-    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    plan_id, promo_id, inbound_id, _sub_id = billing.parse_invoice_payload(p)
     assert plan_id == 1
     assert promo_id is None
     assert inbound_id == int(settings.XUI_INBOUND_ID)
@@ -209,7 +209,7 @@ def test_parse_payload_legacy_uses_patched_default(monkey_settings):
     """The fallback honours the *current* settings.XUI_INBOUND_ID value."""
     monkey_settings(XUI_INBOUND_ID=42)
     p = json.dumps({"p": 1, "r": None})
-    _plan_id, _promo_id, inbound_id = billing.parse_invoice_payload(p)
+    _plan_id, _promo_id, inbound_id, _sub_id = billing.parse_invoice_payload(p)
     assert inbound_id == 42
 
 
@@ -307,3 +307,48 @@ async def test_send_invoice_payload_includes_promo_id(mock_bot):
     data = json.loads(payload)
     assert data["r"] == 42
     assert data["i"] == 11
+
+
+# ---------------------------------------------------------------------- #
+# Payload — sub_id (multiple subscriptions per user)
+# ---------------------------------------------------------------------- #
+
+
+def test_billing_payload_roundtrip_with_sub_id():
+    """build → parse round-trips sub_id>0 and omits 's' when sub_id=0."""
+    # With sub_id > 0: key 's' present, round-trip preserves the value.
+    p = billing.build_invoice_payload(1, None, inbound_id=5, sub_id=42)
+    data = json.loads(p)
+    assert data["s"] == 42
+    plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(p)
+    assert plan_id == 1
+    assert promo_id is None
+    assert inbound_id == 5
+    assert sub_id == 42
+
+    # With sub_id=0 (default): key 's' is omitted entirely for byte-budget
+    # hygiene and legacy compatibility; parse returns sub_id=0.
+    p0 = billing.build_invoice_payload(1, None, inbound_id=5, sub_id=0)
+    assert '"s"' not in p0
+    plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(p0)
+    assert plan_id == 1
+    assert inbound_id == 5
+    assert sub_id == 0
+
+
+def test_billing_payload_legacy_without_s_returns_zero():
+    """Hand-crafted legacy payloads with no 's' key parse as sub_id=0."""
+    # New-style short keys, no 's'.
+    p = json.dumps({"p": 1, "r": None, "i": 5})
+    plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(p)
+    assert plan_id == 1
+    assert promo_id is None
+    assert inbound_id == 5
+    assert sub_id == 0
+
+    # Truly-legacy long-key payload (pre-inbound-selection rollout).
+    p_legacy = json.dumps({"plan_id": 7, "promo_id": 9})
+    plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(p_legacy)
+    assert plan_id == 7
+    assert promo_id == 9
+    assert sub_id == 0

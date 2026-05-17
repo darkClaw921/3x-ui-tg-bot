@@ -1,0 +1,3 @@
+# app/states/user.py::PromoActivate
+
+FSM state group for the standalone promo activation flow (typically free_days). States (ordered): waiting_code (text input for the code), choosing_action (NEW: shown only for free_days promos when the user already has 1+ active subscriptions — lets them pick between extending an existing sub vs creating a new one via promo_action_kb), choosing_inbound (server selection — skipped for the extend branch since the inbound is inherited from the existing subscription). The wizard ends once a subscription is provisioned/extended or the user cancels. Driven by handlers in app/handlers/user/promo.py via aiogram MemoryStorage.

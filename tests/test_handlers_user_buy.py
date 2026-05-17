@@ -844,29 +844,479 @@ async def test_successful_payment_plan_deleted(
 
 
 # ---------------------------------------------------------------------- #
-# _format_confirm — active-subscription warning
+# _format_confirm — extend vs new card
 # ---------------------------------------------------------------------- #
 
 
-def test_format_confirm_warning_when_active_sub_exists():
-    """If user already has an active sub, the confirmation text warns them."""
+def _make_sub_obj(sub_id: int = 7, user_id: int = 1, inbound_id: int = 1):
+    """Build an in-memory Subscription stand-in for _format_confirm tests."""
+    from app.db.repos.subscriptions import Subscription
+
+    return Subscription(
+        id=sub_id,
+        user_id=user_id,
+        xui_inbound_id=inbound_id,
+        xui_client_uuid="uuid",
+        xui_client_email="email",
+        xui_sub_id="subid",
+        expires_at="2026-06-01 00:00:00",
+        created_at="2026-05-01 00:00:00",
+        plan_id=None,
+        status="active",
+    )
+
+
+def test_format_confirm_renders_extending_card():
+    """extending_sub set → card uses '🔄 Продление подписки #N' header and shows new expiry."""
+    from app.db.repos.plans import Plan
+
+    plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
+                is_active=True, created_at="2025")
+    sub = _make_sub_obj(sub_id=7, inbound_id=1)
+    text = buy_module._format_confirm(
+        plan, promo=None, inbound_remark="DE", extending_sub=sub
+    )
+    assert "Продление подписки #7" in text
+    assert "DE" in text
+    # Expiry was pushed forward by plan.days (30) → 2026-07-01.
+    assert "2026-07-01" in text
+    # New-card phrasing must not leak into the extend card.
+    assert "Новая подписка" not in text
+
+
+def test_format_confirm_renders_new_card():
+    """extending_sub=None → card uses '🆕 Новая подписка' header."""
     from app.db.repos.plans import Plan
 
     plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
                 is_active=True, created_at="2025")
     text = buy_module._format_confirm(
-        plan, promo=None, inbound_remark="DE", has_active_sub=True
+        plan, promo=None, inbound_remark="DE", extending_sub=None
     )
-    # Warning text explicitly mentions the inbound is ignored on extend.
-    assert "продлена" in text or "не применится" in text
+    assert "Новая подписка" in text
+    assert "DE" in text
+    # No "Продление подписки" wording on the new card.
+    assert "Продление" not in text
 
 
-def test_format_confirm_no_warning_when_no_active_sub():
-    from app.db.repos.plans import Plan
+# ---------------------------------------------------------------------- #
+# cb_open — action screen vs direct plan list
+# ---------------------------------------------------------------------- #
 
-    plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
-                is_active=True, created_at="2025")
-    text = buy_module._format_confirm(
-        plan, promo=None, inbound_remark="DE", has_active_sub=False
+
+async def test_cb_open_shows_action_screen_when_active_sub_exists(
+    file_db, make_user, make_subscription, make_plan, monkeypatch
+):
+    """User with at least one active sub → state=choosing_action + buy_action_kb."""
+    from app.db.engine import get_conn
+    from app.states.user import BuyFlow
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=42)
+        await make_plan(conn, inbound_ids=[1])
+        await make_subscription(conn, user_id=u.id, xui_inbound_id=1)
+
+    # Panel returns matching remark — exercises the happy path.
+    monkeypatch.setattr(
+        buy_module, "get_xui_client", AsyncMock(return_value=AsyncMock())
     )
-    assert "не применится" not in text
+    monkeypatch.setattr(
+        buy_module, "list_user_inbounds",
+        AsyncMock(return_value=_stub_inbounds(1)),
+    )
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_open(cb, state, user=u)
+
+    state.set_state.assert_awaited_with(BuyFlow.choosing_action)
+    cb.message.edit_text.assert_awaited()
+    # Rendered card mentions "активные подписки" copy.
+    args, kwargs = cb.message.edit_text.call_args
+    assert "Выберите действие" in args[0]
+
+
+async def test_cb_open_skips_action_screen_when_no_active(
+    file_db, make_user, make_plan
+):
+    """User without active subs → goes straight to choosing_plan + plans_kb."""
+    from app.db.engine import get_conn
+    from app.states.user import BuyFlow
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=43)
+        await make_plan(conn, inbound_ids=[1])
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_open(cb, state, user=u)
+
+    state.set_state.assert_awaited_with(BuyFlow.choosing_plan)
+    cb.message.edit_text.assert_awaited()
+    args, kwargs = cb.message.edit_text.call_args
+    assert "Выберите тариф" in args[0]
+
+
+# ---------------------------------------------------------------------- #
+# cb_pick_action_extend / new
+# ---------------------------------------------------------------------- #
+
+
+async def test_cb_pick_action_extend_sets_fsm_and_jumps_to_plan_list(
+    file_db, make_user, make_subscription, make_plan
+):
+    """Extend action → FSM gets sub_id+inbound_id, state set to choosing_plan."""
+    from app.db.engine import get_conn
+    from app.states.user import BuyFlow
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=10)
+        await make_plan(conn, inbound_ids=[1])
+        sub = await make_subscription(conn, user_id=u.id, xui_inbound_id=5)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_pick_action_extend(
+        cb, BuyCB(action="extend", sub_id=sub.id), state, user=u
+    )
+
+    last = state.update_data.await_args.kwargs
+    assert last["sub_id"] == sub.id
+    assert last["inbound_id"] == 5
+    # The handler ends in choosing_plan (via _send_plan_list).
+    state.set_state.assert_any_await(BuyFlow.choosing_plan)
+
+
+async def test_cb_pick_action_extend_rejects_foreign_sub(
+    file_db, make_user, make_subscription
+):
+    """Ownership check: extend with another user's sub_id is rejected."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        owner = await make_user(conn, tg_id=20)
+        other = await make_user(conn, tg_id=21)
+        sub = await make_subscription(conn, user_id=owner.id, xui_inbound_id=1)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_pick_action_extend(
+        cb, BuyCB(action="extend", sub_id=sub.id), state, user=other
+    )
+    cb.answer.assert_awaited()
+    assert cb.answer.call_args.kwargs.get("show_alert") is True
+    # FSM was not advanced.
+    state.set_state.assert_not_awaited()
+
+
+async def test_cb_pick_action_new_clears_fsm_and_jumps_to_plan_list(
+    file_db, make_plan
+):
+    """New action → FSM cleared (sub_id=0), state set to choosing_plan."""
+    from app.db.engine import get_conn
+    from app.states.user import BuyFlow
+
+    async with get_conn() as conn:
+        await make_plan(conn, inbound_ids=[1])
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_pick_action_new(cb, state)
+
+    state.clear.assert_awaited()
+    state.set_state.assert_any_await(BuyFlow.choosing_plan)
+
+
+# ---------------------------------------------------------------------- #
+# cb_pick_plan — extend branch skips inbound selection
+# ---------------------------------------------------------------------- #
+
+
+async def test_cb_pick_plan_extend_skips_inbound_selection(
+    file_db, make_user, make_subscription, make_plan, monkeypatch
+):
+    """Even for a multi-inbound plan, sub_id>0 in FSM → state=confirming directly."""
+    from app.db.engine import get_conn
+    from app.states.user import BuyFlow
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=30)
+        # Plan attached to inbounds {1, 2}; existing sub is on inbound 5
+        # (intentionally NOT in the plan's allow-list to prove the
+        # extend branch bypasses the check).
+        plan = await make_plan(conn, inbound_ids=[1, 2])
+        sub = await make_subscription(conn, user_id=u.id, xui_inbound_id=5)
+
+    monkeypatch.setattr(
+        buy_module, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        buy_module, "list_user_inbounds",
+        AsyncMock(return_value=_stub_inbounds(1, 2, 5)),
+    )
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state({"sub_id": sub.id, "inbound_id": 5})
+    await buy_module.cb_pick_plan(
+        cb, BuyCB(action="plan", plan_id=plan.id), state, user=u
+    )
+
+    state.set_state.assert_awaited_with(BuyFlow.confirming)
+    # Card uses the extend header.
+    args, kwargs = cb.message.edit_text.call_args
+    assert f"Продление подписки #{sub.id}" in args[0]
+
+
+# ---------------------------------------------------------------------- #
+# cb_confirm — extend flow
+# ---------------------------------------------------------------------- #
+
+
+async def test_cb_confirm_extend_passes_sub_id_in_payload(
+    file_db, make_user, make_subscription, make_plan, mock_bot
+):
+    """Confirm with sub_id>0 → invoice payload carries 's' = sub.id."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=44)
+        plan = await make_plan(conn, price_stars=50, inbound_ids=[1])
+        sub = await make_subscription(conn, user_id=u.id, xui_inbound_id=5)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.chat = MagicMock(id=777)
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_confirm(
+        cb,
+        BuyCB(
+            action="confirm", plan_id=plan.id, promo_id=0,
+            inbound_id=5, sub_id=sub.id,
+        ),
+        state,
+        mock_bot,
+        user=u,
+    )
+    mock_bot.send_invoice.assert_awaited()
+    kwargs = mock_bot.send_invoice.call_args.kwargs
+    data = json.loads(kwargs["payload"])
+    assert data.get("s") == sub.id
+    assert data.get("i") == 5
+
+
+async def test_cb_confirm_extend_skips_allow_list(
+    file_db, make_user, make_subscription, make_plan, mock_bot
+):
+    """Extend: inbound NOT in plan's allow-list still produces a sent invoice."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        u = await make_user(conn, tg_id=45)
+        plan = await make_plan(conn, inbound_ids=[1])  # 5 is NOT attached
+        sub = await make_subscription(conn, user_id=u.id, xui_inbound_id=5)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.chat = MagicMock(id=777)
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_confirm(
+        cb,
+        BuyCB(
+            action="confirm", plan_id=plan.id, promo_id=0,
+            inbound_id=5, sub_id=sub.id,
+        ),
+        state,
+        mock_bot,
+        user=u,
+    )
+    # Invoice was sent (allow-list check skipped).
+    mock_bot.send_invoice.assert_awaited()
+
+
+async def test_cb_confirm_extend_rejects_foreign_sub(
+    file_db, make_user, make_subscription, make_plan, mock_bot
+):
+    """Defence-in-depth: confirm with another user's sub → no invoice."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        owner = await make_user(conn, tg_id=46)
+        thief = await make_user(conn, tg_id=47)
+        plan = await make_plan(conn, inbound_ids=[1])
+        sub = await make_subscription(conn, user_id=owner.id, xui_inbound_id=1)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.chat = MagicMock(id=1)
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await buy_module.cb_confirm(
+        cb,
+        BuyCB(
+            action="confirm", plan_id=plan.id, promo_id=0,
+            inbound_id=1, sub_id=sub.id,
+        ),
+        state,
+        mock_bot,
+        user=thief,
+    )
+    cb.answer.assert_awaited()
+    assert cb.answer.call_args.kwargs.get("show_alert") is True
+    mock_bot.send_invoice.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------- #
+# on_pre_checkout — extend ownership validation
+# ---------------------------------------------------------------------- #
+
+
+async def test_on_pre_checkout_extend_validates_ownership(
+    file_db, make_user, make_subscription, make_plan, mock_bot
+):
+    """pre_checkout with sub_id of foreign user → ok=False; with own active → ok=True."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        owner = await make_user(conn, tg_id=50)
+        other = await make_user(conn, tg_id=51)
+        plan = await make_plan(conn, inbound_ids=[1])
+        sub = await make_subscription(conn, user_id=owner.id, xui_inbound_id=5)
+
+    # foreign user attempt
+    payload = json.dumps({"p": plan.id, "r": None, "i": 5, "s": sub.id})
+    q = MagicMock()
+    q.id = "qid-foreign"
+    q.from_user = MagicMock(id=other.tg_id)
+    q.invoice_payload = payload
+    await buy_module.on_pre_checkout(q, mock_bot)
+    kwargs = mock_bot.answer_pre_checkout_query.call_args.kwargs
+    assert kwargs["ok"] is False
+
+    # owner attempt with same payload
+    mock_bot.answer_pre_checkout_query.reset_mock()
+    q2 = MagicMock()
+    q2.id = "qid-owner"
+    q2.from_user = MagicMock(id=owner.tg_id)
+    q2.invoice_payload = payload
+    await buy_module.on_pre_checkout(q2, mock_bot)
+    kwargs = mock_bot.answer_pre_checkout_query.call_args.kwargs
+    assert kwargs["ok"] is True
+
+
+async def test_on_pre_checkout_extend_skips_allow_list(
+    file_db, make_user, make_subscription, make_plan, mock_bot
+):
+    """Extend pre_checkout: inbound NOT in allow-list still ok=True."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        owner = await make_user(conn, tg_id=52)
+        plan = await make_plan(conn, inbound_ids=[1])
+        sub = await make_subscription(conn, user_id=owner.id, xui_inbound_id=99)
+
+    payload = json.dumps({"p": plan.id, "r": None, "i": 99, "s": sub.id})
+    q = MagicMock()
+    q.id = "qid-bypass"
+    q.from_user = MagicMock(id=owner.tg_id)
+    q.invoice_payload = payload
+    await buy_module.on_pre_checkout(q, mock_bot)
+    kwargs = mock_bot.answer_pre_checkout_query.call_args.kwargs
+    assert kwargs["ok"] is True
+
+
+# ---------------------------------------------------------------------- #
+# on_successful_payment — extend_sub_id passthrough
+# ---------------------------------------------------------------------- #
+
+
+async def test_on_successful_payment_extend_calls_service_with_extend_sub_id(
+    file_db, make_user, make_subscription, make_plan, mock_bot, monkeypatch
+):
+    """Payload with s=N → subs_service.create_or_extend(extend_sub_id=N)."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=60)
+        plan = await make_plan(conn, inbound_ids=[1])
+        sub = await make_subscription(conn, user_id=user.id, xui_inbound_id=1)
+
+    xui = AsyncMock()
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=xui))
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+
+    create_or_extend = AsyncMock(return_value=sub)
+    monkeypatch.setattr(
+        buy_module.subs_service, "create_or_extend", create_or_extend
+    )
+
+    payload = json.dumps({"p": plan.id, "r": None, "i": 1, "s": sub.id})
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="c-ext-1",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+    )
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+    create_or_extend.assert_awaited()
+    kwargs = create_or_extend.call_args.kwargs
+    assert kwargs["extend_sub_id"] == sub.id
+
+
+async def test_on_successful_payment_new_calls_service_with_extend_sub_id_none(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """Payload without 's' → subs_service.create_or_extend(extend_sub_id=None)."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=61)
+        plan = await make_plan(conn, inbound_ids=[1])
+
+    xui = AsyncMock()
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=xui))
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+
+    create_or_extend = AsyncMock()
+    create_or_extend.return_value = None  # service hiccup is fine for this test
+    monkeypatch.setattr(
+        buy_module.subs_service, "create_or_extend", create_or_extend
+    )
+
+    payload = json.dumps({"p": plan.id, "r": None, "i": 1})  # no "s"
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="c-new-1",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+    )
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+    create_or_extend.assert_awaited()
+    kwargs = create_or_extend.call_args.kwargs
+    assert kwargs["extend_sub_id"] is None

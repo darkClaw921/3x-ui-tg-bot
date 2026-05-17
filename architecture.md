@@ -222,6 +222,76 @@ troubleshooting (зависший installer, неактивный сервис x
 и проверка expire-job в [app/scheduler.py](./app/scheduler.py); завершение
 (фиксация багов в `br`).
 
+## Концептуально: несколько активных подписок на пользователя
+
+Бот поддерживает модель «N активных подписок на одного пользователя».
+Подписка (`subscriptions` row) = один xui-client (`xui_client_uuid` +
+`xui_client_email` + `xui_sub_id`) на конкретном inbound
+(`xui_inbound_id`). У одного пользователя могут одновременно быть
+несколько таких подписок (например, на разных inbound-ах или просто
+несколько устройств), каждая со своим Subscription URL, своим
+истечением и своим счётчиком трафика.
+
+**Источники списка подписок:**
+- `subs_repo.list_active_for_user(user_id)` — все active с
+  `expires_at > now`, ORDER BY `expires_at DESC` (для action-экранов
+  и кнопок).
+- `subs_repo.list_for_user(user_id)` — все подписки (active +
+  expired/revoked), для «Моя подписка»-экрана.
+- `subs_repo.get_active_for_user(user_id)` — одна (последняя),
+  используется только для backward-compat-проверок «есть ли вообще
+  активная» (например, в `start.cmd_start` для toggle главного меню).
+
+**Принятие решения extend vs new — на стороне UI:**
+- Service-слой (`subs_service.create_or_extend`,
+  `subs_service.activate_free_days`, `subs_service._provision`) не
+  угадывает ветку: caller всегда передаёт `extend_sub_id` явно
+  (`None` = новая, `int` = продлить именно эту).
+- UI показывает экран «Что сделать?» через `buy_action_kb` (платный
+  флоу) и `promo_action_kb` (free_days промо), если у пользователя
+  есть хотя бы одна active подписка. Кнопки: «🔄 Продлить #N ·
+  <inbound-remark>» (по одной на каждую sub) + «🆕 Новая подписка».
+- В `BuyFlow` это шаг `choosing_action` (перед `choosing_plan`),
+  в `PromoActivate` — одноимённый шаг (после `waiting_code` и
+  валидации free_days). Если активных подписок нет, шаг
+  пропускается.
+
+**Перенос extend-target через границы processes:**
+- Buy-флоу: `BuyCB.sub_id` (callback в TG keyboard) → FSM-data
+  `sub_id` → `BuyCB.sub_id` в `confirm_kb` → `billing.send_invoice(
+  sub_id=...)` → JSON payload ключ `"s"` → `parse_invoice_payload`
+  возвращает 4-tuple → `subs_service.create_or_extend(extend_sub_id=
+  sub_id or None)`.
+- Promo-флоу: `PromoActCB.sub_id` (callback) → загрузка sub из БД с
+  ownership-check → `subs_service.activate_free_days(extend_sub_id=
+  sub.id, inbound_id=sub.xui_inbound_id)` (inbound наследуется).
+
+**Inbound на extend:**
+- При продлении inbound берётся из существующей подписки
+  (`existing.xui_inbound_id`). `_provision` явно игнорирует
+  переданный `inbound_id` при `extend_sub_id is not None` (логирует
+  WARNING на mismatch). Это значит: подписка живёт на одном
+  xui-inbound всю свою жизнь; чтобы получить подписку на новом
+  inbound, надо создать новую (action-экран → «🆕 Новая»).
+- В `cb_confirm` и `on_pre_checkout` платного флоу для extend-ветки
+  валидация `inbound_id ∈ plan.allowed_inbounds` намеренно
+  пропущена, чтобы пользователи могли продлевать подписки на
+  inbound-ах, которые больше не привязаны ни к одному плану.
+
+**Quota / totalGB на extend:**
+- `update_client` при extend намеренно НЕ передаёт `totalGB` —
+  накопленная квота и счётчик использованного трафика
+  пользователя сохраняются. `total_gb` применяется только при
+  свежем provisioning.
+
+**UI рендера в «Моя подписка»:**
+- `_build_subs_keyboard` собирает по строке на каждую видимую
+  подписку (cap `_MAX_VISIBLE_SUBS = 5`): «🔑 Ключи #N» и (для
+  активных) «🛒 Продлить #N». Кнопки «Продлить» отправляют
+  `BuyCB(action='extend', sub_id=N)`, что попадает прямо в
+  `buy.cb_pick_action_extend` (entry-point из my_subscription и
+  из action-экрана делят один и тот же хендлер).
+
 ## Пакет `app/`
 
 ### [app/\_\_init\_\_.py](./app/__init__.py)
@@ -449,6 +519,15 @@ Async-движок поверх `aiosqlite`.
 - `async def get_active_for_user(conn, user_id) -> Subscription | None` —
   последняя с `status='active' AND expires_at>now`.
 - `async def list_for_user(conn, user_id) -> list[Subscription]`.
+- `async def list_active_for_user(conn, user_id) -> list[Subscription]` —
+  все активные подписки юзера (`status='active' AND expires_at>now`),
+  ORDER BY `expires_at DESC, id DESC` (свежая по экспирации сверху).
+  Используется handlers/UI для рендера выбора «продлить #N vs новая»
+  и для рендера списка подписок в «Моя подписка». В отличие от
+  `get_active_for_user`, который возвращает максимум одну запись,
+  эта функция возвращает массив и поддерживает сценарий
+  «несколько активных подписок на пользователя» (одна = один
+  xui-client на конкретном inbound).
 - `async def extend(conn, sub_id, new_expires_at)` — меняет только `expires_at`.
 - `async def set_status(conn, sub_id, status)` — меняет только статус.
 - `async def list_expired_active(conn, now=None) -> list[Subscription]` —
@@ -1052,25 +1131,35 @@ Standalone smoke-тест 3x-ui REST-клиента.
 - Dataclass `InvoicePrice(stars, raw_discount, extra_days)`.
 - `def calc_price(plan, promo) -> InvoicePrice` — обёртка над
   `promos.compute_discount` + `max(_STARS_MIN, final_price)`.
-- `def build_invoice_payload(plan_id, promo_id, inbound_id) -> str` —
-  компактный JSON `{"p":..., "r": ... | null, "i": ...}` с короткими
-  ключами (<128 байт даже для крупных id); raise `ValueError` если
-  payload не вмещается.
-- `def parse_invoice_payload(payload) -> tuple[int, int | None, int]` —
-  обратная функция, возвращает `(plan_id, promo_id, inbound_id)`.
-  Принимает как новые ключи (`p`/`r`/`i`), так и legacy (`plan_id`/
-  `promo_id` без `i`); при отсутствии `i` — fallback на
-  `settings.XUI_INBOUND_ID` с WARNING-логом. `ValueError` на
-  малформность; `promo_id=0` нормализуется в `None`.
+- `def build_invoice_payload(plan_id, promo_id, inbound_id, *, sub_id: int = 0) -> str` —
+  компактный JSON `{"p":..., "r": ... | null, "i": ..., "s": ...}` с
+  короткими ключами (<128 байт даже для крупных id); raise `ValueError`
+  если payload не вмещается. Ключ `"s"` (sub_id-to-extend) **опускается
+  целиком** при `sub_id == 0` (свежая покупка), чтобы не раздувать
+  payload в hot-path-е «новая подписка»; legacy-payloads без `"s"`
+  парсятся как `sub_id=0`.
+- `def parse_invoice_payload(payload) -> tuple[int, int | None, int, int]` —
+  обратная функция, возвращает 4-tuple
+  `(plan_id, promo_id, inbound_id, sub_id)`. Принимает как новые ключи
+  (`p`/`r`/`i`/`s`), так и legacy (`plan_id`/`promo_id` без `i`/`s`);
+  при отсутствии `i` — fallback на `settings.XUI_INBOUND_ID` с
+  WARNING-логом; при отсутствии `s` — `sub_id=0`. `ValueError` на
+  малформность; `promo_id=0` нормализуется в `None`. `sub_id=0`
+  означает «новая подписка» для handler-а; `sub_id>0` означает
+  «продлить именно эту подписку».
 - Helpers `_invoice_title(plan)` (формат `VPN · <title>`),
-  `_invoice_description(plan, price, promo)` — упоминает бонусные дни
-  и тип скидки.
-- `async def send_invoice(bot, chat_id, plan, promo, *, inbound_id) -> Message` —
+  `_invoice_description(plan, price, promo, *, sub_id=0)` — упоминает
+  бонусные дни и тип скидки; при `sub_id > 0` заголовок описания
+  меняется на «Продление подписки #N на <days> дн.» (юзер видит в TG
+  invoice-окне явно, что это extend).
+- `async def send_invoice(bot, chat_id, plan, promo, *, inbound_id, sub_id: int = 0) -> Message` —
   `bot.send_invoice(currency="XTR", provider_token="",
   prices=[LabeledPrice(label=plan.title, amount=stars)],
-  payload=build_invoice_payload(..., inbound_id=...))`. `inbound_id` —
-  обязательный kwarg, прокидывается в payload для пост-оплатного
-  provisioning.
+  payload=build_invoice_payload(..., inbound_id=..., sub_id=sub_id))`.
+  `inbound_id` обязательный kwarg; `sub_id` опциональный (0 =
+  новая, >0 = extend конкретной подписки). Оба значения
+  прокидываются в payload, чтобы пост-оплатный provisioning знал
+  целевой inbound и (опционально) подписку-получатель.
 
 ### [app/services/inbounds.py](./app/services/inbounds.py)
 Кэшированный список доступных 3x-ui inbound-ов для user/admin флоу.
@@ -1101,31 +1190,52 @@ Standalone smoke-тест 3x-ui REST-клиента.
   преобразование строки из `expires_at`); `_bonus_days_from_promo(promo)`
   (0 для всех типов кроме `free_days`); `_make_sub_id()` (делегирует в
   `app.xui.clients`).
-- `async def create_or_extend(conn, xui, user, plan, promo, *, inbound_id) -> Subscription` —
-  `inbound_id` — обязательный kwarg. Считает
+- `async def create_or_extend(conn, xui, user, plan, promo, *, inbound_id, extend_sub_id: int | None = None) -> Subscription` —
+  `inbound_id` обязательный kwarg, `extend_sub_id` — explicit-режим
+  выбора ветки (см. `_provision`). Считает
   `delta = plan.days + bonus_days(promo)`, делегирует в `_provision`
-  с `total_gb=int(plan.traffic_gb)` и переданным `inbound_id`.
-- `async def activate_free_days(conn, xui, user, promo, *, inbound_id) -> Subscription` —
-  `inbound_id` — обязательный kwarg. Для standalone-флоу. `ValueError`
-  если `promo.type != "free_days"`. `delta = promo.value`,
+  с `total_gb=int(plan.traffic_gb)`, переданным `inbound_id` и
+  `extend_sub_id`. При `extend_sub_id=None` — всегда создаёт **новую**
+  подписку (даже если у пользователя уже есть активные); при
+  `extend_sub_id=int` — продлевает конкретную с проверкой ownership и
+  `status='active'`.
+- `async def activate_free_days(conn, xui, user, promo, *, inbound_id, extend_sub_id: int | None = None) -> Subscription` —
+  `inbound_id` обязательный kwarg, `extend_sub_id` — то же поведение,
+  что в `create_or_extend`. Для standalone-флоу free_days-промокода.
+  `ValueError` если `promo.type != "free_days"`. `delta = promo.value`,
   `plan_id=None`, `total_gb=0` (квота не задаётся).
-- `async def _provision(*, conn, xui, user, delta_days, plan_id, total_gb=0, inbound_id) -> Subscription` —
-  получает существующую активную подписку через
-  `subs_repo.get_active_for_user`. Если есть — `update_client(
-  expiryTime=..., enable=True)` (важно: `totalGB` намеренно НЕ
-  передаётся при extend, чтобы накопленная квота / потраченный трафик
-  пользователя не сбрасывались при продлении), затем `subs_repo.extend`.
-  При extend `inbound_id` ИГНОРИРУЕТСЯ — используется
-  `existing.xui_inbound_id`; если запрошенный отличается, логируется
-  WARNING с `subscription_id`, существующим и запрошенным inbound_id.
-  Если активной подписки нет — генерирует uuid + email (через
-  `make_client_email(user.tg_id, user.username)`) + sub_id, вызывает
-  `add_client(inbound_id=<переданный>, ..., total_gb=total_gb)`
-  (xui-first), затем `subs_repo.create(xui_inbound_id=<переданный>,
-  xui_sub_id=...)`. `total_gb` применяется ТОЛЬКО при свежем
-  provisioning.
+- `async def _provision(*, conn, xui, user, delta_days, plan_id, total_gb=0, inbound_id, extend_sub_id: int | None) -> Subscription` —
+  **explicit branch selection** по `extend_sub_id`:
+  - `extend_sub_id is None` → **всегда** свежее provisioning: новый
+    uuid + email + sub_id, `add_client(inbound_id=<переданный>, ...,
+    total_gb=total_gb)` (xui-first), затем
+    `subs_repo.create(xui_inbound_id=<переданный>, xui_sub_id=...)`.
+    Наличие других активных подписок у того же юзера не влияет — это
+    ответственность caller-а (UI показывает экран «Продлить / Новая»).
+  - `extend_sub_id is int` → `subs_repo.get(conn, extend_sub_id)`,
+    проверка `existing.user_id == user.id` и `existing.status ==
+    'active'`. При невыполнении любого из условий — `ValueError`
+    (caller трактует как «подписка недоступна»). На extend
+    `update_client(expiryTime=..., enable=True)` (важно: `totalGB`
+    намеренно НЕ передаётся, чтобы не сбрасывать накопленную квоту
+    при продлении) + `subs_repo.extend`. `inbound_id` при extend
+    ИГНОРИРУЕТСЯ — используется `existing.xui_inbound_id`; mismatch
+    логируется WARNING-ом с `subscription_id`, существующим и
+    запрошенным inbound_id (чтобы не «прыгать» между inbound-ами
+    в рамках одной подписки).
+  Guard: если строка active, но `expires_at < now`, новая экспирация
+  отсчитывается от `now`, а не от истёкшей точки.
+  `total_gb` применяется ТОЛЬКО при свежем provisioning.
 - `async def revoke(xui, sub) -> None` — `update_client(enable=False)`
   (best-effort, ловит исключения и логирует) + `subs_repo.set_status(sub.id, "revoked")`.
+
+**Бизнес-логика multi-subscription:** пользователь может владеть N
+активными подписками одновременно (каждая = свой xui-client на
+конкретном inbound, свой UUID, свой sub URL). Выбор «продлить
+конкретную #N vs создать новую» делается явно через
+`extend_sub_id`. Старая логика «auto-extend single active»
+полностью убрана из service-слоя — service просто исполняет
+явное решение caller-а.
 
 ### [app/services/stats.py](./app/services/stats.py)
 Агрегаты для админского экрана «Статистика». Все функции `async`,
@@ -1175,10 +1285,14 @@ Standalone smoke-тест 3x-ui REST-клиента.
 - `cb_cancel` (`UserCB area=cancel`) — `state.clear()` + возврат в меню.
 
 ### [app/handlers/user/my_subscription.py](./app/handlers/user/my_subscription.py)
-Экран «Моя подписка» — статус, дни до истечения, live-трафик из 3x-ui,
-повторная выдача vless/QR/Subscription URL.
+Экран «Моя подписка» — список **всех** подписок пользователя со
+статусом, днями до истечения, live-трафиком из 3x-ui, и набором
+per-sub action-кнопок. Поддерживает повторную выдачу
+vless/QR/Subscription URL.
 
 - `router = Router(name="user_my_subscription")`.
+- Константа `_MAX_VISIBLE_SUBS = 5` — Telegram-friendly cap на число
+  отображаемых карточек.
 - Внутренние helpers:
   - `_format_bytes(value) -> str` — human-readable байты (`1.0 KB`,
     `5.0 GB`) с бинарным шагом 1024. Используется для отображения
@@ -1197,17 +1311,35 @@ Standalone smoke-тест 3x-ui REST-клиента.
   - `_format_sub_card(sub, traffic)` — HTML-карточка из 5 строк
     (заголовок, статус, дата, дни, трафик); при `ok=False` — текст
     «Трафик: не удалось получить (панель недоступна)».
-  - `_sub_card_kb(sub, expired) -> InlineKeyboardBuilder` — кнопки
-    «Получить ключ ещё раз» + (опционально) «Продлить» (`BuyCB
-    action=open`) + «В меню».
-  - `_no_subscription_kb()` — кнопки «Купить подписку» + «В меню».
+  - `_sort_subs(subs) -> list[Subscription]` — сортировка для вывода:
+    активные подписки сверху (по `expires_at` DESC, тай-брейк `id`
+    DESC), затем неактивные (`expired` / `revoked` / `active` с
+    `expires_at` в прошлом) — по `created_at` DESC. Порядок
+    зафиксирован тестами.
+  - `_build_subs_keyboard(visible) -> InlineKeyboardBuilder` —
+    собирает inline-клавиатуру: сверху одна строка
+    «🆕 Купить новую подписку» (`BuyCB(action='new')`); затем по
+    одной строке на каждую видимую подписку с парой кнопок
+    «🔑 Ключи #N» (`SubCB(action='keys', sub_id=N)`) и (только для
+    активных) «🛒 Продлить #N» (`BuyCB(action='extend', sub_id=N)`);
+    внизу «◀ В меню» (`UserCB(area='menu')`). Кнопка «Продлить»
+    скрывается для неактивных, так как
+    `buy.cb_pick_action_extend` отклоняет non-active подписки.
+  - `_btn(text, cb)` — мелкий хелпер для построения
+    `InlineKeyboardButton` из `CallbackData`-фабрики (`cb.pack()`).
+  - `_pluralize_subs(n) -> str` — русские формы для слова «подписка»
+    (1 / 2-4 / 5+) — используется в footer-строке «… и ещё N
+    подписк{а|и|ок}».
+  - `_no_subscription_kb()` — кнопки «Купить подписку»
+    (`BuyCB(action='open')`) + «В меню».
 - Хендлеры:
-  - `cb_open_my` (`UserCB area=my`) — выбирает primary-подписку:
-    самую свежую активную (по `expires_at`), иначе самую недавнюю
-    запись. При отсутствии подписок — «no subscription» экран с
-    кнопкой `BuyCB(action="open")`. Если у юзера несколько подписок,
-    рендерит карточку primary и компактный список остальных (до 5),
-    с ограничением для соблюдения лимита Telegram 4096 символов.
+  - `cb_open_my` (`UserCB area=my`) — загружает все подписки через
+    `subs_repo.list_for_user`; при отсутствии — «no subscription»
+    экран с `_no_subscription_kb`. Иначе сортирует через `_sort_subs`,
+    берёт первые `_MAX_VISIBLE_SUBS` и рендерит карточки через
+    `_format_sub_card`, разделяя их линией `━━━━━━━━━━━━━━━`. При
+    наличии скрытых подписок добавляется footer «… и ещё N
+    подписк{а|и|ок}». Клавиатура — `_build_subs_keyboard(visible)`.
   - `cb_resend_keys` (`SubCB action=keys`) — повторно отдаёт ключи
     через `_keys.deliver_keys`. Гарантии: проверка `sub.user_id ==
     user.id` (один и тот же текст «Подписка не найдена» для not-found
@@ -1257,17 +1389,43 @@ Helper для выдачи ключей юзеру. Используется и 
     проверки для pre_checkout (без one-per-user, т.к. её гарантирует
     `try_redeem`).
 - UI-колбеки (state-driven):
-  - `cb_open` (`BuyCB action=open`) — `BuyFlow.choosing_plan`,
-    показывает `plans_kb(list_active())`. Если нет тарифов —
-    соответствующее сообщение.
+  - `cb_open` (`BuyCB action=open`) — entry-point из главного меню.
+    Загружает `subs_repo.list_active_for_user(user.id)`. При наличии
+    активных подписок переходит в `BuyFlow.choosing_action`, сохраняет
+    в FSM `active_sub_ids` и `inbound_remarks` (мэппинг
+    `{inbound_id: remark}` из `list_user_inbounds`), рендерит
+    `buy_action_kb(active, remarks)`. При отсутствии активных —
+    стандартный путь: `BuyFlow.choosing_plan` + `plans_kb(list_active())`.
+    Если нет тарифов — соответствующее сообщение.
+  - `cb_pick_action_extend` (state-filter `BuyFlow.choosing_action` +
+    `BuyCB action=extend`) — юзер выбрал «🔄 Продлить #N». Валидирует
+    `sub_id>0` и ownership (`subs_repo.get(sub_id)` с `user_id` совпадает,
+    `status='active'` — анти-подделка callback); сохраняет
+    `sub_id` в FSM, делегирует в `_send_plan_list` (переход в
+    `BuyFlow.choosing_plan`). Также служит entry-point для прямой
+    кнопки «🛒 Продлить #N» с `my_subscription`.
+  - `cb_pick_action_new` (state-filter `BuyFlow.choosing_action` +
+    `BuyCB action=new`) — юзер выбрал «🆕 Новая подписка». Очищает
+    `sub_id=0` в FSM, делегирует в `_send_plan_list`. Также служит
+    entry-point для прямой кнопки «🆕 Купить новую подписку» с
+    `my_subscription`.
+  - `_send_plan_list(callback, state)` — общий helper: грузит
+    `plans_repo.list_active()`, выставляет `BuyFlow.choosing_plan`,
+    рендерит `plans_kb`.
   - `cb_pick_plan` (`action=plan`) — загружает
-    `plans_repo.get_inbounds(plan_id)`; если `len == 1` → резолвит
-    remark через `list_user_inbounds`, FSM(`inbound_id`),
-    `BuyFlow.confirming`; если `len > 1` → `list_user_inbounds` +
-    фильтр по allow-list, FSM(`inbound_options`),
-    `BuyFlow.choosing_inbound`, рендер `inbound_select_kb`; пустой
-    список / XuiError — answer alert. Сохраняет уже привязанный
-    `promo_id`, если он валиден.
+    `plans_repo.get_inbounds(plan_id)`. **Extend-ветка:** если в FSM
+    `sub_id > 0`, шаг `choosing_inbound` **пропускается** независимо от
+    количества inbound-ов плана — inbound наследуется от существующей
+    подписки (`subs_repo.get(sub_id).xui_inbound_id`); FSM получает
+    `inbound_id=<existing>`, состояние → `BuyFlow.confirming`,
+    `confirm_kb(plan_id, promo_id, inbound_id, sub_id=sub_id)`,
+    `_format_confirm` использует `inbound_remark` из FSM-снапшота.
+    **New-ветка** (`sub_id == 0`): если `len == 1` → резолвит remark
+    через `list_user_inbounds`, FSM(`inbound_id`), `BuyFlow.confirming`;
+    если `len > 1` → `list_user_inbounds` + фильтр по allow-list,
+    FSM(`inbound_options`), `BuyFlow.choosing_inbound`, рендер
+    `inbound_select_kb`; пустой список / XuiError — answer alert.
+    Сохраняет уже привязанный `promo_id`, если он валиден.
   - `cb_pick_inbound` (`InboundCB action=pick` в
     `BuyFlow.choosing_inbound`) — валидирует `inbound_id ∈
     get_inbounds(plan_id)`; на успехе сохраняет в FSM, переходит в
@@ -1282,32 +1440,55 @@ Helper для выдачи ключей юзеру. Используется и 
     через `promos_service.validate(plan=plan)`; на ошибке остаётся в
     стейте; на успехе сохраняет `promo_id`, резолвит remark inbound и
     `has_active_sub`, возвращает в `confirming`.
-  - `cb_confirm` (`action=confirm`) — резолвит `inbound_id` из
-    callback_data (fallback на FSM), валидирует `plan` активен,
-    `promo` usable, `inbound_id ∈ get_inbounds(plan_id)`; при mismatch
-    возвращает в `choosing_inbound` со свежим `inbound_select_kb`;
-    иначе `billing.send_invoice(..., inbound_id=…)` и `state.clear()`.
+  - `cb_confirm` (`action=confirm`) — резолвит `inbound_id` и
+    `sub_id` из callback_data (fallback на FSM), валидирует `plan`
+    активен, `promo` usable. **Extend-ветка** (`sub_id > 0`):
+    повторно проверяет ownership и `status='active'` подписки (защита
+    от подделки callback) и **пропускает** проверку `inbound_id ∈
+    get_inbounds(plan_id)` — extend всегда переиспользует существующий
+    inbound, даже если он больше не разрешён планом; иначе
+    `billing.send_invoice(..., inbound_id=..., sub_id=sub_id)` и
+    `state.clear()`. **New-ветка** (`sub_id == 0`): валидирует
+    `inbound_id ∈ get_inbounds(plan_id)`; при mismatch возвращает в
+    `choosing_inbound` со свежим `inbound_select_kb`; иначе
+    `billing.send_invoice(..., inbound_id=..., sub_id=0)` и
+    `state.clear()`.
 - Stateless-обработчики платежа:
   - `on_pre_checkout` (`pre_checkout_query`) — `parse_invoice_payload`
-    возвращает `(plan_id, promo_id, inbound_id)`; read-only проверки
-    plan/promo/inbound (`inbound_id ∈ get_inbounds`); answer
-    `ok=True/False`.
+    возвращает 4-tuple `(plan_id, promo_id, inbound_id, sub_id)`;
+    read-only проверки plan/promo; при `sub_id == 0` дополнительно
+    `inbound_id ∈ get_inbounds(plan_id)`; при `sub_id > 0` проверяется
+    ownership + active-status подписки (`inbound_id` не валидируется,
+    т.к. extend всегда наследует существующий); answer `ok=True/False`.
   - `on_successful_payment` (`F.successful_payment`) — идемпотентен по
-    `payments_repo.get_by_charge_id`; парсит 3-tuple payload; логирует
+    `payments_repo.get_by_charge_id`; парсит 4-tuple payload; логирует
     WARNING для legacy-payload без `i` (fallback на
     `settings.XUI_INBOUND_ID`); refetch plan/promo;
-    `subs_service.create_or_extend(..., inbound_id=…)` (xui-first; на
-    `XuiError` фиксирует платёж без подписки и уведомляет юзера);
+    `subs_service.create_or_extend(..., inbound_id=..., extend_sub_id=<sub_id or None>)`
+    (xui-first; на `XuiError` фиксирует платёж без подписки и
+    уведомляет юзера; на `ValueError` от `_provision` — подписка
+    больше не подходит для extend — пишет в логи и уведомляет);
     `payments_repo.create` (`IntegrityError` на duplicate
-    игнорируется); `promos.apply` (best-effort); `deliver_keys`.
+    игнорируется; `subscription_id` ссылается на (новую или
+    extended) подписку); `promos.apply` (best-effort);
+    `deliver_keys` с заголовком, отражающим extend vs new.
 
 ### [app/handlers/user/promo.py](./app/handlers/user/promo.py)
-Standalone-активация промокода (без оплаты, для `free_days`) с выбором inbound.
+Standalone-активация промокода (без оплаты, для `free_days`) с
+опциональным action-экраном «продлить vs новая» и выбором inbound.
 
 - `router = Router(name="user_promo")`.
 - Хелперы: `_options_to_jsonable` / `_jsonable_to_options` —
   сериализация `InboundOption` для FSM storage (зеркало хелперов в
   `buy.py`).
+- `_activate_promo_for_sub(callback, state, bot, user, promo_id,
+  extend_sub_id: int | None, inbound_id)` — общий tail для extend-ветки
+  action-экрана (и любых будущих путей, которым нужно активировать
+  free_days промо против конкретного `extend_sub_id` без шага выбора
+  inbound). Re-валидирует промо, вызывает
+  `subs_service.activate_free_days(extend_sub_id=...)`, best-effort
+  `promos_service.apply`, `deliver_keys` с заголовком
+  «применён к подписке #N» (extend) или «активирован» (new), очищает FSM.
 - `cb_open` (`PromoActCB action=open`) — `state.set_state(PromoActivate.waiting_code)`
   + `cancel_kb`.
 - `msg_code` (handler в `PromoActivate.waiting_code`) —
@@ -1315,24 +1496,45 @@ Standalone-активация промокода (без оплаты, для `f
   → подсказка использовать buy flow и `state.clear()`; на ошибке
   остаётся в стейте; для `free_days` вызывает
   `list_user_inbounds(xui)` (на `XuiError` или пустом списке — извинение
-  и `state.clear()`), сохраняет в FSM `promo_id` + `inbound_options`
-  (jsonable), переходит в `PromoActivate.choosing_inbound`, рендерит
-  `inbound_select_kb(plan_id=0, options, promo_id=promo.id)` с
-  подсказкой «Выберите подключение для активации промокода:».
+  и `state.clear()`). Затем грузит `subs_repo.list_active_for_user(user.id)`:
+  если есть активные подписки → стейт `PromoActivate.choosing_action`,
+  сохраняет `promo_id` + `inbound_options` (jsonable), рендерит
+  `promo_action_kb(active, remarks)`; если активных нет — текущая ветка
+  `choosing_inbound` + `inbound_select_kb`.
+- `cb_pick_action_extend_promo` (state-filter `PromoActivate.choosing_action`
+  + `PromoActCB action=extend`) — юзер выбрал «🔄 Продлить #N».
+  Проверка `sub_id>0`, наличия `promo_id` в FSM, загрузка sub через
+  `subs_repo.get` с проверкой ownership (`user_id` совпадает) +
+  `status='active'` (анти-подделка callback), затем
+  `_activate_promo_for_sub(extend_sub_id=sub.id,
+  inbound_id=sub.xui_inbound_id)` — inbound наследуется от существующей
+  подписки, allow-list НЕ проверяется (sub может жить на inbound, который
+  больше не привязан ни к одному тарифу).
+- `cb_pick_action_new_promo` (state-filter `PromoActivate.choosing_action`
+  + `PromoActCB action=new`) — юзер выбрал «🆕 Новая подписка».
+  Переиспользует `inbound_options` из FSM (положенный `msg_code` перед
+  показом action-экрана); если по какой-то причине пусто — фоллбек
+  `list_user_inbounds` с защитными ветками `XuiError`/empty. Переходит
+  в `PromoActivate.choosing_inbound`, рендерит `inbound_select_kb(0,
+  options, promo_id=promo_id)`. Дальше работает существующий
+  `cb_pick_inbound_for_promo` с `extend_sub_id=None`.
 - `cb_pick_inbound_for_promo` (state-filter `PromoActivate.choosing_inbound`
   + `InboundCB action=pick`) — повторно валидирует промо через
   `promos_service.validate` (анти-гонка), сверяет `inbound_id` со
   снэпшотом `inbound_options` в FSM (защита от подделки callback),
   вызывает `subs_service.activate_free_days(conn, xui, user, promo,
-  inbound_id=inbound_id)` (xui-first; при `XuiError` промо НЕ редимится);
-  затем `promos_service.apply` (best-effort), `deliver_keys`,
-  `state.clear()`.
+  inbound_id=inbound_id, extend_sub_id=None)` (xui-first; при `XuiError`
+  промо НЕ редимится); затем `promos_service.apply` (best-effort),
+  `deliver_keys`, `state.clear()`.
 - `cb_back_inbound_for_promo` (state-filter `PromoActivate.choosing_inbound`
   + `InboundCB action=back`) — возврат в `PromoActivate.waiting_code`,
   сброс FSM-полей `promo_id` и `inbound_options`.
 - Разделение с buy-флоу: фабрика `InboundCB` общая, но хендлеры
   фильтруются по своему FSM-стейту (`BuyFlow.choosing_inbound` vs
-  `PromoActivate.choosing_inbound`), так что не конфликтуют.
+  `PromoActivate.choosing_inbound`), так что не конфликтуют. Также
+  `PromoActCB extend`/`new` фильтруются по
+  `PromoActivate.choosing_action`, что не конфликтует с `BuyCB
+  extend`/`new` под `BuyFlow.choosing_action`.
 
 ## Пакет `app/keyboards/` — пользовательские клавиатуры
 
@@ -1341,16 +1543,25 @@ Inline-клавиатуры юзерского флоу.
 
 **CallbackData-фабрики:**
 - `UserCB(prefix="u", area)` — area ∈ menu/help/my/cancel.
-- `BuyCB(prefix="ub", action, plan_id=0, promo_id=0, inbound_id=0)` —
-  action ∈ open/plan/apply_promo/confirm/cancel. Поле `inbound_id`
-  пробрасывается через шаги после выбора inbound (`0` = шаг был
-  автоматически пропущен из-за единственного inbound в allow-list).
+- `BuyCB(prefix="ub", action, plan_id=0, promo_id=0, inbound_id=0, sub_id=0)` —
+  action ∈ open/plan/apply_promo/confirm/cancel/extend/new. Поле
+  `inbound_id` пробрасывается через шаги после выбора inbound (`0` =
+  шаг был автоматически пропущен из-за единственного inbound в
+  allow-list). Поле `sub_id` (>0) несёт id подписки, которую надо
+  продлить (extend-ветка action-экрана и кнопка «🛒 Продлить #N» с
+  `my_subscription`); `0` = новая подписка / n/a. Packed payload:
+  `ub:<action>:<plan_id>:<promo_id>:<inbound_id>:<sub_id>`.
 - `InboundCB(prefix="inb", action, plan_id=0, promo_id=0, inbound_id=0)` —
   action ∈ pick/back. Используется и в buy-флоу (`plan_id>0`), и в
   free-days promo-флоу (`plan_id=0`, `promo_id>0`); хендлер маршрутизирует
   по тому, какой id ненулевой.
 - `SubCB(prefix="us", action, sub_id=0)` — action ∈ keys/back.
-- `PromoActCB(prefix="up", action)` — action ∈ open/cancel.
+- `PromoActCB(prefix="up", action, inbound_id=0, sub_id=0)` —
+  action ∈ open/extend/new/cancel. Поле `sub_id>0` несёт id подписки,
+  которую нужно продлить через free_days промо (выбор на
+  `promo_action_kb`); `0` = новая подписка / n/a. Packed payload:
+  `up:<action>:<inbound_id>:<sub_id>` (например `up:open:0:0`,
+  `up:extend:0:42`).
 
 **Функции:**
 - `user_main_menu(has_subscription) -> InlineKeyboardMarkup` —
@@ -1364,10 +1575,29 @@ Inline-клавиатуры юзерского флоу.
   `<remark> (port <port>)`, callback
   `InboundCB(action="pick", plan_id, promo_id, inbound_id=option.id)`.
   Внизу «◀ Назад» (`InboundCB(action="back", plan_id, promo_id)`).
-- `confirm_kb(plan_id, promo_id=0, inbound_id=0)` — «Оплатить»
-  (`BuyCB(action="confirm", plan_id, promo_id, inbound_id)`) /
+- `confirm_kb(plan_id, promo_id=0, inbound_id=0, sub_id=0)` — «Оплатить»
+  (`BuyCB(action="confirm", plan_id, promo_id, inbound_id, sub_id)`) /
   «Применить промокод» (скрыта если `promo_id≠0`; пробрасывает
-  `inbound_id`) / «Отмена».
+  `inbound_id` и `sub_id`) / «Отмена». `sub_id>0` означает, что
+  invoice — это продление конкретной подписки (extend-ветка):
+  значение прокидывается в `billing.send_invoice(sub_id=...)`, далее
+  в payload, далее в `subs_service.create_or_extend(extend_sub_id=...)`.
+- `buy_action_kb(active_subs, inbound_remarks) -> InlineKeyboardMarkup` —
+  action-экран buy-флоу, когда у пользователя есть одна или несколько
+  активных подписок. По строке на каждую active sub: «🔄 Продлить
+  #<sub_id> · <remark>» (`BuyCB(action="extend", sub_id=<id>)`),
+  затем «🆕 Новая подписка» (`BuyCB(action="new")`) и «◀ Отмена»
+  (`UserCB(area="cancel")`). `inbound_remarks` — `{inbound_id: remark}`
+  мэппинг из кэшированного panel-листа; fallback при отсутствии —
+  `#<inbound_id>`. Зеркало `promo_action_kb`, но фабрика — `BuyCB`.
+- `promo_action_kb(active_subs, inbound_remarks)` — action-экран для
+  free_days промокода, когда у пользователя есть активные подписки.
+  По строке на каждую active sub: «🔄 Продлить #<sub_id> · <remark>»
+  (`PromoActCB(action="extend", sub_id=<id>)`), затем «🆕 Новая подписка»
+  (`PromoActCB(action="new")`) и «◀ Отмена» (`UserCB(area="cancel")`).
+  `inbound_remarks` — `{inbound_id: remark}` мэппинг из кэшированного
+  panel-листа; при отсутствии fallback — `#<inbound_id>`. Зеркало
+  `buy_action_kb`, но callback-фабрика — `PromoActCB`.
 - `subscription_kb(sub_id)` — «Получить ключ ещё раз» / «◀ В меню».
 
 callback_data укладывается в 64-байтовый лимит TG.
@@ -1377,17 +1607,32 @@ callback_data укладывается в 64-байтовый лимит TG.
 ### [app/states/user.py](./app/states/user.py)
 FSM-стейты юзерского флоу.
 
-- `BuyFlow(choosing_plan, choosing_inbound, entering_promo, confirming)` —
-  покупка. Шаг `choosing_inbound` между `choosing_plan` и `confirming`
-  отвечает за выбор сервера из allow-list тарифа; хендлер пропускает
-  его автоматически при единственном inbound. Состояние очищается после
-  `send_invoice`; pre_checkout и successful_payment приходят stateless,
-  используя `invoice_payload` как state-carrier (несёт `plan_id`,
-  `promo_id`, `inbound_id`).
-- `PromoActivate(waiting_code, choosing_inbound)` — standalone-активация
-  free_days. После валидации кода (тип `free_days`) всегда переходим в
-  `choosing_inbound`: пользователь выбирает inbound из 3x-ui, и только
-  тогда вызывается `subs_service.activate_free_days(inbound_id=...)`.
+- `BuyFlow(choosing_action, choosing_plan, choosing_inbound, entering_promo, confirming)` —
+  покупка. Первый шаг `choosing_action` показывается только при наличии
+  активных подписок (`list_active_for_user`) — там юзер выбирает
+  «🔄 Продлить #N · <remark>» или «🆕 Новая подписка» через `buy_action_kb`.
+  При отсутствии активных подписок флоу стартует сразу с `choosing_plan`.
+  При выборе «extend #N» — следующий шаг сразу `choosing_plan`
+  (но при confirm пропускается `choosing_inbound`, так как inbound
+  наследуется от существующей подписки), `sub_id` (extend-target)
+  пробрасывается через FSM и далее в `BuyCB`/`confirm_kb`/`send_invoice`.
+  При выборе «new» (или отсутствии активных) — стандартный путь:
+  `choosing_plan` → `choosing_inbound` (хендлер пропускает шаг
+  автоматически при единственном inbound в allow-list) → `confirming`.
+  Состояние очищается после `send_invoice`; pre_checkout и
+  successful_payment приходят stateless, используя `invoice_payload`
+  как state-carrier (несёт `plan_id`, `promo_id`, `inbound_id` и
+  опциональный `sub_id`).
+- `PromoActivate(waiting_code, choosing_action, choosing_inbound)` —
+  standalone-активация free_days. После валидации кода (тип `free_days`)
+  возможны две ветки: (1) если у пользователя есть активные подписки —
+  переход в `choosing_action` с `promo_action_kb` (выбор «Продлить #N»
+  или «Новая подписка»); extend-ветка минует `choosing_inbound` и сразу
+  вызывает `activate_free_days(extend_sub_id=N)` с inbound, унаследованным
+  от существующей sub; new-ветка переходит в `choosing_inbound`. (2) если
+  активных подписок нет — сразу `choosing_inbound`: пользователь выбирает
+  inbound из 3x-ui, и только тогда вызывается
+  `subs_service.activate_free_days(inbound_id=..., extend_sub_id=None)`.
   Discount-промокоды (`percent`/`flat_stars`) на этом шаге отклоняются
   с подсказкой использовать buy flow.
 

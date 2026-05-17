@@ -1,0 +1,3 @@
+# app/keyboards/user.py::promo_action_kb
+
+Builds the action-screen inline keyboard for free_days promo activation when the user has 1+ active subscriptions. Signature: promo_action_kb(active_subs: Sequence[Subscription], inbound_remarks: dict[int, str]) -> InlineKeyboardMarkup. Layout (1 button per row): one '🔄 Продлить #<sub_id> · <remark>' row per active subscription with PromoActCB(action='extend', sub_id=<id>); '🆕 Новая подписка' row with PromoActCB(action='new'); trailing '◀ Отмена' row with UserCB(area='cancel'). inbound_remarks is a {inbound_id: remark} mapping resolved from the cached panel inbound list — when missing (e.g. inbound detached) falls back to '#<inbound_id>'. Mirror of buy_action_kb but for the promo flow router.

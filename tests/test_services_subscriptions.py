@@ -258,9 +258,15 @@ async def test_extend_does_not_send_total_gb_to_update_client(
 
     async with get_conn() as conn:
         user = await make_user(conn, tg_id=14)
-        await make_subscription(conn, user_id=user.id)
+        sub = await make_subscription(conn, user_id=user.id)
         await svc.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None, inbound_id=1,
+            conn=conn,
+            xui=xui,
+            user=user,
+            plan=_plan(days=30),
+            promo=None,
+            inbound_id=1,
+            extend_sub_id=sub.id,
         )
 
     assert captured_kwargs, "update_client was not invoked on extend"
@@ -271,7 +277,10 @@ async def test_extend_does_not_send_total_gb_to_update_client(
         )
 
 
-async def test_create_or_extend_extends_existing(file_db, make_user, make_subscription):
+async def test_create_or_extend_when_extend_sub_id_given(
+    file_db, make_user, make_subscription
+):
+    """With explicit extend_sub_id, the specified sub is extended in place."""
     from app.db.engine import get_conn
 
     xui = AsyncMock()
@@ -282,7 +291,13 @@ async def test_create_or_extend_extends_existing(file_db, make_user, make_subscr
         sub = await make_subscription(conn, user_id=user.id)
         old_expires = sub.expires_at
         new_sub = await subs_service.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None, inbound_id=1,
+            conn=conn,
+            xui=xui,
+            user=user,
+            plan=_plan(days=30),
+            promo=None,
+            inbound_id=1,
+            extend_sub_id=sub.id,
         )
 
     assert new_sub.id == sub.id
@@ -403,7 +418,7 @@ async def test_revoke_xui_failure_still_marks_db(file_db, make_user, make_subscr
 
 
 async def test_create_or_extend_anchors_past_expiry_to_now(file_db, make_user, make_plan):
-    """A 'stale' active row with past expires_at extends from now, not the past."""
+    """When extending a stale active row, the delta anchors to now (not past)."""
     from app.db.engine import get_conn
     from app.db.repos import subscriptions as subs_repo
 
@@ -415,7 +430,7 @@ async def test_create_or_extend_anchors_past_expiry_to_now(file_db, make_user, m
         user = await make_user(conn, tg_id=1)
         # Insert a status=active sub but with a past expires_at (this can
         # happen between the expire-checker runs).
-        await subs_repo.create(
+        stale = await subs_repo.create(
             conn,
             user_id=user.id,
             xui_inbound_id=1,
@@ -425,11 +440,204 @@ async def test_create_or_extend_anchors_past_expiry_to_now(file_db, make_user, m
             plan_id=None,
             xui_sub_id="sub",
         )
-        # However, get_active_for_user returns only fresh subs; service
-        # treats it as "no active sub" → create a fresh one.
+        # Explicitly extend the stale sub — the service must anchor the
+        # new expiry to `now`, not to the past expires_at, so the user
+        # gets the full delta of plan.days.
         plan = await make_plan(conn, days=10, price_stars=50)
         new = await subs_service.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
+            conn=conn,
+            xui=xui,
+            user=user,
+            plan=plan,
+            promo=None,
+            inbound_id=1,
+            extend_sub_id=stale.id,
         )
-    # Should be in the future.
-    assert new.expires_at > past.isoformat(sep=" ")
+    # Should be in the future (~now + 10d), not past + 10d (which is still past).
+    now_iso = datetime.now(UTC).isoformat(sep=" ")
+    assert new.expires_at > now_iso
+    # Same row (extend, not create-new).
+    assert new.id == stale.id
+
+
+# ---------------------------------------------------------------------- #
+# extend_sub_id semantics — multiple subscriptions per user
+# ---------------------------------------------------------------------- #
+
+
+async def test_create_or_extend_creates_new_when_active_sub_exists_no_extend_id(
+    file_db, make_user, make_subscription, make_plan, monkeypatch
+):
+    """extend_sub_id=None → fresh add_client + new row, even if user has an active sub."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+    from app.services import subscriptions as svc
+
+    add_called: list[dict[str, object]] = []
+    update_called: list[dict[str, object]] = []
+
+    async def fake_add_client(client, **kwargs):
+        add_called.append(dict(kwargs))
+        return {"id": kwargs.get("client_uuid"), "email": kwargs.get("email")}
+
+    async def fake_update_client(client, **kwargs):
+        update_called.append(dict(kwargs))
+        return {"id": kwargs.get("client_uuid")}
+
+    monkeypatch.setattr(svc, "add_client", fake_add_client)
+    monkeypatch.setattr(svc, "update_client", fake_update_client)
+
+    xui = AsyncMock()
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=21)
+        existing = await make_subscription(conn, user_id=user.id)
+        plan = await make_plan(conn, days=30, price_stars=100)
+
+        new = await svc.create_or_extend(
+            conn=conn,
+            xui=xui,
+            user=user,
+            plan=plan,
+            promo=None,
+            inbound_id=1,
+            # extend_sub_id intentionally not passed → default None
+        )
+
+        rows = await subs_repo.list_for_user(conn, user.id)
+
+    assert len(add_called) == 1, "add_client must be called for fresh provisioning"
+    assert update_called == [], "update_client must NOT be called when extend_sub_id is None"
+    assert new.id != existing.id, "must be a brand-new subscription row"
+    assert {r.id for r in rows} == {existing.id, new.id}
+
+
+async def test_create_or_extend_rejects_extend_sub_id_of_other_user(
+    file_db, make_user, make_subscription
+):
+    """ValueError if the requested sub belongs to a different user."""
+    from app.db.engine import get_conn
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value=None)
+
+    async with get_conn() as conn:
+        owner = await make_user(conn, tg_id=31)
+        intruder = await make_user(conn, tg_id=32)
+        sub = await make_subscription(conn, user_id=owner.id)
+
+        with pytest.raises(ValueError):
+            await subs_service.create_or_extend(
+                conn=conn,
+                xui=xui,
+                user=intruder,
+                plan=_plan(days=30),
+                promo=None,
+                inbound_id=1,
+                extend_sub_id=sub.id,
+            )
+
+
+async def test_create_or_extend_rejects_extend_sub_id_for_revoked(
+    file_db, make_user, make_subscription
+):
+    """ValueError if the requested sub is not status='active'."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value=None)
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=41)
+        revoked = await make_subscription(conn, user_id=user.id)
+        await subs_repo.set_status(conn, revoked.id, "revoked")
+
+        with pytest.raises(ValueError):
+            await subs_service.create_or_extend(
+                conn=conn,
+                xui=xui,
+                user=user,
+                plan=_plan(days=30),
+                promo=None,
+                inbound_id=1,
+                extend_sub_id=revoked.id,
+            )
+
+        expired = await make_subscription(
+            conn,
+            user_id=user.id,
+            xui_client_uuid="uuid-2",
+            xui_client_email="tg_100_bbb",
+            xui_sub_id="subid2",
+        )
+        await subs_repo.set_status(conn, expired.id, "expired")
+
+        with pytest.raises(ValueError):
+            await subs_service.create_or_extend(
+                conn=conn,
+                xui=xui,
+                user=user,
+                plan=_plan(days=30),
+                promo=None,
+                inbound_id=1,
+                extend_sub_id=expired.id,
+            )
+
+
+async def test_activate_free_days_with_extend_sub_id(
+    file_db, make_user, make_subscription
+):
+    """activate_free_days extends a specific sub when extend_sub_id is given."""
+    from app.db.engine import get_conn
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value=None)
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=51)
+        sub = await make_subscription(conn, user_id=user.id)
+        old_expires = sub.expires_at
+
+        new = await subs_service.activate_free_days(
+            conn=conn,
+            xui=xui,
+            user=user,
+            promo=_promo("free_days", 7),
+            inbound_id=1,
+            extend_sub_id=sub.id,
+        )
+
+    assert new.id == sub.id
+    assert new.expires_at > old_expires
+
+
+async def test_list_active_for_user_returns_multiple(
+    file_db, make_user, make_subscription
+):
+    """list_active_for_user returns all active subs, sorted by expires_at DESC."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=61)
+        soon = await make_subscription(
+            conn,
+            user_id=user.id,
+            xui_client_uuid="uuid-soon",
+            xui_client_email="tg_100_soon",
+            xui_sub_id="subid-soon",
+            expires_at=datetime.now(UTC) + timedelta(days=5),
+        )
+        later = await make_subscription(
+            conn,
+            user_id=user.id,
+            xui_client_uuid="uuid-later",
+            xui_client_email="tg_100_later",
+            xui_sub_id="subid-later",
+            expires_at=datetime.now(UTC) + timedelta(days=60),
+        )
+
+        rows = await subs_repo.list_active_for_user(conn, user.id)
+
+    assert [r.id for r in rows] == [later.id, soon.id]

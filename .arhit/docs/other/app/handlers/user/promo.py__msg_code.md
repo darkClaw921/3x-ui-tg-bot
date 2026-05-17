@@ -1,0 +1,3 @@
+# app/handlers/user/promo.py::msg_code
+
+Message handler bound to PromoActivate.waiting_code. Validates the typed promo code via promos_service.validate. Branches: (1) invalid → re-prompt, stay in waiting_code; (2) non-free_days type (percent/flat_stars) → clear state, route user to buy flow; (3) free_days but panel unreachable / empty inbound list → clear state, apologise; (4) free_days happy path → fetch active subscriptions via subs_repo.list_active_for_user — if any exist, transition to PromoActivate.choosing_action with promo_action_kb (action screen); otherwise transition to PromoActivate.choosing_inbound with inbound_select_kb (original behaviour). promo_id + inbound_options are stashed in the FSM in both branches so the chosen action handler can reuse them.

@@ -31,6 +31,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.db.repos.plans import Plan
+from app.db.repos.subscriptions import Subscription
 from app.services.inbounds import InboundOption
 
 
@@ -49,19 +50,37 @@ class BuyCB(CallbackData, prefix="ub"):
     """Buy-flow callbacks.
 
     ``action``:
-    * ``open``         — entry point ("Купить") — show plan list.
+    * ``open``         — entry point ("Купить") — show plan list or the
+      "продлить vs новая" action screen when the user already has at
+      least one active subscription.
+    * ``extend``       — user picked "🔄 Продлить #N" from the action
+      screen (or directly from a subscription card in
+      :mod:`app.handlers.user.my_subscription`); ``sub_id`` identifies
+      the subscription whose expiry will be pushed forward.
+    * ``new``          — user picked "🆕 Новая подписка" — proceed with a
+      regular new-subscription buy flow (``sub_id`` stays ``0``).
     * ``plan``         — a plan was picked (id in ``plan_id``).
     * ``apply_promo``  — user wants to type a promo code.
     * ``confirm``      — proceed to the Stars invoice; the chosen
       inbound is carried in ``inbound_id`` (``0`` when the plan has a
       single inbound and the wizard auto-skipped the select step).
+      ``sub_id`` > 0 signals "extend the existing subscription #N"
+      instead of provisioning a brand-new one.
     * ``cancel``       — abort the wizard and return to the main menu.
+
+    ``sub_id``:
+    * ``0`` (default) — create a new subscription.
+    * ``>0``          — extend the subscription with this id. The
+      inbound is then inherited from the existing sub and the allow-list
+      check is skipped (an existing sub may live on an inbound that is
+      no longer attached to any plan).
     """
 
     action: str
     plan_id: int = 0
     promo_id: int = 0
     inbound_id: int = 0
+    sub_id: int = 0
 
 
 class InboundCB(CallbackData, prefix="inb"):
@@ -99,10 +118,29 @@ class PromoActCB(CallbackData, prefix="up"):
 
     ``action``:
     * ``open``   — entry point ("Активировать промокод").
+    * ``extend`` — user picked "🔄 Продлить #N" from the action screen
+      shown when the free-days promo could attach to an existing
+      subscription instead of provisioning a new one; ``sub_id``
+      identifies the subscription whose expiry will be pushed forward.
+    * ``new``    — user picked "🆕 Новая подписка" — proceed with the
+      regular inbound-selection step (``sub_id`` stays ``0``).
     * ``cancel`` — abort and return to the main menu.
+
+    ``inbound_id``:
+    * ``0`` (default) — unused for the ``open`` / ``extend`` / ``new`` /
+      ``cancel`` callbacks; reserved for future flows.
+
+    ``sub_id``:
+    * ``0`` (default) — create a new subscription (or n/a).
+    * ``>0``          — extend the subscription with this id. The
+      inbound is inherited from the existing sub and the allow-list
+      check is skipped (an existing sub may live on an inbound that is
+      no longer attached to any plan).
     """
 
     action: str
+    inbound_id: int = 0
+    sub_id: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +242,8 @@ def confirm_kb(
     plan_id: int,
     promo_id: int = 0,
     inbound_id: int = 0,
+    *,
+    sub_id: int = 0,
 ) -> InlineKeyboardMarkup:
     """Confirmation keyboard shown after a plan (and inbound) were picked.
 
@@ -211,7 +251,9 @@ def confirm_kb(
     currently attached), and «Отмена». The selected ``inbound_id`` is
     threaded through into :class:`BuyCB` ``action='confirm'`` so the
     Stars-invoice payload built downstream can pin the subscription to
-    the right server.
+    the right server. ``sub_id`` is similarly threaded so the
+    "extend existing sub #N" intent survives the round-trip through
+    Telegram (the FSM may be cleared between confirm and payment).
     """
     builder = InlineKeyboardBuilder()
     builder.button(
@@ -221,6 +263,7 @@ def confirm_kb(
             plan_id=plan_id,
             promo_id=promo_id,
             inbound_id=inbound_id,
+            sub_id=sub_id,
         ),
     )
     if promo_id == 0:
@@ -230,9 +273,78 @@ def confirm_kb(
                 action="apply_promo",
                 plan_id=plan_id,
                 inbound_id=inbound_id,
+                sub_id=sub_id,
             ),
         )
     builder.button(text="✖ Отмена", callback_data=UserCB(area="cancel"))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def buy_action_kb(
+    active_subs: Sequence[Subscription],
+    inbound_remarks: dict[int, str],
+) -> InlineKeyboardMarkup:
+    """Action-screen keyboard shown when the user already has active subs.
+
+    One row per active subscription labelled ``🔄 Продлить #<id> · <remark>``
+    (sending ``BuyCB(action='extend', sub_id=<id>)``), followed by a
+    ``🆕 Новая подписка`` row (sending ``BuyCB(action='new')``) and a
+    trailing ``◀ Отмена`` that re-uses the standard cancel callback.
+
+    ``inbound_remarks`` is a ``{inbound_id: remark}`` mapping resolved
+    from the cached panel inbound list — when a subscription's inbound
+    is missing from the mapping (e.g. it was detached on the panel) we
+    fall back to ``#<inbound_id>`` so the button still renders.
+    """
+    builder = InlineKeyboardBuilder()
+    for sub in active_subs:
+        remark = inbound_remarks.get(sub.xui_inbound_id) or f"#{sub.xui_inbound_id}"
+        builder.button(
+            text=f"🔄 Продлить #{sub.id} · {remark}",
+            callback_data=BuyCB(action="extend", sub_id=sub.id),
+        )
+    builder.button(
+        text="🆕 Новая подписка",
+        callback_data=BuyCB(action="new"),
+    )
+    builder.button(text="◀ Отмена", callback_data=UserCB(area="cancel"))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def promo_action_kb(
+    active_subs: Sequence[Subscription],
+    inbound_remarks: dict[int, str],
+) -> InlineKeyboardMarkup:
+    """Action-screen keyboard shown for ``free_days`` promos when the
+    user already has active subscriptions.
+
+    Mirrors :func:`buy_action_kb` but uses :class:`PromoActCB` callbacks
+    so the promo router can pick them up under
+    :class:`app.states.user.PromoActivate.choosing_action`. One row per
+    active subscription labelled ``🔄 Продлить #<id> · <remark>`` (sending
+    ``PromoActCB(action='extend', sub_id=<id>)``), followed by a
+    ``🆕 Новая подписка`` row (sending ``PromoActCB(action='new')``) and a
+    trailing ``◀ Отмена`` that re-uses the standard cancel callback.
+
+    ``inbound_remarks`` is a ``{inbound_id: remark}`` mapping resolved
+    from the cached panel inbound list — when a subscription's inbound
+    is missing from the mapping (e.g. it was detached on the panel) we
+    fall back to ``#<inbound_id>`` so the button still renders.
+    """
+    builder = InlineKeyboardBuilder()
+    for sub in active_subs:
+        remark = inbound_remarks.get(sub.xui_inbound_id) or f"#{sub.xui_inbound_id}"
+        builder.button(
+            text=f"🔄 Продлить #{sub.id} · {remark}",
+            callback_data=PromoActCB(action="extend", sub_id=sub.id),
+        )
+    builder.button(
+        text="🆕 Новая подписка",
+        callback_data=PromoActCB(action="new"),
+    )
+    builder.button(text="◀ Отмена", callback_data=UserCB(area="cancel"))
     builder.adjust(1)
     return builder.as_markup()
 
@@ -256,10 +368,12 @@ __all__ = [
     "SubCB",
     "UserCB",
     "back_to_menu_kb",
+    "buy_action_kb",
     "cancel_kb",
     "confirm_kb",
     "inbound_select_kb",
     "plans_kb",
+    "promo_action_kb",
     "subscription_kb",
     "user_main_menu",
 ]

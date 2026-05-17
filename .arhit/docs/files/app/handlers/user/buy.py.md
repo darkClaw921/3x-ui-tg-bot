@@ -1,37 +1,24 @@
 # app/handlers/user/buy.py
 
-Хендлеры пользовательского buy-флоу: выбор тарифа → выбор inbound (skip при 1 inbound) → confirm → Stars invoice → pre_checkout → successful_payment.
+Buy-flow handlers: plan selection → optional promo → Stars invoice → pre_checkout → successful_payment. Now supports both 'new subscription' and 'extend existing subscription #N' flows via sub_id threaded through BuyCB/FSM/invoice payload.
 
-Маршрутизация по FSM (BuyFlow):
-- choosing_plan → choosing_inbound (если у тарифа >1 inbound) или сразу в confirming (1 inbound)
-- choosing_inbound → confirming
-- confirming → (entering_promo, обратно в confirming) → инвойс отправлен, state.clear()
+UI callbacks (FSM-driven):
+- cb_open (BuyCB.open): show action screen (buy_action_kb with 'Продлить #N' + 'Новая подписка') if user has 1+ active subs, otherwise show plan list directly.
+- cb_pick_action_extend (BuyCB.extend, NO state filter): pin sub_id+inbound_id from existing sub into FSM, jump to choosing_plan. Validates ownership defensively (rejects foreign or non-active sub). Works as standalone entry point from Phase 4 'Моя подписка' card.
+- cb_pick_action_new (BuyCB.new, NO state filter): clear FSM (sub_id=0), jump to choosing_plan.
+- cb_pick_plan (BuyCB.plan): extend branch (sub_id>0 in FSM) always skips inbound selection and goes straight to confirming with extend-aware card; new branch keeps original single/multi-inbound routing.
+- cb_pick_inbound (BuyFlow.choosing_inbound + InboundCB.pick): only reachable in new-sub branch; persists chosen inbound and renders confirm card.
+- cb_pick_inbound_back / cb_apply_promo / msg_promo_code: thread sub_id through FSM.
+- cb_confirm (BuyCB.confirm): extend branch re-verifies ownership, skips plan-inbound allow-list (existing sub may live on a detached inbound), and calls billing.send_invoice(sub_id=N). New branch keeps allow-list check and sends sub_id=0.
 
-Callbacks (FSM-driven):
-- cb_open (BuyCB action='open'): показывает список тарифов, переходит в choosing_plan.
-- cb_pick_plan (BuyCB action='plan'): загружает inbound_ids через plans_repo.get_inbounds; если 1 → resolved через list_user_inbounds для remark, FSM(inbound_id=…), confirming; если N>1 → list_user_inbounds + фильтр по allow-list плана, FSM(inbound_options=[…]), choosing_inbound, рендер inbound_select_kb. На XuiError — answer alert.
-- cb_pick_inbound (InboundCB action='pick' в choosing_inbound): валидирует inbound_id ∈ get_inbounds(plan_id), сохраняет в FSM, рендерит _format_confirm + confirm_kb(plan_id, promo_id, inbound_id).
-- cb_pick_inbound_back (InboundCB action='back' в choosing_inbound): возврат в choosing_plan + plans_kb.
-- cb_apply_promo (BuyCB action='apply_promo'): сохраняет plan_id+inbound_id, переходит в entering_promo.
-- msg_promo_code (message в entering_promo): валидирует код через promos_service.validate, при успехе → confirming + рендер confirm с remark и has_active_sub.
-- cb_confirm (BuyCB action='confirm'): резолвит inbound_id из callback_data (fallback на FSM), валидирует ∈ get_inbounds; при mismatch — возвращает в choosing_inbound с обновлённым списком; иначе billing.send_invoice(..., inbound_id=…) и state.clear().
+Payment callbacks (stateless, invoice payload carries sub_id):
+- on_pre_checkout: parses 4-tuple; for sub_id>0 loads user via users_repo.get_by_tg_id, verifies sub.user_id == buyer.id and status='active', skips allow-list. For sub_id=0 keeps original allow-list check.
+- on_successful_payment: parses 4-tuple, logs 'extend sub N' or 'create new sub', passes extend_sub_id=sub_id (or None) into subs_service.create_or_extend. Idempotency via payments_repo unique constraint on telegram_charge_id.
 
-Payment-callbacks (stateless, IDs из invoice payload):
-- on_pre_checkout: parse_invoice_payload → (plan_id, promo_id, inbound_id); валидирует plan активен, promo usable, inbound_id ∈ get_inbounds(plan_id); answer_pre_checkout_query(ok=…).
-- on_successful_payment: idempotency check по telegram_payment_charge_id; parse payload; логирует WARNING при legacy-payload без 'i' (fallback на settings.XUI_INBOUND_ID); subs_service.create_or_extend(..., inbound_id=…); payments_repo.create; promos_service.apply (best-effort); deliver_keys.
+Helpers:
+- _format_confirm(plan, promo, inbound_remark, extending_sub: Subscription | None): renders '🔄 Продление подписки #N · remark · Действует до DATE' when extending_sub is set, else '🆕 Новая подписка на remark'. Replaces old has_active_sub boolean.
+- _shift_expiry(current_expires_at, plus_days): returns 'YYYY-MM-DD' for the new expiry shown on the extend confirm card.
+- _send_plan_list: shared 'choosing_plan + plans_kb' helper for action-screen exit branches.
+- _has_active_sub: removed (replaced by direct subs_repo.list_active_for_user check in cb_open).
 
-Хелперы:
-- _format_confirm(plan, promo, inbound_remark, has_active_sub): HTML текст confirm-карточки с remark подключения; если has_active_sub=True — добавляет ⚠️-предупреждение что подписка продлится на текущем подключении.
-- _has_active_sub(conn, user_id): обертка над subs_repo.get_active_for_user.
-- _remark_for(options, inbound_id): резолвит remark из FSM-options (list[InboundOption] или list[dict]).
-- _options_to_jsonable / _jsonable_to_options: сериализация InboundOption в/из FSM JSON-storage.
-- _fetch_plan / _fetch_promo: тонкие обертки.
-- _plan_is_buyable / _promo_is_usable: предикаты доступности.
-
-Зависимости:
-- app.db.repos.plans (get_inbounds), app.db.repos.subscriptions (get_active_for_user), app.db.repos.promos, app.db.repos.payments.
-- app.services.billing (send_invoice с inbound_id, parse_invoice_payload возвращает 3-tuple), app.services.subscriptions (create_or_extend kwarg inbound_id), app.services.inbounds (list_user_inbounds, InboundOption), app.services.promos.
-- app.keyboards.user: BuyCB, InboundCB, confirm_kb, inbound_select_kb, plans_kb.
-- app.states.user: BuyFlow.choosing_inbound.
-- app.xui (get_xui_client, XuiError).
-- app.config.settings (XUI_INBOUND_ID для логирования legacy-fallback).
+Idempotency: payments.telegram_charge_id UNIQUE — duplicate updates short-circuit before xui calls.
