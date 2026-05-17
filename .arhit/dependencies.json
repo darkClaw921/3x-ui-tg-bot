@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-17T08:47:19.839Z",
+  "generatedAt": "2026-05-17T09:22:50.835Z",
   "dependencies": [
     {
       "from": "app/config.py",
@@ -30670,6 +30670,18 @@
     },
     {
       "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/services/inbounds.py",
+      "type": "import",
+      "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/states/admin.py",
+      "type": "import",
+      "toElement": "PlanCreate"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
       "to": "app/states/admin.py",
       "type": "import",
       "toElement": "PromoCreate"
@@ -30801,6 +30813,27 @@
       "from": "tests/test_handlers_admin_routing.py",
       "to": "tests/test_handlers_admin_routing.py",
       "type": "call",
+      "fromElement": "_sample_inbound_options",
+      "toElement": "_sample_inbound_options"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_sample_inbound_options",
+      "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_sample_inbound_options",
+      "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
       "fromElement": "_all_admin_keyboards",
       "toElement": "_all_admin_keyboards"
     },
@@ -30816,7 +30849,21 @@
       "to": "tests/test_handlers_admin_routing.py",
       "type": "call",
       "fromElement": "_all_admin_keyboards",
+      "toElement": "_sample_inbound_options"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
       "toElement": "admin_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "back_to_main_kb"
     },
     {
       "from": "tests/test_handlers_admin_routing.py",
@@ -30900,6 +30947,69 @@
       "to": "tests/test_handlers_admin_routing.py",
       "type": "call",
       "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_days_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_price_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_gb_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "flow"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_inbounds_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_inbounds_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "set"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_inbounds_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "plan_inbounds_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
       "toElement": "promos_list_kb"
     },
     {
@@ -30936,6 +31046,62 @@
       "type": "call",
       "fromElement": "_all_admin_keyboards",
       "toElement": "promo_type_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_value_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_max_uses_presets_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "promo_expires_presets_kb"
     },
     {
       "from": "tests/test_handlers_admin_routing.py",
@@ -31136,6 +31302,54 @@
       "to": "tests/test_handlers_admin_routing.py",
       "type": "call",
       "toElement": "AdminCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "test_plan_inbound_multiselect_buttons_are_routed"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "wizard"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "PlanCB"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "toElement": "PlanCB"
     },
     {
       "from": "tests/test_handlers_admin_stats.py",
@@ -39842,6 +40056,593 @@
       "to": "tests/test_handlers_user_promo.py",
       "type": "call",
       "toElement": "cb.message.edit_text.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "__future__.py",
+      "type": "import",
+      "toElement": "annotations"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "collections/abc.py",
+      "type": "import",
+      "toElement": "Iterable"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "pytest.py",
+      "type": "import"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "aiogram.py",
+      "type": "import",
+      "toElement": "Router"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "CallbackQuery"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "InlineKeyboardMarkup"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "User"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "app/db/repos/plans.py",
+      "type": "import",
+      "toElement": "Plan"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "app/handlers/user.py",
+      "type": "import",
+      "toElement": "user_router"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "app/keyboards/user.py",
+      "type": "import",
+      "toElement": "("
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "app/services/inbounds.py",
+      "type": "import",
+      "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "app/states/user.py",
+      "type": "import",
+      "toElement": "BuyFlow"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "app/states/user.py",
+      "type": "import",
+      "toElement": "PromoActivate"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "branch"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "user_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "flow"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "import"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "Helpers"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_walk",
+      "toElement": "_walk"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_walk",
+      "toElement": "it"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_walk",
+      "toElement": "_walk"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_buttons",
+      "toElement": "_all_buttons"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_buttons",
+      "toElement": "out.append"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "handlers"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "CallbackQuery"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "TgUser"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_walk"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "handler.check"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_sample_plan",
+      "toElement": "_sample_plan"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_sample_plan",
+      "toElement": "Plan"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_sample_inbound_options",
+      "toElement": "_sample_inbound_options"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_sample_inbound_options",
+      "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_sample_inbound_options",
+      "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "_all_user_keyboards"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "under"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "_sample_inbound_options"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "branches"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "user_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "user_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "user_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "user_main_menu"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "back_to_menu_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "cancel_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "plans_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "plans_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "plans_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "plans_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "_sample_plan"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "flow"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "flow"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "inbound_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "inbound_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "inbound_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "inbound_select_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "confirm_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "confirm_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "confirm_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "confirm_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "fromElement": "_all_user_keyboards",
+      "toElement": "subscription_kb"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "pytest.mark.parametrize"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_all_user_keyboards"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_all_user_keyboards"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "test_every_user_button_is_routed"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_all_buttons"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "missing.append"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "join"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "test_user_main_menu_entry_points_are_routed"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "BuyCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "UserCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "PromoActCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "UserCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "test_inbound_select_routes_in_both_flows"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "InboundCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "InboundCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "InboundCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "InboundCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "test_confirm_kb_threads_inbound_id_through_routing"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "BuyCB"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "_has_matching_handler"
+    },
+    {
+      "from": "tests/test_handlers_user_routing.py",
+      "to": "tests/test_handlers_user_routing.py",
+      "type": "call",
+      "toElement": "BuyCB"
     },
     {
       "from": "tests/test_keys_helper.py",

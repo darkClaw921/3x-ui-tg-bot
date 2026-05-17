@@ -714,5 +714,21 @@
     "content": "Общие pytest-фикстуры для tg-vpn-bot tests.\n\nПеред любым импортом app.* устанавливает env-переменные (BOT_TOKEN, ADMIN_IDS, XUI_*, DB_PATH=':memory:'), т.к. Settings — singleton, инициализируется при импорте.\n\nФикстуры:\n- monkey_settings: callable для patch'а атрибутов app.config.settings через monkeypatch.\n- tmp_db_path: tmp_path / 'test.db' для file-backed sqlite.\n- db_conn: in-memory aiosqlite.Connection с применённой schema.sql + _apply_migrations.\n- file_db: file-backed sqlite по tmp_db_path + monkeypatch settings.DB_PATH; для тестов, использующих get_conn().\n- make_user / make_plan / make_promo / make_subscription: factory'и для создания строк в БД через репо.\n  - make_plan теперь auto-attaches default inbound (inbound_ids=[settings.XUI_INBOUND_ID]) — соответствует backfill из миграции. Параметр inbound_ids=[]/[1,2] для кастомизации.\n- mock_bot: AsyncMock(aiogram.Bot) с stub'ами send_message/send_photo/send_invoice/answer_pre_checkout_query.\n- mock_xui_client: AsyncMock с XuiClient surface (request_json, request, login, close).\n\n_build_schema: применяет schema.sql + _apply_migrations к свежему соединению (используется в db_conn и file_db).",
     "createdAt": "2026-05-17T08:46:05.044Z",
     "updatedAt": "2026-05-17T08:46:05.044Z"
+  },
+  {
+    "element": "tests/test_handlers_user_routing.py",
+    "path": "tests/test_handlers_user_routing.py",
+    "type": "file",
+    "content": "Routing-coverage тест для user_router (зеркало test_handlers_admin_routing.py). Проверяет что КАЖДАЯ callback-кнопка КАЖДОЙ пользовательской клавиатуры (app.keyboards.user) имеет хотя бы один зарегистрированный handler. Использует HandlerObject.check() для прогона всей цепочки фильтров (CallbackData parsers + state filters + magic filters) против синтезированного CallbackQuery. Handlers НЕ вызываются — нет ни Telegram API, ни DB, ни 3x-ui. \n\nПараметризованный test_every_user_button_is_routed покрывает: user_main_menu(has_subscription=True/False), back_to_menu_kb, cancel_kb, plans_kb(empty/one), inbound_select_kb (под BuyFlow.choosing_inbound и под PromoActivate.choosing_inbound), confirm_kb (с/без promo), subscription_kb.\n\nPinned regressions: test_user_main_menu_entry_points_are_routed (4 entry-кнопки главного меню), test_inbound_select_routes_in_both_flows (pick/back под обоими state), test_confirm_kb_threads_inbound_id_through_routing (inbound_id в payload не ломает routing). \n\nState-bound клавиатуры тестируются под нужным state (raw_state параметром). Helpers _walk/_all_buttons/_has_matching_handler — намеренная копия из admin-routing-теста (две suites должны быть независимы).",
+    "createdAt": "2026-05-17T09:22:46.842Z",
+    "updatedAt": "2026-05-17T09:22:46.842Z"
+  },
+  {
+    "element": "tests/test_handlers_admin_routing.py",
+    "path": "tests/test_handlers_admin_routing.py",
+    "type": "file",
+    "content": "Routing-coverage тест для admin_router. Гарантирует что КАЖДАЯ кнопка КАЖДОЙ admin-клавиатуры (app.keyboards.admin) имеет зарегистрированный handler. Регрессия после бага «AdminCB(area='plans'/'promos', action='open') не имел handler — кнопки молча игнорировались».\n\nИспользует HandlerObject.check() для синтетического прогона CallbackQuery через router без вызова handler'ов. Покрытые клавиатуры (параметризованно): admin_main_menu, back_to_main_kb, cancel_kb, plans_list_kb (empty + одна запись), plan_card_kb (active/inactive), plan_edit_fields_kb, plan_days/price/gb_presets_kb (под соответствующими PlanCreate.waiting_* states), plan_inbounds_select_kb (none_selected + partial_selected), promos_list_kb, promo_type_kb (под PromoCreate.waiting_type), promo_value_presets_kb для всех трёх типов (percent/flat_stars/free_days под waiting_value), promo_max_uses/expires_presets_kb, promo_card_kb, user_card_kb (без подписки/с админом), stats_kb (7d/30d/all).\n\nPinned regressions: test_admin_main_menu_specifically_routes_plans_and_promos (явный guard под старый баг), test_plan_inbound_multiselect_buttons_are_routed (Phase 4: toggle_inbound, inbounds_done, edit с field=inbounds).\n\nHelpers _walk (рекурсивный обход router.sub_routers), _all_buttons (только callback-кнопки), _has_matching_handler (state-aware), _sample_plan, _sample_promo, _sample_inbound_options.",
+    "createdAt": "2026-05-17T09:22:47.094Z",
+    "updatedAt": "2026-05-17T09:22:47.094Z"
   }
 ]

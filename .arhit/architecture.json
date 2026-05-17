@@ -1,6 +1,6 @@
 {
   "root": "/Users/igorgerasimov/claudeWorkspace/3x-ui-tg-bot",
-  "generatedAt": "2026-05-17T08:47:19.556Z",
+  "generatedAt": "2026-05-17T09:22:50.557Z",
   "nodes": [
     {
       "id": "app/__init__.py",
@@ -3185,7 +3185,7 @@
           "name": "_walk",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 52,
+          "line": 61,
           "exports": []
         },
         {
@@ -3193,7 +3193,7 @@
           "name": "_all_buttons",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 59,
+          "line": 68,
           "exports": []
         },
         {
@@ -3201,7 +3201,7 @@
           "name": "_sample_plan",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 107,
+          "line": 116,
           "exports": []
         },
         {
@@ -3209,7 +3209,15 @@
           "name": "_sample_promo",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 119,
+          "line": 128,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_routing.py:_sample_inbound_options",
+          "name": "_sample_inbound_options",
+          "type": "function",
+          "path": "tests/test_handlers_admin_routing.py",
+          "line": 142,
           "exports": []
         },
         {
@@ -3217,7 +3225,7 @@
           "name": "_all_admin_keyboards",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 133,
+          "line": 150,
           "exports": []
         }
       ]
@@ -3561,6 +3569,55 @@
           "type": "function",
           "path": "tests/test_handlers_user_promo.py",
           "line": 43,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "tests/test_handlers_user_routing.py",
+      "name": "test_handlers_user_routing.py",
+      "type": "file",
+      "path": "tests/test_handlers_user_routing.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_handlers_user_routing.py:_walk",
+          "name": "_walk",
+          "type": "function",
+          "path": "tests/test_handlers_user_routing.py",
+          "line": 56,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_routing.py:_all_buttons",
+          "name": "_all_buttons",
+          "type": "function",
+          "path": "tests/test_handlers_user_routing.py",
+          "line": 63,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_routing.py:_sample_plan",
+          "name": "_sample_plan",
+          "type": "function",
+          "path": "tests/test_handlers_user_routing.py",
+          "line": 111,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_routing.py:_sample_inbound_options",
+          "name": "_sample_inbound_options",
+          "type": "function",
+          "path": "tests/test_handlers_user_routing.py",
+          "line": 123,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_routing.py:_all_user_keyboards",
+          "name": "_all_user_keyboards",
+          "type": "function",
+          "path": "tests/test_handlers_user_routing.py",
+          "line": 131,
           "exports": []
         }
       ]

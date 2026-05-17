@@ -31,17 +31,26 @@ from app.db.repos.promos import Promo
 from app.handlers.admin import admin_router
 from app.keyboards.admin import (
     admin_main_menu,
+    back_to_main_kb,
     cancel_kb,
     plan_card_kb,
+    plan_days_presets_kb,
     plan_edit_fields_kb,
+    plan_gb_presets_kb,
+    plan_inbounds_select_kb,
+    plan_price_presets_kb,
     plans_list_kb,
     promo_card_kb,
+    promo_expires_presets_kb,
+    promo_max_uses_presets_kb,
     promo_type_kb,
+    promo_value_presets_kb,
     promos_list_kb,
     stats_kb,
     user_card_kb,
 )
-from app.states.admin import PromoCreate
+from app.services.inbounds import InboundOption
+from app.states.admin import PlanCreate, PromoCreate
 
 
 # --------------------------------------------------------------------------- #
@@ -130,21 +139,61 @@ def _sample_promo(promo_id: int = 3) -> Promo:
     )
 
 
+def _sample_inbound_options() -> list[InboundOption]:
+    """Two-inbound mix exercising both selected and deselected branches."""
+    return [
+        InboundOption(id=1, remark="Германия", port=443, enabled=True),
+        InboundOption(id=2, remark="Нидерланды", port=8443, enabled=True),
+    ]
+
+
 def _all_admin_keyboards() -> list[tuple[str, InlineKeyboardMarkup, str | None]]:
     """Every admin keyboard variant the bot can render, with the FSM state
     each one is shown under (or ``None`` for stateless screens).
 
     Each tuple is ``(pytest_id, keyboard, raw_state)``.
     """
+    inbound_opts = _sample_inbound_options()
     return [
         ("admin_main_menu", admin_main_menu(), None),
+        ("back_to_main_kb", back_to_main_kb(), None),
         ("cancel_kb", cancel_kb(), None),
-        # Plans
+        # Plans — listing & card
         ("plans_list_kb(empty)", plans_list_kb([]), None),
         ("plans_list_kb(one_plan)", plans_list_kb([_sample_plan()]), None),
         ("plan_card_kb(active)", plan_card_kb(7, is_active=True), None),
         ("plan_card_kb(inactive)", plan_card_kb(7, is_active=False), None),
         ("plan_edit_fields_kb", plan_edit_fields_kb(7), None),
+        # Plan-create wizard preset keyboards — each gated by its FSM step.
+        (
+            "plan_days_presets_kb",
+            plan_days_presets_kb(),
+            PlanCreate.waiting_days.state,
+        ),
+        (
+            "plan_price_presets_kb",
+            plan_price_presets_kb(),
+            PlanCreate.waiting_price.state,
+        ),
+        (
+            "plan_gb_presets_kb",
+            plan_gb_presets_kb(),
+            PlanCreate.waiting_traffic_gb.state,
+        ),
+        # Plan inbounds multi-select — used both inside the create wizard
+        # (state-gated) and the edit flow (stateless). Both cases share the
+        # same callback handlers without a state filter, so the test runs
+        # the keyboard once with each shape of `selected` (none / partial).
+        (
+            "plan_inbounds_select_kb(none_selected)",
+            plan_inbounds_select_kb(inbound_opts, selected=set()),
+            None,
+        ),
+        (
+            "plan_inbounds_select_kb(partial_selected)",
+            plan_inbounds_select_kb(inbound_opts, selected={1}),
+            None,
+        ),
         # Promos
         ("promos_list_kb(empty)", promos_list_kb([]), None),
         ("promos_list_kb(one_promo)", promos_list_kb([_sample_promo()]), None),
@@ -152,6 +201,34 @@ def _all_admin_keyboards() -> list[tuple[str, InlineKeyboardMarkup, str | None]]
         # the user submits a code; its handler is state-gated on
         # PromoCreate.waiting_type.
         ("promo_type_kb", promo_type_kb(), PromoCreate.waiting_type.state),
+        # Promo-create wizard preset keyboards. ``promo_value_presets_kb``
+        # branches on the chosen promo type — exercise every branch so a
+        # missing handler for any of them is caught.
+        (
+            "promo_value_presets_kb(percent)",
+            promo_value_presets_kb("percent"),
+            PromoCreate.waiting_value.state,
+        ),
+        (
+            "promo_value_presets_kb(flat_stars)",
+            promo_value_presets_kb("flat_stars"),
+            PromoCreate.waiting_value.state,
+        ),
+        (
+            "promo_value_presets_kb(free_days)",
+            promo_value_presets_kb("free_days"),
+            PromoCreate.waiting_value.state,
+        ),
+        (
+            "promo_max_uses_presets_kb",
+            promo_max_uses_presets_kb(),
+            PromoCreate.waiting_max_uses.state,
+        ),
+        (
+            "promo_expires_presets_kb",
+            promo_expires_presets_kb(),
+            PromoCreate.waiting_expires_at.state,
+        ),
         ("promo_card_kb(active)", promo_card_kb(3, is_active=True), None),
         ("promo_card_kb(inactive)", promo_card_kb(3, is_active=False), None),
         # Users — exercise every conditional branch
@@ -215,4 +292,30 @@ async def test_admin_main_menu_specifically_routes_plans_and_promos() -> None:
     assert await _has_matching_handler(admin_router, "adm:promos:open"), (
         "AdminCB(area='promos', action='open') is not routed — "
         "regression of the 'admin can't open Промокоды' bug"
+    )
+
+
+async def test_plan_inbound_multiselect_buttons_are_routed() -> None:
+    """Pinned regression for Phase 4: every button on the inbound
+    multi-select screen must reach a handler.
+
+    The plan-inbound wizard (and the edit-inbounds flow) ride on two new
+    PlanCB actions — ``toggle_inbound`` (per-row XOR) and
+    ``inbounds_done`` (commit). Both are dispatched without a state
+    filter so they can serve create and edit at once; verify they remain
+    routable from any context.
+    """
+    assert await _has_matching_handler(admin_router, "admp:toggle_inbound:1:"), (
+        "PlanCB(action='toggle_inbound', id=1) is not routed — "
+        "inbound checkboxes in the wizard would be dead"
+    )
+    assert await _has_matching_handler(admin_router, "admp:inbounds_done::"), (
+        "PlanCB(action='inbounds_done') is not routed — "
+        "the wizard would have no way to commit"
+    )
+    assert await _has_matching_handler(
+        admin_router, "admp:edit:7:inbounds"
+    ), (
+        "PlanCB(action='edit', field='inbounds') is not routed — "
+        "the «Подключения» button in plan_edit_fields_kb would be dead"
     )
