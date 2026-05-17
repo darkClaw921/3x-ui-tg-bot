@@ -107,6 +107,25 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
             "CREATE INDEX IF NOT EXISTS idx_subscription_notifications_sub "
             "ON subscription_notifications(subscription_id)",
         ),
+        # ``plan_inbounds`` — many-to-many between ``plans`` and 3x-ui inbound ids.
+        # Required for the multi-inbound feature where one plan can be served by
+        # several inbounds (e.g. Germany + Netherlands). Inbound id is the panel's
+        # primary key, not a local row, so it has no FK.
+        (
+            "plan_inbounds",
+            """
+            CREATE TABLE IF NOT EXISTS plan_inbounds (
+                plan_id    INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+                inbound_id INTEGER NOT NULL,
+                PRIMARY KEY (plan_id, inbound_id)
+            )
+            """,
+        ),
+        (
+            "idx_plan_inbounds_plan",
+            "CREATE INDEX IF NOT EXISTS idx_plan_inbounds_plan "
+            "ON plan_inbounds(plan_id)",
+        ),
     )
     for name, stmt in create_table_migrations:
         try:
@@ -114,6 +133,29 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
         except aiosqlite.OperationalError as exc:
             logger.warning("migration {} failed: {}", name, exc)
             raise
+
+    # Backfill ``plan_inbounds`` for legacy plans that have no rows yet.
+    # On an old DB (created before the multi-inbound feature) every existing
+    # plan was implicitly served by ``settings.XUI_INBOUND_ID``. We INSERT one
+    # row per such plan so the new code can rely on every active plan having
+    # at least one inbound. The condition ``plan.id NOT IN (SELECT plan_id ...)``
+    # makes this idempotent at the per-plan level — admins can freely customise
+    # plan_inbounds afterwards without `init_db()` resetting their choice on
+    # subsequent boots. If ``XUI_INBOUND_ID`` is missing or zero we skip the
+    # backfill with a warning rather than failing — the install is misconfigured
+    # but the migration itself must not crash startup.
+    default_inbound_id = getattr(settings, "XUI_INBOUND_ID", None)
+    if default_inbound_id:
+        await conn.execute(
+            "INSERT OR IGNORE INTO plan_inbounds (plan_id, inbound_id) "
+            "SELECT id, ? FROM plans "
+            "WHERE id NOT IN (SELECT plan_id FROM plan_inbounds)",
+            (default_inbound_id,),
+        )
+    else:
+        logger.warning(
+            "plan_inbounds backfill skipped: settings.XUI_INBOUND_ID is not set"
+        )
 
 
 async def init_db() -> None:

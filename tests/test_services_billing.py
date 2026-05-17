@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from app.config import settings
 from app.db.repos.plans import Plan
 from app.db.repos.promos import Promo
 from app.services import billing
@@ -105,43 +106,55 @@ def test_calc_price_min_one_zero_priced_plan():
     assert p.stars == 1
 
 
+# ---------------------------------------------------------------------- #
+# Payload — new 3-arg signature (plan_id, promo_id, inbound_id)
+# ---------------------------------------------------------------------- #
+
+
 def test_build_payload_encodes_correctly():
-    out = billing.build_invoice_payload(1, 2)
+    out = billing.build_invoice_payload(1, 2, inbound_id=5)
     data = json.loads(out)
-    assert data["plan_id"] == 1
-    assert data["promo_id"] == 2
+    # Compact form uses short keys 'p' / 'r' / 'i'.
+    assert data["p"] == 1
+    assert data["r"] == 2
+    assert data["i"] == 5
 
 
 def test_build_payload_no_promo():
-    out = billing.build_invoice_payload(1, None)
+    out = billing.build_invoice_payload(1, None, inbound_id=3)
     data = json.loads(out)
-    assert data["promo_id"] is None
+    assert data["r"] is None
+    assert data["i"] == 3
 
 
 def test_build_payload_promo_zero_treated_as_none():
-    out = billing.build_invoice_payload(1, 0)
+    out = billing.build_invoice_payload(1, 0, inbound_id=3)
     data = json.loads(out)
-    assert data["promo_id"] is None
+    assert data["r"] is None
 
 
 def test_parse_payload_basic():
-    p = billing.build_invoice_payload(7, 9)
-    plan_id, promo_id = billing.parse_invoice_payload(p)
-    assert plan_id == 7 and promo_id == 9
+    p = billing.build_invoice_payload(7, 9, inbound_id=4)
+    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    assert plan_id == 7
+    assert promo_id == 9
+    assert inbound_id == 4
 
 
 def test_parse_payload_no_promo():
-    p = billing.build_invoice_payload(7, None)
-    plan_id, promo_id = billing.parse_invoice_payload(p)
+    p = billing.build_invoice_payload(7, None, inbound_id=4)
+    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
     assert promo_id is None
+    assert inbound_id == 4
 
 
 def test_parse_payload_zero_promo_id_becomes_none():
-    # Manually construct a payload where promo_id=0.
-    p = json.dumps({"plan_id": 1, "promo_id": 0})
-    plan_id, promo_id = billing.parse_invoice_payload(p)
+    """An explicit ``r=0`` in the payload is normalised to None."""
+    p = json.dumps({"p": 1, "r": 0, "i": 2})
+    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
     assert plan_id == 1
     assert promo_id is None
+    assert inbound_id == 2
 
 
 def test_parse_payload_bad_json():
@@ -156,27 +169,80 @@ def test_parse_payload_not_object():
 
 def test_parse_payload_missing_plan_id():
     with pytest.raises(ValueError):
-        billing.parse_invoice_payload(json.dumps({"promo_id": 1}))
+        billing.parse_invoice_payload(json.dumps({"r": 1, "i": 2}))
 
 
 def test_parse_payload_bad_promo_id_type():
     with pytest.raises(ValueError):
-        billing.parse_invoice_payload(json.dumps({"plan_id": 1, "promo_id": "abc"}))
+        billing.parse_invoice_payload(json.dumps({"p": 1, "r": "abc", "i": 2}))
+
+
+def test_parse_payload_bad_inbound_id_type():
+    """An explicit inbound_id that is not coercible to int raises ValueError."""
+    with pytest.raises(ValueError):
+        billing.parse_invoice_payload(json.dumps({"p": 1, "r": None, "i": "abc"}))
+
+
+# --- Legacy payload fallback (pre-inbound-selection rollout) ---------- #
+
+
+def test_parse_payload_legacy_long_keys():
+    """Old payloads with ``plan_id``/``promo_id`` long keys still parse."""
+    p = json.dumps({"plan_id": 7, "promo_id": 9})
+    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    assert plan_id == 7
+    assert promo_id == 9
+    # Missing ``i`` falls back to settings.XUI_INBOUND_ID.
+    assert inbound_id == int(settings.XUI_INBOUND_ID)
+
+
+def test_parse_payload_legacy_missing_inbound_falls_back():
+    """Any payload missing ``i`` falls back to settings.XUI_INBOUND_ID."""
+    p = json.dumps({"p": 1, "r": None})
+    plan_id, promo_id, inbound_id = billing.parse_invoice_payload(p)
+    assert plan_id == 1
+    assert promo_id is None
+    assert inbound_id == int(settings.XUI_INBOUND_ID)
+
+
+def test_parse_payload_legacy_uses_patched_default(monkey_settings):
+    """The fallback honours the *current* settings.XUI_INBOUND_ID value."""
+    monkey_settings(XUI_INBOUND_ID=42)
+    p = json.dumps({"p": 1, "r": None})
+    _plan_id, _promo_id, inbound_id = billing.parse_invoice_payload(p)
+    assert inbound_id == 42
+
+
+# ---------------------------------------------------------------------- #
+# Payload byte-limit guard
+# ---------------------------------------------------------------------- #
 
 
 def test_payload_byte_limit_guard(monkeypatch):
-    """An impossibly large plan_id is rejected if payload exceeds 128 bytes."""
-    big = 10 ** 200  # not really json-encodable as int; force a manual oversize.
-    # Force the limit check.
+    """An impossibly large payload is rejected if it exceeds 128 bytes."""
     monkeypatch.setattr(billing, "_PAYLOAD_BYTE_LIMIT", 5)
     with pytest.raises(ValueError):
-        billing.build_invoice_payload(123456, 78910)
+        billing.build_invoice_payload(123456, 78910, inbound_id=2)
+
+
+def test_payload_fits_in_128_bytes_for_large_ids():
+    """Realistic large ids (10 digits each) still fit in the 128-byte budget."""
+    # 10-digit ids — comfortably larger than anything we'd realistically issue.
+    out = billing.build_invoice_payload(9876543210, 1234567890, inbound_id=9999)
+    assert len(out.encode("utf-8")) <= billing._PAYLOAD_BYTE_LIMIT
+
+
+# ---------------------------------------------------------------------- #
+# send_invoice — now requires ``inbound_id`` kwarg
+# ---------------------------------------------------------------------- #
 
 
 async def test_send_invoice_uses_xtr(mock_bot):
     """send_invoice fills currency='XTR' and Stars-min amount."""
     plan = _plan(price=100)
-    await billing.send_invoice(mock_bot, chat_id=42, plan=plan, promo=None)
+    await billing.send_invoice(
+        mock_bot, chat_id=42, plan=plan, promo=None, inbound_id=3
+    )
     args, kwargs = mock_bot.send_invoice.call_args
     assert kwargs["currency"] == "XTR"
     assert kwargs["chat_id"] == 42
@@ -186,10 +252,25 @@ async def test_send_invoice_uses_xtr(mock_bot):
     assert prices[0].amount == 100
 
 
+async def test_send_invoice_embeds_inbound_id_in_payload(mock_bot):
+    """The chosen inbound_id is threaded through into the invoice payload."""
+    plan = _plan(price=100)
+    await billing.send_invoice(
+        mock_bot, chat_id=1, plan=plan, promo=None, inbound_id=7
+    )
+    payload = mock_bot.send_invoice.call_args.kwargs["payload"]
+    data = json.loads(payload)
+    assert data["i"] == 7
+    assert data["p"] == plan.id
+    assert data["r"] is None
+
+
 async def test_send_invoice_with_percent_promo(mock_bot):
     plan = _plan(price=100)
     promo = _promo("percent", 30)
-    await billing.send_invoice(mock_bot, chat_id=10, plan=plan, promo=promo)
+    await billing.send_invoice(
+        mock_bot, chat_id=10, plan=plan, promo=promo, inbound_id=1
+    )
     kwargs = mock_bot.send_invoice.call_args.kwargs
     # 30% off 100 → 70.
     assert kwargs["prices"][0].amount == 70
@@ -198,7 +279,9 @@ async def test_send_invoice_with_percent_promo(mock_bot):
 async def test_send_invoice_with_free_days(mock_bot):
     plan = _plan(price=50)
     promo = _promo("free_days", 7)
-    await billing.send_invoice(mock_bot, chat_id=1, plan=plan, promo=promo)
+    await billing.send_invoice(
+        mock_bot, chat_id=1, plan=plan, promo=promo, inbound_id=1
+    )
     desc = mock_bot.send_invoice.call_args.kwargs["description"]
     assert "7" in desc
 
@@ -206,6 +289,21 @@ async def test_send_invoice_with_free_days(mock_bot):
 async def test_send_invoice_with_flat_stars(mock_bot):
     plan = _plan(price=100)
     promo = _promo("flat_stars", 30)
-    await billing.send_invoice(mock_bot, chat_id=1, plan=plan, promo=promo)
+    await billing.send_invoice(
+        mock_bot, chat_id=1, plan=plan, promo=promo, inbound_id=1
+    )
     kwargs = mock_bot.send_invoice.call_args.kwargs
     assert "30" in kwargs["description"]
+
+
+async def test_send_invoice_payload_includes_promo_id(mock_bot):
+    """When a promo is attached its id appears in the payload as ``r``."""
+    plan = _plan(price=100)
+    promo = _promo("percent", 30, promo_id=42)
+    await billing.send_invoice(
+        mock_bot, chat_id=1, plan=plan, promo=promo, inbound_id=11
+    )
+    payload = mock_bot.send_invoice.call_args.kwargs["payload"]
+    data = json.loads(payload)
+    assert data["r"] == 42
+    assert data["i"] == 11

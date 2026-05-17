@@ -88,7 +88,7 @@ async def test_create_or_extend_creates_new(file_db, make_user, make_plan):
         user = await make_user(conn, tg_id=1)
         plan = await make_plan(conn, days=30, price_stars=100)
         sub = await subs_service.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None
+            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
         )
 
     assert sub.user_id == user.id
@@ -121,7 +121,7 @@ async def test_provision_passes_username_to_make_client_email(
         user = await make_user(conn, tg_id=42, username="Alice")
         plan = await make_plan(conn, days=30, price_stars=100)
         await svc.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None
+            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
         )
 
     assert captured["tg_id"] == 42
@@ -151,7 +151,7 @@ async def test_provision_passes_none_username_when_user_has_no_handle(
         user = await make_user(conn, tg_id=99, username=None)
         plan = await make_plan(conn, days=30, price_stars=100)
         await svc.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None
+            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
         )
 
     assert captured["tg_id"] == 99
@@ -179,7 +179,7 @@ async def test_provision_passes_plan_traffic_gb_to_add_client(
         user = await make_user(conn, tg_id=11)
         plan = await make_plan(conn, days=30, price_stars=100, traffic_gb=50)
         await svc.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None
+            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
         )
 
     assert captured.get("total_gb") == 50
@@ -206,7 +206,7 @@ async def test_provision_passes_zero_traffic_gb_to_add_client(
         user = await make_user(conn, tg_id=12)
         plan = await make_plan(conn, days=30, price_stars=100, traffic_gb=0)
         await svc.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None
+            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
         )
 
     assert captured.get("total_gb") == 0
@@ -232,7 +232,7 @@ async def test_activate_free_days_passes_zero_total_gb(
     async with get_conn() as conn:
         user = await make_user(conn, tg_id=13)
         await svc.activate_free_days(
-            conn=conn, xui=xui, user=user, promo=_promo("free_days", 14)
+            conn=conn, xui=xui, user=user, promo=_promo("free_days", 14), inbound_id=1,
         )
 
     assert captured.get("total_gb") == 0
@@ -260,7 +260,7 @@ async def test_extend_does_not_send_total_gb_to_update_client(
         user = await make_user(conn, tg_id=14)
         await make_subscription(conn, user_id=user.id)
         await svc.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None
+            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None, inbound_id=1,
         )
 
     assert captured_kwargs, "update_client was not invoked on extend"
@@ -282,7 +282,7 @@ async def test_create_or_extend_extends_existing(file_db, make_user, make_subscr
         sub = await make_subscription(conn, user_id=user.id)
         old_expires = sub.expires_at
         new_sub = await subs_service.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None
+            conn=conn, xui=xui, user=user, plan=_plan(days=30), promo=None, inbound_id=1,
         )
 
     assert new_sub.id == sub.id
@@ -304,7 +304,7 @@ async def test_create_or_extend_xui_failure_blocks_db_write(file_db, make_user):
         user = await make_user(conn, tg_id=1)
         with pytest.raises(XuiError):
             await subs_service.create_or_extend(
-                conn=conn, xui=xui, user=user, plan=_plan(), promo=None
+                conn=conn, xui=xui, user=user, plan=_plan(), promo=None, inbound_id=1,
             )
         # Verify no subscription was inserted.
         rows = await subs_repo.list_for_user(conn, user.id)
@@ -326,6 +326,7 @@ async def test_create_or_extend_with_free_days_promo_adds_days(file_db, make_use
             user=user,
             plan=plan,
             promo=_promo("free_days", 7),
+            inbound_id=1,
         )
 
     expires_dt = datetime.fromisoformat(sub.expires_at.replace(" ", "T"))
@@ -342,7 +343,7 @@ async def test_activate_free_days_rejects_non_free_days(file_db, make_user):
         user = await make_user(conn, tg_id=1)
         with pytest.raises(ValueError):
             await subs_service.activate_free_days(
-                conn=conn, xui=xui, user=user, promo=_promo("percent", 10)
+                conn=conn, xui=xui, user=user, promo=_promo("percent", 10), inbound_id=1,
             )
 
 
@@ -355,7 +356,7 @@ async def test_activate_free_days_provisions(file_db, make_user):
     async with get_conn() as conn:
         user = await make_user(conn, tg_id=1)
         sub = await subs_service.activate_free_days(
-            conn=conn, xui=xui, user=user, promo=_promo("free_days", 14)
+            conn=conn, xui=xui, user=user, promo=_promo("free_days", 14), inbound_id=1,
         )
     assert sub.user_id == user.id
     assert sub.plan_id is None
@@ -428,7 +429,7 @@ async def test_create_or_extend_anchors_past_expiry_to_now(file_db, make_user, m
         # treats it as "no active sub" → create a fresh one.
         plan = await make_plan(conn, days=10, price_stars=50)
         new = await subs_service.create_or_extend(
-            conn=conn, xui=xui, user=user, plan=plan, promo=None
+            conn=conn, xui=xui, user=user, plan=plan, promo=None, inbound_id=1,
         )
     # Should be in the future.
     assert new.expires_at > past.isoformat(sep=" ")

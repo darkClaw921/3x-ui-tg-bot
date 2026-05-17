@@ -13,7 +13,10 @@ Callback namespaces
 
 * ``UserCB`` — top-level navigation (``area=menu|help|my|cancel``).
 * ``BuyCB`` — buy-flow actions (``action=open|plan|apply_promo|confirm|cancel``,
-  optional ``plan_id`` / ``promo_id``).
+  optional ``plan_id`` / ``promo_id`` / ``inbound_id``).
+* ``InboundCB`` — inbound selection step (``action=pick|back`` with
+  ``plan_id`` / ``promo_id`` / ``inbound_id``); used by both the buy
+  flow and the free-days promo flow.
 * ``SubCB`` — actions over an existing subscription (``action=keys|back``,
   optional ``sub_id``).
 * ``PromoCB`` — standalone promo activation (``action=open|cancel``).
@@ -28,6 +31,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.db.repos.plans import Plan
+from app.services.inbounds import InboundOption
 
 
 # ---------------------------------------------------------------------------
@@ -48,13 +52,34 @@ class BuyCB(CallbackData, prefix="ub"):
     * ``open``         — entry point ("Купить") — show plan list.
     * ``plan``         — a plan was picked (id in ``plan_id``).
     * ``apply_promo``  — user wants to type a promo code.
-    * ``confirm``      — proceed to the Stars invoice.
+    * ``confirm``      — proceed to the Stars invoice; the chosen
+      inbound is carried in ``inbound_id`` (``0`` when the plan has a
+      single inbound and the wizard auto-skipped the select step).
     * ``cancel``       — abort the wizard and return to the main menu.
     """
 
     action: str
     plan_id: int = 0
     promo_id: int = 0
+    inbound_id: int = 0
+
+
+class InboundCB(CallbackData, prefix="inb"):
+    """Inbound selection step (shared by buy + free-days promo flows).
+
+    ``action``:
+    * ``pick`` — user picked a specific inbound (``inbound_id``).
+      ``plan_id`` is non-zero for the buy flow and ``promo_id`` is
+      non-zero for the standalone promo flow — handlers route on
+      whichever is set.
+    * ``back`` — return to the previous step (plan list for the buy
+      flow, promo entry for the promo flow). ``inbound_id`` is unused.
+    """
+
+    action: str
+    plan_id: int = 0
+    promo_id: int = 0
+    inbound_id: int = 0
 
 
 class SubCB(CallbackData, prefix="us"):
@@ -140,21 +165,72 @@ def plans_kb(plans: Sequence[Plan]) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def confirm_kb(plan_id: int, promo_id: int = 0) -> InlineKeyboardMarkup:
-    """Confirmation keyboard shown after a plan was picked.
+def inbound_select_kb(
+    plan_id: int,
+    options: Sequence[InboundOption],
+    promo_id: int = 0,
+) -> InlineKeyboardMarkup:
+    """Single-select keyboard for choosing an inbound (server) during the
+    buy flow (``plan_id`` > 0) or the free-days promo flow
+    (``plan_id`` = 0, ``promo_id`` > 0).
+
+    Each row is one inbound labelled ``<remark> (port <port>)``; tapping
+    it sends :class:`InboundCB` ``action='pick'`` with the chosen
+    ``inbound_id`` plus the current ``plan_id`` / ``promo_id`` so the
+    handler can route the wizard. A trailing «← Назад» row sends
+    ``InboundCB(action='back', ...)`` and returns the user to the
+    previous step.
+    """
+    builder = InlineKeyboardBuilder()
+    for option in options:
+        builder.button(
+            text=f"{option.remark} (port {option.port})",
+            callback_data=InboundCB(
+                action="pick",
+                plan_id=plan_id,
+                promo_id=promo_id,
+                inbound_id=option.id,
+            ),
+        )
+    builder.button(
+        text="◀ Назад",
+        callback_data=InboundCB(action="back", plan_id=plan_id, promo_id=promo_id),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def confirm_kb(
+    plan_id: int,
+    promo_id: int = 0,
+    inbound_id: int = 0,
+) -> InlineKeyboardMarkup:
+    """Confirmation keyboard shown after a plan (and inbound) were picked.
 
     Contains «Оплатить», «Применить промокод» (only when no promo is
-    currently attached), and «Отмена».
+    currently attached), and «Отмена». The selected ``inbound_id`` is
+    threaded through into :class:`BuyCB` ``action='confirm'`` so the
+    Stars-invoice payload built downstream can pin the subscription to
+    the right server.
     """
     builder = InlineKeyboardBuilder()
     builder.button(
         text="💳 Оплатить",
-        callback_data=BuyCB(action="confirm", plan_id=plan_id, promo_id=promo_id),
+        callback_data=BuyCB(
+            action="confirm",
+            plan_id=plan_id,
+            promo_id=promo_id,
+            inbound_id=inbound_id,
+        ),
     )
     if promo_id == 0:
         builder.button(
             text="🎟 Применить промокод",
-            callback_data=BuyCB(action="apply_promo", plan_id=plan_id),
+            callback_data=BuyCB(
+                action="apply_promo",
+                plan_id=plan_id,
+                inbound_id=inbound_id,
+            ),
         )
     builder.button(text="✖ Отмена", callback_data=UserCB(area="cancel"))
     builder.adjust(1)
@@ -175,12 +251,14 @@ def subscription_kb(sub_id: int) -> InlineKeyboardMarkup:
 
 __all__ = [
     "BuyCB",
+    "InboundCB",
     "PromoActCB",
     "SubCB",
     "UserCB",
     "back_to_menu_kb",
     "cancel_kb",
     "confirm_kb",
+    "inbound_select_kb",
     "plans_kb",
     "subscription_kb",
     "user_main_menu",

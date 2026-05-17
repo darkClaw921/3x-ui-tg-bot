@@ -26,7 +26,9 @@ from dataclasses import dataclass
 
 from aiogram import Bot
 from aiogram.types import LabeledPrice, Message
+from loguru import logger
 
+from app.config import settings
 from app.db.repos.plans import Plan
 from app.db.repos.promos import Promo
 from app.services.promos import DiscountResult, compute_discount
@@ -82,7 +84,11 @@ def calc_price(plan: Plan, promo: Promo | None) -> InvoicePrice:
 # ---------------------------------------------------------------------- #
 
 
-def build_invoice_payload(plan_id: int, promo_id: int | None) -> str:
+def build_invoice_payload(
+    plan_id: int,
+    promo_id: int | None,
+    inbound_id: int,
+) -> str:
     """Encode the persistent state needed by ``successful_payment``.
 
     The payload is echoed verbatim by Telegram in:
@@ -90,12 +96,21 @@ def build_invoice_payload(plan_id: int, promo_id: int | None) -> str:
     * ``pre_checkout_query.invoice_payload``
     * ``message.successful_payment.invoice_payload``
 
-    It is the only place we can stash ``plan_id`` / ``promo_id`` because
-    the user's FSM state may have been cleared (or moved on) between
-    invoice creation and payment.
+    It is the only place we can stash ``plan_id`` / ``promo_id`` /
+    ``inbound_id`` because the user's FSM state may have been cleared
+    (or moved on) between invoice creation and payment.
+
+    Schema (compact JSON, single-letter keys to stay under the 128-byte
+    Telegram limit even for large ids)::
+
+        {"p": <plan_id>, "r": <promo_id_or_null>, "i": <inbound_id>}
     """
     payload = json.dumps(
-        {"plan_id": int(plan_id), "promo_id": int(promo_id) if promo_id else None},
+        {
+            "p": int(plan_id),
+            "r": int(promo_id) if promo_id else None,
+            "i": int(inbound_id),
+        },
         separators=(",", ":"),  # compact form keeps us well under 128 bytes
     )
     if len(payload.encode("utf-8")) > _PAYLOAD_BYTE_LIMIT:
@@ -105,12 +120,21 @@ def build_invoice_payload(plan_id: int, promo_id: int | None) -> str:
     return payload
 
 
-def parse_invoice_payload(payload: str) -> tuple[int, int | None]:
+def parse_invoice_payload(payload: str) -> tuple[int, int | None, int]:
     """Decode the JSON written by :func:`build_invoice_payload`.
 
-    Returns ``(plan_id, promo_id_or_None)``. Raises :class:`ValueError`
-    on a malformed payload — the buy handler treats this as "answer
-    pre_checkout with ok=False".
+    Returns ``(plan_id, promo_id_or_None, inbound_id)``. Raises
+    :class:`ValueError` on a malformed payload — the buy handler treats
+    this as "answer pre_checkout with ok=False".
+
+    Backwards compatibility:
+
+    * The new payload uses short keys ``p`` / ``r`` / ``i``. Old payloads
+      (pre-inbound-selection rollout) use the long keys ``plan_id`` /
+      ``promo_id`` and have no ``i`` field; we still accept them and
+      fall back to :attr:`settings.XUI_INBOUND_ID` with a WARNING log so
+      operators see exactly how many in-flight invoices were affected by
+      the deploy.
     """
     try:
         data = json.loads(payload)
@@ -118,11 +142,19 @@ def parse_invoice_payload(payload: str) -> tuple[int, int | None]:
         raise ValueError(f"invalid invoice payload: {payload!r}") from exc
     if not isinstance(data, dict):
         raise ValueError(f"invoice payload not an object: {payload!r}")
+
+    # plan_id — accept both "p" (new) and "plan_id" (legacy).
+    raw_plan = data.get("p", data.get("plan_id"))
+    if raw_plan is None:
+        raise ValueError(f"invoice payload missing plan_id: {payload!r}")
     try:
-        plan_id = int(data["plan_id"])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError(f"invoice payload missing/bad plan_id: {payload!r}") from exc
-    raw_promo = data.get("promo_id")
+        plan_id = int(raw_plan)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invoice payload bad plan_id: {payload!r}") from exc
+
+    # promo_id — accept "r" (new) and "promo_id" (legacy); ``0`` / missing
+    # → None to keep callers' "no promo" branch simple.
+    raw_promo = data.get("r", data.get("promo_id"))
     promo_id: int | None
     if raw_promo is None:
         promo_id = None
@@ -135,7 +167,29 @@ def parse_invoice_payload(payload: str) -> tuple[int, int | None]:
             ) from exc
         if promo_id == 0:
             promo_id = None
-    return plan_id, promo_id
+
+    # inbound_id — only present in new payloads; legacy payloads fall back
+    # to the configured default inbound so in-flight purchases mid-deploy
+    # do not fail. We log so the on-call operator can tell the difference.
+    raw_inbound = data.get("i")
+    if raw_inbound is None:
+        inbound_id = int(settings.XUI_INBOUND_ID)
+        logger.warning(
+            "invoice payload missing 'i' (inbound_id); falling back to "
+            "settings.XUI_INBOUND_ID={} (payload={!r}). This is expected only "
+            "for invoices created before the inbound-selection rollout.",
+            inbound_id,
+            payload,
+        )
+    else:
+        try:
+            inbound_id = int(raw_inbound)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"invoice payload bad inbound_id: {payload!r}"
+            ) from exc
+
+    return plan_id, promo_id, inbound_id
 
 
 # ---------------------------------------------------------------------- #
@@ -168,8 +222,16 @@ async def send_invoice(
     chat_id: int,
     plan: Plan,
     promo: Promo | None,
+    *,
+    inbound_id: int,
 ) -> Message:
     """Send a Stars invoice for ``plan`` (with optional ``promo``).
+
+    ``inbound_id`` is the 3x-ui inbound the user picked; it is embedded
+    into the invoice payload so the ``successful_payment`` handler can
+    provision into the right inbound without re-reading the FSM state
+    (which Telegram may have cleared between invoice creation and
+    payment).
 
     Telegram quirks accounted for:
 
@@ -180,7 +242,11 @@ async def send_invoice(
     * The minimum invoice amount is 1 Stars — enforced by :func:`calc_price`.
     """
     price = calc_price(plan, promo)
-    payload = build_invoice_payload(plan_id=plan.id, promo_id=promo.id if promo else None)
+    payload = build_invoice_payload(
+        plan_id=plan.id,
+        promo_id=promo.id if promo else None,
+        inbound_id=int(inbound_id),
+    )
     prices = [LabeledPrice(label=plan.title, amount=price.stars)]
 
     return await bot.send_invoice(

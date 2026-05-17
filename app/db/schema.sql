@@ -32,6 +32,19 @@ CREATE TABLE IF NOT EXISTS plans (
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Plan inbounds (many-to-many between plans and 3x-ui inbound ids) ----------
+-- ``inbound_id`` holds the panel's inbound primary key (numeric id from 3x-ui),
+-- NOT a local row reference, hence no FK on it. A single plan can be served
+-- by one or more inbounds; ``ON DELETE CASCADE`` keeps the table consistent
+-- whenever a plan is hard-deleted.
+CREATE TABLE IF NOT EXISTS plan_inbounds (
+    plan_id    INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+    inbound_id INTEGER NOT NULL,
+    PRIMARY KEY (plan_id, inbound_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_inbounds_plan ON plan_inbounds(plan_id);
+
 -- Promos ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS promos (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -8,15 +8,34 @@ import pytest
 
 from app.handlers.admin import plans as plans_mod
 from app.keyboards.admin import PlanCB
+from app.services.inbounds import InboundOption
+from app.xui import XuiError
 
 
-def _state():
+def _state(data: dict | None = None):
     s = AsyncMock()
-    s.get_data = AsyncMock(return_value={})
+    s.get_data = AsyncMock(return_value=data or {})
     s.update_data = AsyncMock()
     s.set_state = AsyncMock()
     s.clear = AsyncMock()
     return s
+
+
+def _stub_inbounds(*ids: int) -> list[InboundOption]:
+    """Build an `InboundOption` list with the given ids."""
+    return [
+        InboundOption(id=i, remark=f"srv-{i}", port=443 + i, enabled=True)
+        for i in ids
+    ]
+
+
+@pytest.fixture(autouse=True)
+def _clear_inbounds_cache():
+    from app.services import inbounds as inb
+
+    inb.clear_cache()
+    yield
+    inb.clear_cache()
 
 
 async def test_cb_list_empty(file_db):
@@ -191,40 +210,58 @@ async def test_st_price_negative(file_db):
     state.set_state.assert_not_awaited()
 
 
-async def test_st_traffic_gb_creates_plan(file_db):
-    """Valid traffic_gb completes the wizard and persists the plan."""
+async def test_st_traffic_gb_advances_to_inbounds(file_db, monkeypatch):
+    """Valid traffic_gb stores the value and enters the inbound multi-select step.
+
+    Plan creation is now deferred to :func:`cb_inbounds_done`, so this step
+    must NOT touch the ``plans`` table.
+    """
     from app.db.engine import get_conn
     from app.db.repos import plans as plans_repo
+
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        plans_mod, "list_user_inbounds",
+        AsyncMock(return_value=_stub_inbounds(1, 2)),
+    )
 
     msg = MagicMock()
     msg.text = "50"
     msg.answer = AsyncMock()
-    state = _state()
-    state.get_data = AsyncMock(return_value={"title": "T2", "days": 30, "price": 100})
+    state = _state({"title": "T2", "days": 30, "price": 100})
     await plans_mod.st_traffic_gb(msg, state)
+    # traffic_gb stored, state transitioned to waiting_inbounds.
+    state.set_state.assert_awaited()
+    # No plan persisted yet.
     async with get_conn() as conn:
         all_plans = await plans_repo.list_all(conn)
-    assert any(
-        p.title == "T2" and p.days == 30 and p.price_stars == 100 and p.traffic_gb == 50
-        for p in all_plans
-    )
-    state.clear.assert_awaited()
+    assert not any(p.title == "T2" for p in all_plans)
 
 
-async def test_st_traffic_gb_zero_means_unlimited(file_db):
-    """``0`` is a valid input and stores as ``traffic_gb=0`` (unlimited)."""
+async def test_st_traffic_gb_zero_advances_to_inbounds(file_db, monkeypatch):
+    """``0`` is a valid input and advances to the inbound step without creating a plan."""
     from app.db.engine import get_conn
     from app.db.repos import plans as plans_repo
+
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        plans_mod, "list_user_inbounds",
+        AsyncMock(return_value=_stub_inbounds(1)),
+    )
 
     msg = MagicMock()
     msg.text = "0"
     msg.answer = AsyncMock()
-    state = _state()
-    state.get_data = AsyncMock(return_value={"title": "Tz", "days": 30, "price": 100})
+    state = _state({"title": "Tz", "days": 30, "price": 100})
     await plans_mod.st_traffic_gb(msg, state)
+    state.set_state.assert_awaited()
     async with get_conn() as conn:
         all_plans = await plans_repo.list_all(conn)
-    assert any(p.title == "Tz" and p.traffic_gb == 0 for p in all_plans)
+    assert not any(p.title == "Tz" for p in all_plans)
 
 
 async def test_st_traffic_gb_non_integer(file_db):
@@ -282,22 +319,35 @@ async def test_cb_plan_preset_price(file_db):
     cb.message.answer.assert_awaited()
 
 
-async def test_cb_plan_preset_gb_creates_plan(file_db):
-    """GB preset is the terminal step — it persists the plan."""
+async def test_cb_plan_preset_gb_advances_to_inbounds(file_db, monkeypatch):
+    """GB preset stores traffic_gb and hands off to the inbound multi-select step.
+
+    Plan creation is deferred to :func:`cb_inbounds_done`, so this step
+    no longer touches the ``plans`` table.
+    """
     from app.db.engine import get_conn
     from app.db.repos import plans as plans_repo
+
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        plans_mod, "list_user_inbounds",
+        AsyncMock(return_value=_stub_inbounds(1, 2)),
+    )
 
     cb = MagicMock()
     cb.message = MagicMock()
     cb.message.answer = AsyncMock()
     cb.answer = AsyncMock()
-    state = _state()
-    state.get_data = AsyncMock(return_value={"title": "Pg", "days": 30, "price": 100})
+    state = _state({"title": "Pg", "days": 30, "price": 100})
     await plans_mod.cb_plan_preset(cb, PlanCB(action="preset", field="gb", id=100), state)
-    state.clear.assert_awaited()
+    # No plan persisted yet — that happens after inbound confirmation.
     async with get_conn() as conn:
         all_plans = await plans_repo.list_all(conn)
-    assert any(p.title == "Pg" and p.traffic_gb == 100 for p in all_plans)
+    assert not any(p.title == "Pg" for p in all_plans)
+    # Wizard advanced to waiting_inbounds.
+    state.set_state.assert_awaited()
 
 
 async def test_cb_plan_preset_unknown_field(file_db):
@@ -525,3 +575,298 @@ async def test_st_edit_value_traffic_gb_negative(file_db, make_plan):
     state.get_data = AsyncMock(return_value={"field": "traffic_gb", "plan_id": plan.id})
     await plans_mod.st_edit_value(msg, state)
     state.clear.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Inbound multi-select wizard step (create mode)
+# ---------------------------------------------------------------------------
+
+
+async def test_enter_inbounds_step_xui_unavailable(file_db, monkeypatch):
+    """When the panel is unreachable on entry to the inbounds step, the
+    wizard stays put and the user gets an error message."""
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        plans_mod, "list_user_inbounds",
+        AsyncMock(side_effect=XuiError("down")),
+    )
+
+    msg = MagicMock()
+    msg.answer = AsyncMock()
+    state = _state()
+    await plans_mod._enter_inbounds_step(msg, state)
+    state.set_state.assert_not_awaited()
+    msg.answer.assert_awaited()
+
+
+async def test_enter_inbounds_step_empty_inbounds(file_db, monkeypatch):
+    """An empty list of panel inbounds aborts the wizard with a hint."""
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(plans_mod, "list_user_inbounds", AsyncMock(return_value=[]))
+
+    msg = MagicMock()
+    msg.answer = AsyncMock()
+    state = _state()
+    await plans_mod._enter_inbounds_step(msg, state)
+    state.set_state.assert_not_awaited()
+
+
+async def test_cb_toggle_inbound_xor(file_db):
+    """Tapping the same row twice toggles selection on then off."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_reply_markup = AsyncMock()
+    cb.answer = AsyncMock()
+
+    # First tap: id 1 not selected → becomes selected.
+    state = _state(
+        {
+            "selected_inbounds": [],
+            "inbound_options": [
+                {"id": 1, "remark": "DE", "port": 443, "enabled": True},
+                {"id": 2, "remark": "NL", "port": 444, "enabled": True},
+            ],
+        }
+    )
+    await plans_mod.cb_toggle_inbound(cb, PlanCB(action="toggle_inbound", id=1), state)
+    last = state.update_data.await_args.kwargs
+    assert last["selected_inbounds"] == [1]
+
+    # Second tap: id 1 already selected → becomes unselected.
+    state2 = _state(
+        {
+            "selected_inbounds": [1],
+            "inbound_options": [
+                {"id": 1, "remark": "DE", "port": 443, "enabled": True},
+                {"id": 2, "remark": "NL", "port": 444, "enabled": True},
+            ],
+        }
+    )
+    await plans_mod.cb_toggle_inbound(cb, PlanCB(action="toggle_inbound", id=1), state2)
+    last2 = state2.update_data.await_args.kwargs
+    assert last2["selected_inbounds"] == []
+
+
+async def test_cb_inbounds_done_empty_alert(file_db):
+    """`inbounds_done` with no selection shows an alert and stays put."""
+    cb = MagicMock()
+    cb.answer = AsyncMock()
+    state = _state({"selected_inbounds": []})
+    await plans_mod.cb_inbounds_done(cb, state)
+    cb.answer.assert_awaited()
+    assert cb.answer.call_args.kwargs.get("show_alert") is True
+    state.clear.assert_not_awaited()
+
+
+async def test_cb_inbounds_done_creates_plan(file_db):
+    """`inbounds_done` (create mode) persists the plan + attaches inbounds."""
+    from app.db.engine import get_conn
+    from app.db.repos import plans as plans_repo
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state(
+        {
+            "title": "Created",
+            "days": 30,
+            "price": 100,
+            "traffic_gb": 50,
+            "selected_inbounds": [1, 2],
+            "inbound_options": [
+                {"id": 1, "remark": "DE", "port": 443, "enabled": True},
+                {"id": 2, "remark": "NL", "port": 444, "enabled": True},
+            ],
+        }
+    )
+    await plans_mod.cb_inbounds_done(cb, state)
+    async with get_conn() as conn:
+        all_plans = await plans_repo.list_all(conn)
+        created = next(p for p in all_plans if p.title == "Created")
+        attached = await plans_repo.get_inbounds(conn, created.id)
+    assert created.days == 30
+    assert created.price_stars == 100
+    assert created.traffic_gb == 50
+    assert attached == [1, 2]
+    state.clear.assert_awaited()
+
+
+async def test_cb_inbounds_done_edit_mode(file_db, make_plan):
+    """`inbounds_done` (edit mode) calls `set_inbounds` on the existing plan."""
+    from app.db.engine import get_conn
+    from app.db.repos import plans as plans_repo
+
+    async with get_conn() as conn:
+        plan = await make_plan(conn, inbound_ids=[1])
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state(
+        {
+            "editing_plan_id": plan.id,
+            "selected_inbounds": [3, 4],
+            "inbound_options": [
+                {"id": 3, "remark": "x", "port": 1, "enabled": True},
+                {"id": 4, "remark": "y", "port": 2, "enabled": True},
+            ],
+        }
+    )
+    await plans_mod.cb_inbounds_done(cb, state)
+    async with get_conn() as conn:
+        attached = await plans_repo.get_inbounds(conn, plan.id)
+    assert attached == [3, 4]
+    state.clear.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Edit field='inbounds' — load current set into multi-select
+# ---------------------------------------------------------------------------
+
+
+async def test_cb_edit_inbounds_preloads_current(file_db, make_plan, monkeypatch):
+    """Opening the inbounds editor pre-selects the plan's current set."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        plan = await make_plan(conn, inbound_ids=[2, 5])
+
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        plans_mod, "list_user_inbounds",
+        AsyncMock(return_value=_stub_inbounds(1, 2, 3, 5)),
+    )
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await plans_mod.cb_edit_inbounds(
+        cb, PlanCB(action="edit", id=plan.id, field="inbounds"), state
+    )
+    state.set_state.assert_awaited()
+    last = state.update_data.await_args.kwargs
+    assert last["editing_plan_id"] == plan.id
+    # selected_inbounds is the plan's current set.
+    assert sorted(last["selected_inbounds"]) == [2, 5]
+
+
+async def test_cb_edit_inbounds_unknown_plan(file_db, monkeypatch):
+    """Editing inbounds for a missing plan returns an alert."""
+    cb = MagicMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await plans_mod.cb_edit_inbounds(
+        cb, PlanCB(action="edit", id=99999, field="inbounds"), state
+    )
+    cb.answer.assert_awaited()
+    assert cb.answer.call_args.kwargs.get("show_alert") is True
+
+
+async def test_cb_edit_inbounds_xui_unavailable(file_db, make_plan, monkeypatch):
+    """Panel error during edit-inbounds aborts with an alert, no state change."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        plan = await make_plan(conn)
+
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(
+        plans_mod, "list_user_inbounds",
+        AsyncMock(side_effect=XuiError("down")),
+    )
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await plans_mod.cb_edit_inbounds(
+        cb, PlanCB(action="edit", id=plan.id, field="inbounds"), state
+    )
+    cb.answer.assert_awaited()
+    assert cb.answer.call_args.kwargs.get("show_alert") is True
+    state.set_state.assert_not_awaited()
+
+
+async def test_cb_edit_inbounds_empty_panel(file_db, make_plan, monkeypatch):
+    """An empty panel inbound list aborts with an alert."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        plan = await make_plan(conn)
+
+    monkeypatch.setattr(
+        plans_mod, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(plans_mod, "list_user_inbounds", AsyncMock(return_value=[]))
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.answer = AsyncMock()
+    state = _state()
+    await plans_mod.cb_edit_inbounds(
+        cb, PlanCB(action="edit", id=plan.id, field="inbounds"), state
+    )
+    cb.answer.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Card rendering — _format_plan inbounds line
+# ---------------------------------------------------------------------------
+
+
+def test_format_plan_with_remarks():
+    """Card body includes the «Подключения» line with resolved remarks."""
+    from app.db.repos.plans import Plan
+
+    plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
+                is_active=True, created_at="2025")
+    text = plans_mod._format_plan(plan, {1: "DE", 2: "NL"})
+    assert "Подключения" in text
+    assert "DE" in text
+    assert "NL" in text
+
+
+def test_format_plan_with_missing_remark():
+    """An inbound id present on the plan but missing from the panel response is
+    rendered as ``id=NN (удалён)``."""
+    from app.db.repos.plans import Plan
+
+    plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
+                is_active=True, created_at="2025")
+    text = plans_mod._format_plan(plan, {7: ""})
+    assert "id=7" in text
+    assert "удалён" in text
+
+
+def test_format_plan_no_inbound_remarks_arg():
+    """No remarks arg → the «Подключения» line is omitted entirely."""
+    from app.db.repos.plans import Plan
+
+    plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
+                is_active=True, created_at="2025")
+    text = plans_mod._format_plan(plan, None)
+    assert "Подключения" not in text
+
+
+def test_format_plan_empty_remarks_dict():
+    """An empty remarks dict still renders the «не настроены» hint."""
+    from app.db.repos.plans import Plan
+
+    plan = Plan(id=1, title="T", days=30, price_stars=100, traffic_gb=0,
+                is_active=True, created_at="2025")
+    text = plans_mod._format_plan(plan, {})
+    assert "не настроены" in text

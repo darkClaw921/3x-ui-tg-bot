@@ -137,8 +137,18 @@ def make_user():
 
 @pytest.fixture
 def make_plan():
-    """Factory: create a plan row."""
+    """Factory: create a plan row, with at least one attached inbound.
+
+    Mirrors the production behaviour where every active plan has at least
+    one inbound (enforced by the migration backfill in
+    :func:`app.db.engine._apply_migrations`). Pass ``inbound_ids=None`` to
+    fall back to ``[settings.XUI_INBOUND_ID]``; pass an explicit list to
+    attach a custom set (use ``[]`` to skip attachment entirely, which is
+    only useful for negative-path tests).
+    """
+    from app.config import settings
     from app.db.repos.plans import create as plans_create
+    from app.db.repos.plans import set_inbounds
 
     async def _make(
         conn: aiosqlite.Connection,
@@ -147,14 +157,20 @@ def make_plan():
         days: int = 30,
         price_stars: int = 100,
         traffic_gb: int = 0,
+        inbound_ids: list[int] | None = None,
     ):
-        return await plans_create(
+        plan = await plans_create(
             conn,
             title=title,
             days=days,
             price_stars=price_stars,
             traffic_gb=traffic_gb,
         )
+        if inbound_ids is None:
+            inbound_ids = [int(settings.XUI_INBOUND_ID)]
+        if inbound_ids:
+            await set_inbounds(conn, plan.id, inbound_ids)
+        return plan
 
     return _make
 

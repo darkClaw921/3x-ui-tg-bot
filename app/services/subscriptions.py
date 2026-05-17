@@ -35,7 +35,6 @@ from datetime import UTC, datetime, timedelta
 import aiosqlite
 from loguru import logger
 
-from app.config import settings
 from app.db.repos import subscriptions as subs_repo
 from app.db.repos.plans import Plan
 from app.db.repos.promos import Promo
@@ -115,6 +114,8 @@ async def create_or_extend(
     user: User,
     plan: Plan,
     promo: Promo | None,
+    *,
+    inbound_id: int,
 ) -> Subscription:
     """Provision or extend a paid subscription for ``user``.
 
@@ -144,6 +145,12 @@ async def create_or_extend(
         Optional promo — only ``free_days`` types affect the delta here.
         Discount-type promos affect the Stars price (handled by
         :mod:`app.services.billing`) but not the duration.
+    inbound_id
+        3x-ui inbound where a fresh client must be provisioned. **Only
+        consulted when creating a brand-new subscription.** When the
+        user already has an active subscription, extension reuses
+        ``existing.xui_inbound_id`` and the caller's value is ignored
+        (a mismatch is logged at WARNING).
 
     Returns
     -------
@@ -164,6 +171,7 @@ async def create_or_extend(
         delta_days=delta_days,
         plan_id=plan.id,
         total_gb=int(plan.traffic_gb),
+        inbound_id=int(inbound_id),
     )
 
 
@@ -172,6 +180,8 @@ async def activate_free_days(
     xui: XuiClient,
     user: User,
     promo: Promo,
+    *,
+    inbound_id: int,
 ) -> Subscription:
     """Grant ``promo.value`` free days without involving Telegram Stars.
 
@@ -182,6 +192,10 @@ async def activate_free_days(
     The promo's :class:`Promo.type` must equal ``"free_days"`` — anything
     else is a programmer error and raises :class:`ValueError` because the
     other types only make sense in combination with a paid plan.
+
+    ``inbound_id`` is the 3x-ui inbound the user picked from the promo
+    flow; consulted only when creating a fresh subscription and ignored
+    (with a WARNING log on mismatch) when extending an existing one.
     """
     if promo.type != "free_days":
         raise ValueError(
@@ -196,6 +210,7 @@ async def activate_free_days(
         delta_days=delta_days,
         plan_id=None,
         total_gb=0,
+        inbound_id=int(inbound_id),
     )
 
 
@@ -237,6 +252,7 @@ async def _provision(
     delta_days: int,
     plan_id: int | None,
     total_gb: int = 0,
+    inbound_id: int,
 ) -> Subscription:
     """Either extend the user's active subscription or create a new one.
 
@@ -248,6 +264,14 @@ async def _provision(
     :func:`app.xui.clients.update_client` so the user's accumulated
     traffic quota / remainder is not reset when their subscription is
     renewed.
+
+    ``inbound_id`` selects the 3x-ui inbound to provision into. On
+    extend the value is intentionally ignored — the existing
+    subscription's ``xui_inbound_id`` is reused so the panel keeps a
+    single client per user — but a mismatch with the requested
+    ``inbound_id`` is logged at WARNING so the discrepancy is visible in
+    logs (it almost always means the user picked a different inbound on
+    a second purchase and the UI should have hidden the selector).
     """
     delta = timedelta(days=max(0, delta_days))
     now = datetime.now(UTC).replace(microsecond=0)
@@ -256,6 +280,15 @@ async def _provision(
 
     if existing is not None:
         # ---- Extend in place ------------------------------------------------
+        if int(existing.xui_inbound_id) != int(inbound_id):
+            logger.warning(
+                "sub-extend: requested inbound_id={} differs from existing "
+                "subscription_id={} xui_inbound_id={} — reusing existing "
+                "inbound (no re-provisioning across inbounds on extend).",
+                inbound_id,
+                existing.id,
+                existing.xui_inbound_id,
+            )
         current_expiry = _parse_iso(existing.expires_at)
         # Guard: if for some reason the row says "active" but ``expires_at``
         # is in the past, anchor the extension to ``now`` so the user gets
@@ -285,7 +318,7 @@ async def _provision(
 
     # ---- Fresh provisioning -------------------------------------------------
     new_expiry = now + delta
-    inbound_id = int(settings.XUI_INBOUND_ID)
+    inbound_id = int(inbound_id)
     client_uuid = make_client_uuid()
     email = make_client_email(user.tg_id, user.username)
     sub_id = _make_sub_id()

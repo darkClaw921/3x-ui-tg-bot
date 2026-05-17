@@ -1,3 +1,15 @@
 # app/states/user.py
 
-FSM-стейты пользовательского флоу. BuyFlow: choosing_plan (выбор тарифа), entering_promo (ввод промокода), confirming (просмотр итоговой цены/применённого промо). PromoActivate: waiting_code (ввод кода для активации free_days без оплаты). Стейт-данные (plan_id, promo_id) хранятся через FSMContext.update_data; стейт очищается после отправки invoice, потому что pre_checkout/successful_payment приходят без стейта и используют payload invoice'а для переноса plan_id/promo_id.
+FSM-группы пользовательского флоу.
+
+BuyFlow — мастер покупки подписки через Telegram Stars:
+- choosing_plan: пользователь выбирает тариф из inline-списка (callback BuyCB action=plan, plan_id).
+- choosing_inbound: пользователь выбирает inbound/сервер из allow-list тарифа (callback InboundCB action=pick). Шаг автоматически пропускается хендлером, если в allow-list ровно один inbound — тогда сразу confirming.
+- entering_promo: текстовый ввод промокода (применяется к выбранному тарифу).
+- confirming: финальное подтверждение, выпускается Stars-инвойс. После send_invoice состояние очищается; pre_checkout / successful_payment приходят как stateless обновления Telegram с payload, содержащим plan_id/promo_id/inbound_id.
+
+PromoActivate — мастер активации отдельного промокода (обычно free_days):
+- waiting_code: текстовый ввод кода.
+- choosing_inbound: выбор inbound для free-days подписки. Пропускается при единственном inbound; иначе после выбора создаётся подписка и состояние очищается.
+
+Промежуточный шаг choosing_inbound добавлен в Phase 3 (выбор сервера перед оплатой / выдачей free-days).

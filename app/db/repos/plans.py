@@ -9,6 +9,7 @@ Functions accept an :class:`aiosqlite.Connection` and return either a
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -149,4 +150,55 @@ async def deactivate(conn: aiosqlite.Connection, plan_id: int) -> None:
         "UPDATE plans SET is_active = 0 WHERE id = ?",
         (plan_id,),
     )
+    await conn.commit()
+
+
+async def get_inbounds(conn: aiosqlite.Connection, plan_id: int) -> list[int]:
+    """Return the 3x-ui inbound ids attached to ``plan_id``, sorted ascending.
+
+    Returns an empty list when the plan has no rows in ``plan_inbounds`` (or
+    when ``plan_id`` does not exist). The caller is expected to treat an empty
+    list as a misconfigured plan — :func:`set_inbounds` guarantees that any
+    plan touched through the API has at least one inbound.
+    """
+    cursor = await conn.execute(
+        "SELECT inbound_id FROM plan_inbounds WHERE plan_id = ? ORDER BY inbound_id",
+        (plan_id,),
+    )
+    rows = await cursor.fetchall()
+    return [row["inbound_id"] for row in rows]
+
+
+async def set_inbounds(
+    conn: aiosqlite.Connection,
+    plan_id: int,
+    inbound_ids: Iterable[int],
+) -> None:
+    """Replace the set of inbounds attached to ``plan_id`` atomically.
+
+    Strategy: ``DELETE FROM plan_inbounds WHERE plan_id=?`` followed by an
+    ``executemany`` of the new rows, wrapped in a single transaction. Duplicate
+    ids in the input are deduplicated via :class:`set` before insert.
+
+    A plan must have **at least one** inbound to be usable in the buy flow —
+    passing an empty iterable raises :class:`ValueError`. Callers that want to
+    fully detach a plan from inbounds should soft-delete the plan instead.
+    """
+    unique_ids = set(inbound_ids)
+    if not unique_ids:
+        raise ValueError("plan must have at least one inbound")
+
+    await conn.execute("BEGIN")
+    try:
+        await conn.execute(
+            "DELETE FROM plan_inbounds WHERE plan_id = ?",
+            (plan_id,),
+        )
+        await conn.executemany(
+            "INSERT INTO plan_inbounds (plan_id, inbound_id) VALUES (?, ?)",
+            [(plan_id, inbound_id) for inbound_id in unique_ids],
+        )
+    except BaseException:
+        await conn.rollback()
+        raise
     await conn.commit()

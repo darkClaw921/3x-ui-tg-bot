@@ -13,6 +13,12 @@ Create wizard (``PlanCB(action='create')``):
     3. ``waiting_price``       — preset keyboard OR non-negative integer text.
     4. ``waiting_traffic_gb``  — preset keyboard OR non-negative integer text
        (``0`` ≡ без лимита, matches xui ``totalGB`` semantics).
+    5. ``waiting_inbounds``    — multi-select keyboard over xui inbounds
+       (:func:`plan_inbounds_select_kb`). The user must confirm at least one
+       inbound via :func:`cb_inbounds_done`; tapping rows toggles selection
+       via :func:`cb_toggle_inbound`. The plan row is persisted only after
+       the user confirms the inbound set — see
+       :func:`_finalize_plan_create`.
     On success, opens the card of the freshly-created plan and clears state.
     Invalid input re-asks without dropping FSM state. The numeric steps
     also accept preset buttons (:func:`plan_days_presets_kb`,
@@ -21,14 +27,22 @@ Create wizard (``PlanCB(action='create')``):
     :func:`cb_plan_manual`.
 
 Card view (``PlanCB(action='card', id=…)``):
-    fetches the plan, renders title/days/price/traffic/is_active + :func:`plan_card_kb`.
+    fetches the plan, renders title/days/price/traffic/is_active/inbounds +
+    :func:`plan_card_kb`. Inbound remarks are resolved through
+    :func:`app.services.inbounds.list_user_inbounds`; if the xui panel is
+    unavailable the card degrades gracefully and shows raw ids without
+    remarks. Inbounds attached to the plan but missing from the panel
+    response are rendered as ``id=NN (удалён)``.
 
 Edit wizard (``PlanCB(action='edit', id=…, field=…)``):
-    Stores ``plan_id`` and ``field`` in FSM data, transitions to
-    :class:`PlanEdit.waiting_value`. The handler validates the value type
-    against the field (string for ``title``, ``int>0`` for ``days``,
-    ``int>=0`` for ``price_stars`` / ``traffic_gb``) and calls
-    :func:`plans_repo.update`.
+    Text-valued fields (``title``/``days``/``price_stars``/``traffic_gb``)
+    store ``plan_id`` and ``field`` in FSM data, transition to
+    :class:`PlanEdit.waiting_value`, validate the value type against the
+    field, and call :func:`plans_repo.update`.
+    The ``field='inbounds'`` branch is handled separately
+    (:func:`cb_edit_inbounds`) — it reuses the same multi-select keyboard
+    as the create wizard and is differentiated by the ``editing_plan_id``
+    key in FSM data (present → edit mode, absent → create mode).
 
 Deactivate (``PlanCB(action='deactivate', id=…)``):
     soft-disable via :func:`plans_repo.deactivate`. Card is re-rendered.
@@ -42,6 +56,7 @@ from __future__ import annotations
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from loguru import logger
 
 from app.db.engine import get_conn
 from app.db.repos import plans as plans_repo
@@ -54,10 +69,13 @@ from app.keyboards.admin import (
     plan_days_presets_kb,
     plan_edit_fields_kb,
     plan_gb_presets_kb,
+    plan_inbounds_select_kb,
     plan_price_presets_kb,
     plans_list_kb,
 )
+from app.services.inbounds import InboundOption, list_user_inbounds
 from app.states.admin import PlanCreate, PlanEdit
+from app.xui import XuiError, get_xui_client
 
 router = Router(name="admin_plans")
 
@@ -67,36 +85,89 @@ router = Router(name="admin_plans")
 # ---------------------------------------------------------------------------
 
 
-def _format_plan(plan: Plan) -> str:
-    """Return a human-readable plan card body (HTML)."""
+def _format_plan(plan: Plan, inbound_remarks: dict[int, str] | None = None) -> str:
+    """Return a human-readable plan card body (HTML).
+
+    ``inbound_remarks`` maps ``inbound_id`` → display name (``remark`` from
+    the panel, or ``""`` if the panel response was unavailable). The card
+    appends a «Подключения» line built from this mapping plus the list of
+    inbound ids attached to the plan. If an inbound id present on the plan
+    is missing from ``inbound_remarks`` (admin deleted it on the panel) it
+    is rendered as ``id=NN (удалён)``; if the mapping is ``None`` or empty
+    the line is rendered with raw ``id=NN`` tokens (graceful degrade when
+    the panel is unreachable).
+    """
     active = "✅ активен" if plan.is_active else "🚫 деактивирован"
     traffic = "без лимита" if plan.traffic_gb == 0 else f"{plan.traffic_gb} ГБ"
-    return (
-        f"<b>Тариф #{plan.id}</b>\n"
-        f"Название: <code>{plan.title}</code>\n"
-        f"Срок: <b>{plan.days}</b> дн.\n"
-        f"Цена: <b>{plan.price_stars}</b> ⭐\n"
-        f"Трафик: <b>{traffic}</b>\n"
-        f"Статус: {active}"
-    )
+    lines = [
+        f"<b>Тариф #{plan.id}</b>",
+        f"Название: <code>{plan.title}</code>",
+        f"Срок: <b>{plan.days}</b> дн.",
+        f"Цена: <b>{plan.price_stars}</b> ⭐",
+        f"Трафик: <b>{traffic}</b>",
+        f"Статус: {active}",
+    ]
+    if inbound_remarks is not None:
+        if not inbound_remarks:
+            lines.append("Подключения: <i>не настроены</i>")
+        else:
+            parts: list[str] = []
+            for inbound_id, remark in inbound_remarks.items():
+                if remark:
+                    parts.append(remark)
+                else:
+                    parts.append(f"id={inbound_id} (удалён)")
+            lines.append("Подключения: " + ", ".join(parts))
+    return "\n".join(lines)
+
+
+async def _resolve_inbound_remarks(inbound_ids: list[int]) -> dict[int, str]:
+    """Resolve panel remarks for the given inbound ids.
+
+    Returns a dict mapping each id in ``inbound_ids`` (preserving order via
+    insertion order) to its remark; ids missing from the panel response
+    receive an empty string, which the renderer turns into «(удалён)».
+    On xui errors (panel down, auth failure, …) returns a dict with empty
+    string values for every id — the card still renders, just without
+    remarks (graceful degrade).
+    """
+    if not inbound_ids:
+        return {}
+    try:
+        xui = await get_xui_client()
+        options = await list_user_inbounds(xui)
+    except XuiError as exc:
+        logger.warning("plans card: xui unavailable, degrading: {}", exc)
+        return {inbound_id: "" for inbound_id in inbound_ids}
+    by_id = {option.id: option.remark for option in options}
+    return {inbound_id: by_id.get(inbound_id, "") for inbound_id in inbound_ids}
 
 
 async def _show_card(message: Message, plan_id: int, *, edit: bool = True) -> None:
-    """Render a plan card, either editing the source message or sending a new one."""
+    """Render a plan card, either editing the source message or sending a new one.
+
+    Fetches the plan + its attached inbounds (:func:`plans_repo.get_inbounds`)
+    and resolves remarks via :func:`_resolve_inbound_remarks` before
+    rendering. The latter swallows :class:`XuiError` so panel outages do
+    not crash the admin UI.
+    """
     async with get_conn() as conn:
         plan = await plans_repo.get(conn, plan_id)
-    if plan is None:
-        text = f"Тариф #{plan_id} не найден."
-        if edit:
-            await message.edit_text(text)
-        else:
-            await message.answer(text)
-        return
+        if plan is None:
+            text = f"Тариф #{plan_id} не найден."
+            if edit:
+                await message.edit_text(text)
+            else:
+                await message.answer(text)
+            return
+        inbound_ids = await plans_repo.get_inbounds(conn, plan_id)
+    remarks = await _resolve_inbound_remarks(inbound_ids)
     kb = plan_card_kb(plan.id, is_active=plan.is_active)
+    text = _format_plan(plan, remarks)
     if edit:
-        await message.edit_text(_format_plan(plan), reply_markup=kb)
+        await message.edit_text(text, reply_markup=kb)
     else:
-        await message.answer(_format_plan(plan), reply_markup=kb)
+        await message.answer(text, reply_markup=kb)
 
 
 async def _show_list(message: Message, *, edit: bool = True) -> None:
@@ -255,7 +326,7 @@ async def st_price(message: Message, state: FSMContext) -> None:
 
 @router.message(PlanCreate.waiting_traffic_gb)
 async def st_traffic_gb(message: Message, state: FSMContext) -> None:
-    """Accept the traffic limit (manual text path), persist the plan, show its card."""
+    """Accept the traffic limit (manual text path) and move to inbound select."""
     raw = (message.text or "").strip()
     try:
         traffic_gb = int(raw)
@@ -271,26 +342,202 @@ async def st_traffic_gb(message: Message, state: FSMContext) -> None:
             reply_markup=plan_gb_presets_kb(),
         )
         return
-    await _finalize_plan_create(message, state, traffic_gb=traffic_gb)
+    await state.update_data(traffic_gb=traffic_gb)
+    await _enter_inbounds_step(message, state)
+
+
+async def _enter_inbounds_step(message: Message, state: FSMContext) -> None:
+    """Load xui inbounds and switch the wizard into :class:`PlanCreate.waiting_inbounds`.
+
+    Fetches the list via :func:`list_user_inbounds`, caches the options
+    inside FSM data (``inbound_options``) so subsequent toggle/done
+    callbacks can redraw the keyboard without another panel round-trip,
+    and primes ``selected_inbounds`` to an empty list. If the panel is
+    unavailable the wizard stays on the previous step and the user gets
+    a popup error — there is nothing actionable to do without a list of
+    inbounds.
+
+    Called both from the manual-text traffic-gb path
+    (:func:`st_traffic_gb`) and from the preset-button path
+    (:func:`cb_plan_preset` on the ``gb`` step).
+    """
+    try:
+        xui = await get_xui_client()
+        options = await list_user_inbounds(xui)
+    except XuiError as exc:
+        logger.warning("plans wizard: xui unavailable: {}", exc)
+        await message.answer(
+            "Не удалось получить список подключений из 3x-ui. Попробуйте позже.",
+            reply_markup=cancel_kb(),
+        )
+        return
+    if not options:
+        await message.answer(
+            "В 3x-ui нет активных подключений. Сначала включите хотя бы один inbound.",
+            reply_markup=cancel_kb(),
+        )
+        return
+    await state.set_state(PlanCreate.waiting_inbounds)
+    await state.update_data(
+        selected_inbounds=[],
+        inbound_options=[
+            {
+                "id": opt.id,
+                "remark": opt.remark,
+                "port": opt.port,
+                "enabled": opt.enabled,
+            }
+            for opt in options
+        ],
+    )
+    await message.answer(
+        "Выберите подключения для тарифа:",
+        reply_markup=plan_inbounds_select_kb(options, selected=set()),
+    )
+
+
+def _options_from_data(data: dict[str, object]) -> list[InboundOption]:
+    """Rebuild :class:`InboundOption` list from FSM data.
+
+    The wizard stores option dicts under ``inbound_options`` so we can
+    redraw the multi-select keyboard on toggles without re-hitting the
+    panel. This helper reconstructs the typed list back from raw dicts.
+    """
+    raw = data.get("inbound_options") or []
+    options: list[InboundOption] = []
+    for item in raw:  # type: ignore[union-attr]
+        if not isinstance(item, dict):
+            continue
+        try:
+            options.append(
+                InboundOption(
+                    id=int(item["id"]),
+                    remark=str(item.get("remark") or ""),
+                    port=int(item.get("port") or 0),
+                    enabled=bool(item.get("enabled", True)),
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return options
+
+
+@router.callback_query(PlanCB.filter(F.action == "toggle_inbound"))
+async def cb_toggle_inbound(
+    callback: CallbackQuery,
+    callback_data: PlanCB,
+    state: FSMContext,
+) -> None:
+    """Flip the selection of one inbound in the multi-select screen.
+
+    Works in both modes:
+
+    * create wizard — FSM data has ``inbound_options`` populated and
+      no ``editing_plan_id``;
+    * edit flow — FSM data has ``editing_plan_id`` and ``inbound_options``
+      populated by :func:`cb_edit_inbounds`.
+
+    The actual differentiation is irrelevant here — both modes share the
+    same ``selected_inbounds`` list and ``inbound_options`` cache, and
+    this handler only mutates the former and redraws the keyboard from
+    the latter.
+    """
+    inbound_id = callback_data.id
+    data = await state.get_data()
+    selected_raw = data.get("selected_inbounds") or []
+    selected: list[int] = [int(x) for x in selected_raw]  # type: ignore[union-attr]
+    if inbound_id in selected:
+        selected.remove(inbound_id)
+    else:
+        selected.append(inbound_id)
+    await state.update_data(selected_inbounds=selected)
+
+    options = _options_from_data(data)
+    if callback.message is not None and options:
+        try:
+            await callback.message.edit_reply_markup(
+                reply_markup=plan_inbounds_select_kb(options, selected=set(selected))
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort redraw
+            # Telegram raises if the markup did not change or the message
+            # is too old; either way we can swallow it and just answer
+            # the callback so the spinner stops.
+            logger.debug("plans inbounds: redraw skipped: {}", exc)
+    await callback.answer()
+
+
+@router.callback_query(PlanCB.filter(F.action == "inbounds_done"))
+async def cb_inbounds_done(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """Confirm the multi-select and either create or update the plan.
+
+    Differentiates the two modes by the presence of ``editing_plan_id``
+    in FSM data:
+
+    * present → edit mode: call :func:`plans_repo.set_inbounds` on the
+      existing plan and re-render its card;
+    * absent → create mode: persist the plan via :func:`plans_repo.create`
+      and attach the chosen inbounds.
+
+    Empty selection in either mode triggers an alert without state
+    transition — the user must pick at least one inbound to proceed.
+    """
+    data = await state.get_data()
+    selected_raw = data.get("selected_inbounds") or []
+    selected: list[int] = [int(x) for x in selected_raw]  # type: ignore[union-attr]
+    if not selected:
+        await callback.answer(
+            "Выберите хотя бы одно подключение",
+            show_alert=True,
+        )
+        return
+
+    editing_plan_id = data.get("editing_plan_id")
+    if editing_plan_id is not None:
+        # Edit mode: update inbound set on an existing plan.
+        async with get_conn() as conn:
+            try:
+                await plans_repo.set_inbounds(conn, int(editing_plan_id), selected)
+            except LookupError:
+                await state.clear()
+                if callback.message is not None:
+                    await callback.message.answer(
+                        f"Тариф #{editing_plan_id} не найден."
+                    )
+                await callback.answer()
+                return
+        await state.clear()
+        if callback.message is not None:
+            await _show_card(callback.message, int(editing_plan_id), edit=False)
+        await callback.answer("Подключения обновлены")
+        return
+
+    # Create mode: persist the plan with the collected wizard data.
+    if callback.message is not None:
+        await _finalize_plan_create(callback.message, state, selected_inbounds=selected)
+    await callback.answer()
 
 
 async def _finalize_plan_create(
     message: Message,
     state: FSMContext,
     *,
-    traffic_gb: int,
+    selected_inbounds: list[int],
 ) -> None:
     """Persist the plan with collected FSM data, clear state, render its card.
 
-    Called from both the manual-text path (:func:`st_traffic_gb`) and the
-    preset-button path (:func:`cb_plan_preset` on the ``gb`` step). All
-    earlier wizard inputs (``title``/``days``/``price``) come from FSM
-    data populated by previous steps.
+    Called from :func:`cb_inbounds_done` after the user confirms the
+    inbound multi-select. All earlier wizard inputs (``title``/``days``/
+    ``price``/``traffic_gb``) come from FSM data populated by previous
+    steps; ``selected_inbounds`` is the just-confirmed inbound id list.
     """
     data = await state.get_data()
     title: str = data["title"]
     days: int = data["days"]
     price: int = data["price"]
+    traffic_gb: int = data["traffic_gb"]
 
     async with get_conn() as conn:
         plan = await plans_repo.create(
@@ -300,9 +547,12 @@ async def _finalize_plan_create(
             price_stars=price,
             traffic_gb=traffic_gb,
         )
+        await plans_repo.set_inbounds(conn, plan.id, selected_inbounds)
+        inbound_ids = await plans_repo.get_inbounds(conn, plan.id)
     await state.clear()
+    remarks = await _resolve_inbound_remarks(inbound_ids)
     await message.answer(
-        f"Тариф создан ✅\n\n{_format_plan(plan)}",
+        f"Тариф создан ✅\n\n{_format_plan(plan, remarks)}",
         reply_markup=plan_card_kb(plan.id, is_active=plan.is_active),
     )
 
@@ -313,8 +563,9 @@ async def _finalize_plan_create(
 
 
 # Mapping: PlanCB.field (preset key) → (FSM-data key written, next state, next-step prompt+keyboard factory).
-# The ``gb`` row has ``None`` for the next-state because it terminates the
-# wizard (the handler persists the plan instead of moving on).
+# The ``gb`` row has ``None`` for the next-state because it leaves the
+# numeric path entirely — the handler hands off to
+# :func:`_enter_inbounds_step` instead of moving to another preset step.
 _PRESET_FLOW: dict[str, tuple[str, object | None, str, object | None]] = {
     "days": (
         "days",
@@ -343,8 +594,10 @@ async def cb_plan_preset(
     The button carries the chosen integer in ``callback_data.id`` and the
     step key in ``callback_data.field`` (``days``/``price``/``gb``). The
     handler writes the value into FSM data under the matching key, then
-    either moves to the next step (sending its preset keyboard) or — for
-    the terminal ``gb`` step — creates the plan and renders its card.
+    either moves to the next numeric step (sending its preset keyboard)
+    or — for the ``gb`` step — stores ``traffic_gb`` and hands off to
+    :func:`_enter_inbounds_step`, which loads xui inbounds and renders
+    the multi-select keyboard.
     """
     field = callback_data.field
     flow = _PRESET_FLOW.get(field)
@@ -354,10 +607,11 @@ async def cb_plan_preset(
     data_key, next_state, prompt, kb_factory = flow
     value = callback_data.id
 
-    # Final step: persist the plan and exit.
+    # GB step: store and move to the inbound multi-select.
     if field == "gb":
+        await state.update_data(traffic_gb=value)
         if callback.message is not None:
-            await _finalize_plan_create(callback.message, state, traffic_gb=value)
+            await _enter_inbounds_step(callback.message, state)
         await callback.answer()
         return
 
@@ -397,6 +651,9 @@ async def cb_plan_manual(callback: CallbackQuery, callback_data: PlanCB) -> None
 # ---------------------------------------------------------------------------
 
 
+# Text-valued fields that route through :class:`PlanEdit.waiting_value`.
+# The ``inbounds`` field is intentionally NOT here — it is handled by a
+# dedicated multi-select branch (:func:`cb_edit_inbounds`).
 _FIELD_LABELS = {
     "title": "новое название",
     "days": "новый срок в днях (целое > 0)",
@@ -405,13 +662,82 @@ _FIELD_LABELS = {
 }
 
 
+@router.callback_query(PlanCB.filter((F.action == "edit") & (F.field == "inbounds")))
+async def cb_edit_inbounds(
+    callback: CallbackQuery,
+    callback_data: PlanCB,
+    state: FSMContext,
+) -> None:
+    """Open the inbound multi-select in edit mode for an existing plan.
+
+    Loads the plan's current inbound set via :func:`plans_repo.get_inbounds`,
+    fetches the full list of xui inbounds (:func:`list_user_inbounds`),
+    stores both in FSM data (``editing_plan_id`` flags edit mode for
+    :func:`cb_toggle_inbound` and :func:`cb_inbounds_done`), and renders
+    the multi-select keyboard with the currently-attached ids pre-checked.
+
+    On xui error the call is aborted with a popup — there is nothing to
+    edit without a panel response. State is NOT advanced and the user
+    can retry by tapping the field again.
+    """
+    plan_id = callback_data.id
+    async with get_conn() as conn:
+        plan = await plans_repo.get(conn, plan_id)
+        if plan is None:
+            await callback.answer(f"Тариф #{plan_id} не найден.", show_alert=True)
+            return
+        current = await plans_repo.get_inbounds(conn, plan_id)
+
+    try:
+        xui = await get_xui_client()
+        options = await list_user_inbounds(xui)
+    except XuiError as exc:
+        logger.warning("plans edit inbounds: xui unavailable: {}", exc)
+        await callback.answer(
+            "Не удалось получить список подключений из 3x-ui. Попробуйте позже.",
+            show_alert=True,
+        )
+        return
+    if not options:
+        await callback.answer(
+            "В 3x-ui нет активных подключений.",
+            show_alert=True,
+        )
+        return
+
+    await state.set_state(PlanCreate.waiting_inbounds)
+    await state.update_data(
+        editing_plan_id=plan_id,
+        selected_inbounds=list(current),
+        inbound_options=[
+            {
+                "id": opt.id,
+                "remark": opt.remark,
+                "port": opt.port,
+                "enabled": opt.enabled,
+            }
+            for opt in options
+        ],
+    )
+    if callback.message is not None:
+        await callback.message.edit_text(
+            f"Подключения тарифа #{plan_id}:",
+            reply_markup=plan_inbounds_select_kb(options, selected=set(current)),
+        )
+    await callback.answer()
+
+
 @router.callback_query(PlanCB.filter(F.action == "edit"))
 async def cb_edit(
     callback: CallbackQuery,
     callback_data: PlanCB,
     state: FSMContext,
 ) -> None:
-    """Start :class:`PlanEdit` — store ``plan_id`` and ``field`` in FSM data."""
+    """Start :class:`PlanEdit` for a text-valued field.
+
+    The ``field='inbounds'`` case is handled by :func:`cb_edit_inbounds`
+    (its filter is more specific and is matched first by aiogram's router).
+    """
     field = callback_data.field
     if field not in _FIELD_LABELS:
         await callback.answer("Неизвестное поле", show_alert=True)

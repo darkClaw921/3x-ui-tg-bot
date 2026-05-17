@@ -298,6 +298,12 @@ troubleshooting (зависший installer, неактивный сервис x
   3x-ui как `totalGB` при `add_client`. Колонка добавлена идемпотентной миграцией
   `ALTER TABLE plans ADD COLUMN traffic_gb INTEGER NOT NULL DEFAULT 0` в
   `_apply_migrations`.
+- `plan_inbounds` (plan_id FK plans.id ON DELETE CASCADE, inbound_id,
+  PRIMARY KEY (plan_id, inbound_id)) — many-to-many между тарифами и
+  inbound id из 3x-ui панели. `inbound_id` хранится без FK (это id из
+  3x-ui, не локальная запись). `ON DELETE CASCADE` гарантирует
+  консистентность при удалении тарифа. Один тариф может обслуживаться
+  несколькими inbound'ами (мульти-регион/мульти-протокол).
 - `promos` (id PK, code UNIQUE, type CHECK IN ('percent','flat_stars','free_days'),
   value, max_uses, used_count, expires_at NULL, created_at,
   created_by FK users.id ON DELETE SET NULL).
@@ -321,7 +327,7 @@ troubleshooting (зависший installer, неактивный сервис x
 `subscriptions(expires_at)`, `promos(code)`, `promo_redemptions(promo_id)`,
 `promo_redemptions(user_id)`, `payments(user_id)`, `payments(telegram_charge_id)`,
 `traffic_snapshots(subscription_id, taken_at)`,
-`subscription_notifications(subscription_id)`.
+`subscription_notifications(subscription_id)`, `plan_inbounds(plan_id)`.
 
 ### [app/db/engine.py](./app/db/engine.py)
 Async-движок поверх `aiosqlite`.
@@ -329,14 +335,23 @@ Async-движок поверх `aiosqlite`.
 - `async def init_db() -> None` — создаёт директорию `DB_PATH.parent`,
   открывает соединение, применяет `schema.sql` через `executescript`,
   затем вызывает `_apply_migrations(conn)`.
-- `async def _apply_migrations(conn)` — два набора миграций:
+- `async def _apply_migrations(conn)` — два набора миграций плюс backfill:
   1. Идемпотентные `ALTER TABLE` (try/except на "duplicate column"/
      "already exists"). Текущий перечень: добавление
-     `subscriptions.xui_sub_id TEXT NOT NULL DEFAULT ''`.
+     `subscriptions.xui_sub_id TEXT NOT NULL DEFAULT ''` и
+     `plans.traffic_gb INTEGER NOT NULL DEFAULT 0`.
   2. `CREATE TABLE/INDEX IF NOT EXISTS` для таблиц, появившихся после
      первоначальной схемы. Применяются и на свежих БД (no-op, т.к.
      SQL идемпотентен), и при апгрейде существующих. Текущий перечень:
-     `subscription_notifications` + индекс `idx_subscription_notifications_sub`.
+     `subscription_notifications` + индекс `idx_subscription_notifications_sub`,
+     `plan_inbounds` + индекс `idx_plan_inbounds_plan`.
+  3. Backfill `plan_inbounds` для legacy-планов без записей:
+     `INSERT OR IGNORE INTO plan_inbounds (plan_id, inbound_id)
+     SELECT id, ? FROM plans WHERE id NOT IN (SELECT plan_id FROM plan_inbounds)`
+     с параметром `settings.XUI_INBOUND_ID`. Условие `WHERE id NOT IN (...)`
+     обеспечивает идемпотентность на уровне отдельного плана —
+     повторный `init_db()` не перезатирает админский выбор inbounds.
+     Если `XUI_INBOUND_ID` не задан — backfill пропускается с warning.
 - `_configure_connection(conn)` — выставляет `conn.row_factory = aiosqlite.Row`,
   выполняет `PRAGMA foreign_keys = ON` и `PRAGMA journal_mode = WAL` для
   каждого соединения (pragmas в SQLite — per-connection).
@@ -387,6 +402,15 @@ Async-движок поверх `aiosqlite`.
   из whitelist (включая `traffic_gb`); `ValueError` на остальные;
   `LookupError` если нет такого id.
 - `async def deactivate(conn, plan_id)` — мягкое отключение (`is_active=0`).
+- `async def get_inbounds(conn, plan_id) -> list[int]` — `SELECT inbound_id
+  FROM plan_inbounds WHERE plan_id=? ORDER BY inbound_id`. Возвращает `[]`
+  для несуществующих или пустых планов.
+- `async def set_inbounds(conn, plan_id, inbound_ids: Iterable[int]) -> None` —
+  атомарная замена набора inbound'ов тарифа: `DELETE FROM plan_inbounds
+  WHERE plan_id=?` + `executemany INSERT`, обёрнуто в одну транзакцию
+  (`BEGIN`/`COMMIT`, `ROLLBACK` при исключении). Дедуп входа через
+  `set()`. Пустой итерируемый → `ValueError('plan must have at least
+  one inbound')` (тариф без inbound невозможно купить).
 
 ### [app/db/repos/promos.py](./app/db/repos/promos.py)
 Репозиторий промокодов и `promo_redemptions`.
@@ -512,32 +536,73 @@ Async-движок поверх `aiosqlite`.
 Хэндлеры CRUD тарифов с FSM-флоу.
 
 - `router = Router(name="admin_plans")`.
-- Helpers: `_format_plan(plan)` — HTML-карточка (показывает в том числе
-  `traffic_gb`); `_show_card(message, plan_id, edit=True)`,
-  `_show_list(message, edit=True)` — сортировка active→inactive.
+- Helpers:
+  - `_format_plan(plan, inbound_remarks=None)` — HTML-карточка
+    (показывает title/days/price/traffic_gb/is_active). Если передан
+    `inbound_remarks: dict[int, str]` — добавляется строка
+    «Подключения: <remark1>, <remark2>»; для удалённых из 3x-ui
+    (пустой remark) — «id=NN (удалён)».
+  - `_resolve_inbound_remarks(inbound_ids)` — резолвит remark'и через
+    `app.services.inbounds.list_user_inbounds`; при `XuiError` graceful
+    degrade (пустые строки для всех id).
+  - `_show_card(message, plan_id, edit=True)` — рендер карточки:
+    `plans_repo.get` + `plans_repo.get_inbounds` + `_resolve_inbound_remarks`.
+  - `_show_list(message, edit=True)` — сортировка active→inactive.
 - Callbacks: `cb_list` (`PlanCB.action=list`, очищает state),
   `cb_card` (`action=card`), `cb_edit_menu` (`action=edit_menu`),
   `cb_deactivate` (`action=deactivate`).
-- Wizard `PlanCreate`: `cb_create` → `st_title` → `st_days` → `st_price`
-  → `st_traffic_gb`. На каждом численном шаге показывается пресет-
+- Wizard `PlanCreate` (5 шагов): `cb_create` → `st_title` → `st_days`
+  → `st_price` → `st_traffic_gb` → `_enter_inbounds_step` →
+  `waiting_inbounds`. На численных шагах показывается пресет-
   клавиатура (`plan_days_presets_kb` / `plan_price_presets_kb` /
   `plan_gb_presets_kb`), но ручной текстовый ввод тоже работает.
   Валидация: title непустой, days>0, price_stars≥0, traffic_gb≥0.
-  При невалидном вводе переспрашивает без сброса FSM. Финализация —
-  `_finalize_plan_create` (общая точка для preset- и manual-путей):
-  вызывает `plans_repo.create(title, days, price_stars, traffic_gb)`
-  и рендерит карточку.
+  - `_enter_inbounds_step(message, state)` — после ввода `traffic_gb`
+    загружает `list_user_inbounds`, кэширует options в FSM data
+    (`inbound_options`, сериализованные dict'ы), инициализирует
+    `selected_inbounds=[]`, показывает `plan_inbounds_select_kb`.
+    При `XuiError` или пустом списке inbound'ов — сообщение об ошибке,
+    state не двигается.
+  - `_options_from_data(data)` — реконструирует `list[InboundOption]`
+    из FSM data для перерисовки клавиатуры без повторного запроса
+    в 3x-ui.
+  - `cb_toggle_inbound` (`action=toggle_inbound`, `id=inbound_id`) —
+    XOR id в `selected_inbounds`, `edit_reply_markup` с обновлённой
+    клавиатурой. Общий для create и edit (различения здесь нет).
+  - `cb_inbounds_done` (`action=inbounds_done`) — финализация. Пустой
+    `selected` → `callback.answer('Выберите хотя бы одно подключение',
+    show_alert=True)`. Иначе: если в state есть `editing_plan_id` →
+    edit-режим (`plans_repo.set_inbounds` + `_show_card`); иначе →
+    `_finalize_plan_create`.
+  - `_finalize_plan_create(message, state, *, selected_inbounds)` —
+    `plans_repo.create(...)` + `plans_repo.set_inbounds(plan.id, selected)`
+    + рендер карточки с remark'ами.
 - Общие preset/manual callback-и (`PlanCB.action ∈ {preset, manual}`,
   `field ∈ {days, price, gb}`): `cb_plan_preset` пишет выбранное
   значение в FSM-data, переключает state и шлёт клавиатуру следующего
-  шага (или финализирует на `gb`); `cb_plan_manual` переключает шаг
-  на ручной текстовый ввод (оставляет тот же `waiting_*` state и
-  показывает подсказку). Мапа `_PLAN_STEP_FLOW` связывает `field`
-  пресета с FSM-data ключом, следующим состоянием и фабрикой клавиатуры.
-- Wizard `PlanEdit`: `cb_edit` (`PlanCB.field` ∈
-  title/days/price_stars/traffic_gb) → `st_edit_value`. `plans_repo.update`,
-  `LookupError` на отсутствующий plan_id.
-- Константа `_FIELD_LABELS` — подсказки при редактировании.
+  шага. На шаге `gb` записывает `traffic_gb` и вызывает
+  `_enter_inbounds_step` (передаёт управление в multi-select inbound'ов).
+  `cb_plan_manual` переключает шаг на ручной текстовый ввод (оставляет
+  тот же `waiting_*` state и показывает подсказку). Мапа `_PRESET_FLOW`
+  связывает `field` пресета с FSM-data ключом, следующим состоянием
+  и фабрикой клавиатуры (для `gb` next_state=None).
+- Wizard `PlanEdit`:
+  - `cb_edit_inbounds` (`PlanCB.action=edit, field=inbounds`) —
+    отдельная ветка для multi-select редактирования подключений
+    существующего тарифа. Регистрируется ПЕРЕД `cb_edit` (фильтр
+    специфичнее). Загружает текущие inbound'ы (`get_inbounds`) +
+    `list_user_inbounds`, кладёт в state `editing_plan_id`,
+    `selected_inbounds=list(current)`, `inbound_options`. Использует
+    то же состояние `PlanCreate.waiting_inbounds` и общие
+    `cb_toggle_inbound`/`cb_inbounds_done` (различение по
+    `editing_plan_id`). При `XuiError` или пустом списке inbound'ов —
+    alert через `callback.answer(..., show_alert=True)`.
+  - `cb_edit` (`PlanCB.field` ∈ title/days/price_stars/traffic_gb) →
+    `st_edit_value`. `plans_repo.update`, `LookupError` на отсутствующий
+    plan_id. Поле `inbounds` НЕ обрабатывается здесь — у него своя ветка.
+- Константа `_FIELD_LABELS` — подсказки при редактировании текстовых
+  полей (title/days/price_stars/traffic_gb). Поле `inbounds` в неё
+  НЕ входит.
 
 ### [app/handlers/admin/promos.py](./app/handlers/admin/promos.py)
 Хэндлеры CRUD промокодов с FSM-флоу.
@@ -654,10 +719,11 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
 - `AdminCB(prefix="adm", area, action)` — навигация
   (`area` ∈ main/plans/promos/users/stats, `action` ∈ open/back/cancel).
 - `PlanCB(prefix="admp", action, id=0, field="")` — list/create/card/
-  edit_menu/edit/deactivate/**preset**/**manual**;
-  `field` ∈ title/days/price_stars/traffic_gb (edit) или
+  edit_menu/edit/deactivate/**preset**/**manual**/**toggle_inbound**/
+  **inbounds_done**;
+  `field` ∈ title/days/price_stars/traffic_gb/**inbounds** (edit) или
   days/price/gb (preset/manual). Для `preset` поле `id` несёт выбранное
-  целочисленное значение шага мастера.
+  целочисленное значение шага мастера; для `toggle_inbound` — `inbound_id`.
 - `PromoCB(prefix="admpr", action, id=0, field="")` — list/create/card/
   deactivate/redemptions/type/**preset**/**manual**;
   `field` ∈ percent/flat_stars/free_days (type) или
@@ -680,7 +746,17 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
 - `plan_card_kb(plan_id, is_active=True)` — Редактировать / Деактивировать
   (если активен) / Назад.
 - `plan_edit_fields_kb(plan_id)` — выбор поля
-  (Название/Срок/Цена/**Лимит трафика (ГБ)**) + Назад.
+  (Название/Срок/Цена/**Лимит трафика (ГБ)**/**🔌 Подключения**) + Назад.
+  Кнопка «Подключения» отправляет
+  `PlanCB(action="edit", id=plan_id, field="inbounds")` — хендлер
+  открывает multi-select экран вместо текстового ввода.
+- `plan_inbounds_select_kb(options, selected)` — multi-select inbounds
+  (используется и в `PlanCreate.waiting_inbounds`, и в редактировании).
+  Каждый `InboundOption` рендерится строкой `☑/☐ <remark> (port <port>)`
+  (`☑` если `option.id ∈ selected`); тап шлёт
+  `PlanCB(action="toggle_inbound", id=inbound_id)` для переключения
+  множества в FSM data. Внизу `✅ Готово` (`PlanCB(action="inbounds_done")`)
+  и `✖ Отмена` (`AdminCB(area="main", action="cancel")`).
 - Пресет-клавиатуры мастера тарифа (используют `PlanCB(action="preset",
   field=<step>, id=<value>)` для значений и `PlanCB(action="manual",
   field=<step>)` для перехода к ручному вводу; общий помощник
@@ -760,12 +836,15 @@ Re-export `PlanCreate`, `PlanEdit`, `PromoCreate` из `app.states.admin`
 ### [app/states/admin.py](./app/states/admin.py)
 FSM-стейты админ-флоу (aiogram `StatesGroup`).
 
-- `PlanCreate(waiting_title, waiting_days, waiting_price, waiting_traffic_gb)` —
-  wizard создания тарифа. После ввода цены добавлен шаг
-  `waiting_traffic_gb` (non-negative int; 0 = без лимита) — соответствует
-  `plans.traffic_gb` и пробрасывается в `xui.add_client(total_gb=...)`.
+- `PlanCreate(waiting_title, waiting_days, waiting_price, waiting_traffic_gb,
+  waiting_inbounds)` — wizard создания тарифа. После ввода цены идёт
+  `waiting_traffic_gb` (non-negative int; 0 = без лимита), затем
+  `waiting_inbounds` — multi-select inbounds (пустое множество ≡
+  «все доступные»); завершается через `PlanCB(action="inbounds_done")`.
 - `PlanEdit(waiting_field, waiting_value)` — wizard редактирования одного
   поля; `plan_id` и `field` хранятся в `FSMContext` data.
+  При `field='inbounds'` waiting_value не используется — вместо этого
+  открывается тот же multi-select экран (`plan_inbounds_select_kb`).
 - `PromoCreate(waiting_code, waiting_type, waiting_value, waiting_max_uses,
   waiting_expires_at)` — wizard создания промокода.
 - `AdminSearchUser(waiting_query)` — единичный стейт админского поиска
@@ -973,19 +1052,46 @@ Standalone smoke-тест 3x-ui REST-клиента.
 - Dataclass `InvoicePrice(stars, raw_discount, extra_days)`.
 - `def calc_price(plan, promo) -> InvoicePrice` — обёртка над
   `promos.compute_discount` + `max(_STARS_MIN, final_price)`.
-- `def build_invoice_payload(plan_id, promo_id) -> str` — компактный
-  JSON `{"plan_id":..., "promo_id": ... | null}` (<128 байт); raise
-  `ValueError` если payload не вмещается.
-- `def parse_invoice_payload(payload) -> tuple[int, int | None]` —
-  обратная функция; `ValueError` на любую малформность; `promo_id=0`
-  нормализуется в `None`.
+- `def build_invoice_payload(plan_id, promo_id, inbound_id) -> str` —
+  компактный JSON `{"p":..., "r": ... | null, "i": ...}` с короткими
+  ключами (<128 байт даже для крупных id); raise `ValueError` если
+  payload не вмещается.
+- `def parse_invoice_payload(payload) -> tuple[int, int | None, int]` —
+  обратная функция, возвращает `(plan_id, promo_id, inbound_id)`.
+  Принимает как новые ключи (`p`/`r`/`i`), так и legacy (`plan_id`/
+  `promo_id` без `i`); при отсутствии `i` — fallback на
+  `settings.XUI_INBOUND_ID` с WARNING-логом. `ValueError` на
+  малформность; `promo_id=0` нормализуется в `None`.
 - Helpers `_invoice_title(plan)` (формат `VPN · <title>`),
   `_invoice_description(plan, price, promo)` — упоминает бонусные дни
   и тип скидки.
-- `async def send_invoice(bot, chat_id, plan, promo) -> Message` —
+- `async def send_invoice(bot, chat_id, plan, promo, *, inbound_id) -> Message` —
   `bot.send_invoice(currency="XTR", provider_token="",
   prices=[LabeledPrice(label=plan.title, amount=stars)],
-  payload=build_invoice_payload(...))`.
+  payload=build_invoice_payload(..., inbound_id=...))`. `inbound_id` —
+  обязательный kwarg, прокидывается в payload для пост-оплатного
+  provisioning.
+
+### [app/services/inbounds.py](./app/services/inbounds.py)
+Кэшированный список доступных 3x-ui inbound-ов для user/admin флоу.
+
+- Константа `_CACHE_TTL_SEC = 30.0` (баланс между свежестью админских
+  правок и нагрузкой на панель).
+- Dataclass `InboundOption(id:int, remark:str, port:int, enabled:bool)`
+  (`frozen`, `slots`) — проекция inbound-а с полями, нужными
+  клавиатурам и хендлерам.
+- Модульный TTL-кэш: переменные `_cache: list[InboundOption] | None`,
+  `_ts: float` (time.monotonic), `_lock: asyncio.Lock` для защиты от
+  thundering-herd на холодном кэше.
+- `async def list_user_inbounds(xui) -> list[InboundOption]` — при
+  кэш-хите возвращает без сетевого вызова. При промахе под `_lock`
+  делает double-check freshness, вызывает
+  `app.xui.inbounds.list_inbounds`, фильтрует `enable=True`, кладёт в
+  `_cache`. Малформированные inbound-ы (без `id`/`enable`) логируются и
+  пропускаются. При исключении от 3x-ui кэш НЕ обновляется (исключение
+  пробрасывается).
+- `def clear_cache()` — сброс кэша для тестов и админ-действий,
+  меняющих состояние inbound-ов на панели.
 
 ### [app/services/subscriptions.py](./app/services/subscriptions.py)
 Единая точка работы с подписками: xui-first, db-after.
@@ -995,22 +1101,29 @@ Standalone smoke-тест 3x-ui REST-клиента.
   преобразование строки из `expires_at`); `_bonus_days_from_promo(promo)`
   (0 для всех типов кроме `free_days`); `_make_sub_id()` (делегирует в
   `app.xui.clients`).
-- `async def create_or_extend(conn, xui, user, plan, promo) -> Subscription` —
-  считает `delta = plan.days + bonus_days(promo)`, делегирует в `_provision`
-  с `total_gb=int(plan.traffic_gb)`.
-- `async def activate_free_days(conn, xui, user, promo) -> Subscription` —
-  для standalone-флоу. `ValueError` если `promo.type != "free_days"`.
-  `delta = promo.value`, `plan_id=None`, `total_gb=0` (квота не задаётся).
-- `async def _provision(*, conn, xui, user, delta_days, plan_id, total_gb=0) -> Subscription` —
-  получает существующую активную подписку через `subs_repo.get_active_for_user`.
-  Если есть — `update_client(expiryTime=..., enable=True)` (важно: `totalGB`
-  намеренно НЕ передаётся при extend, чтобы накопленная квота /
-  потраченный трафик пользователя не сбрасывались при продлении), затем
-  `subs_repo.extend`. Если нет — генерирует uuid + email (через
+- `async def create_or_extend(conn, xui, user, plan, promo, *, inbound_id) -> Subscription` —
+  `inbound_id` — обязательный kwarg. Считает
+  `delta = plan.days + bonus_days(promo)`, делегирует в `_provision`
+  с `total_gb=int(plan.traffic_gb)` и переданным `inbound_id`.
+- `async def activate_free_days(conn, xui, user, promo, *, inbound_id) -> Subscription` —
+  `inbound_id` — обязательный kwarg. Для standalone-флоу. `ValueError`
+  если `promo.type != "free_days"`. `delta = promo.value`,
+  `plan_id=None`, `total_gb=0` (квота не задаётся).
+- `async def _provision(*, conn, xui, user, delta_days, plan_id, total_gb=0, inbound_id) -> Subscription` —
+  получает существующую активную подписку через
+  `subs_repo.get_active_for_user`. Если есть — `update_client(
+  expiryTime=..., enable=True)` (важно: `totalGB` намеренно НЕ
+  передаётся при extend, чтобы накопленная квота / потраченный трафик
+  пользователя не сбрасывались при продлении), затем `subs_repo.extend`.
+  При extend `inbound_id` ИГНОРИРУЕТСЯ — используется
+  `existing.xui_inbound_id`; если запрошенный отличается, логируется
+  WARNING с `subscription_id`, существующим и запрошенным inbound_id.
+  Если активной подписки нет — генерирует uuid + email (через
   `make_client_email(user.tg_id, user.username)`) + sub_id, вызывает
-  `add_client(..., total_gb=total_gb)` (xui-first), затем
-  `subs_repo.create(xui_sub_id=...)`. `total_gb` применяется ТОЛЬКО при
-  свежем provisioning.
+  `add_client(inbound_id=<переданный>, ..., total_gb=total_gb)`
+  (xui-first), затем `subs_repo.create(xui_inbound_id=<переданный>,
+  xui_sub_id=...)`. `total_gb` применяется ТОЛЬКО при свежем
+  provisioning.
 - `async def revoke(xui, sub) -> None` — `update_client(enable=False)`
   (best-effort, ловит исключения и логирует) + `subs_repo.set_status(sub.id, "revoked")`.
 
@@ -1124,50 +1237,102 @@ Helper для выдачи ключей юзеру. Используется и 
   sub_url.
 
 ### [app/handlers/user/buy.py](./app/handlers/user/buy.py)
-Полный платёжный флоу за Stars.
+Полный платёжный флоу за Stars с выбором inbound.
 
 - `router = Router(name="user_buy")`.
-- Helpers `_format_confirm(plan, promo)` — HTML-карточка с итоговой
-  ценой; `_fetch_plan(conn, plan_id)`/`_fetch_promo(conn, promo_id)` —
-  репо-обёртки; `_plan_is_buyable(plan)`/`_promo_is_usable(promo)` —
-  read-only проверки для pre_checkout (без one-per-user, т.к. её
-  гарантирует try_redeem).
+- Helpers
+  - `_format_confirm(plan, promo, inbound_remark=None, has_active_sub=False)` —
+    HTML-карточка с итоговой ценой; выводит строку «Подключение: …»
+    при наличии `inbound_remark`; добавляет ⚠️-предупреждение «продление
+    останется на текущем подключении» при `has_active_sub=True`.
+  - `_has_active_sub(conn, user_id)` — `bool` поверх
+    `subs_repo.get_active_for_user`.
+  - `_remark_for(options, inbound_id)` — резолвит remark из FSM-options
+    (list[InboundOption] или list[dict] после JSON round-trip).
+  - `_options_to_jsonable(options)` / `_jsonable_to_options(items)` —
+    сериализация `InboundOption` в/из MemoryStorage JSON.
+  - `_fetch_plan(conn, plan_id)` / `_fetch_promo(conn, promo_id)` —
+    репо-обёртки.
+  - `_plan_is_buyable(plan)` / `_promo_is_usable(promo)` — read-only
+    проверки для pre_checkout (без one-per-user, т.к. её гарантирует
+    `try_redeem`).
 - UI-колбеки (state-driven):
-  - `cb_open` (`BuyCB action=open`) — `state.set_state(BuyFlow.choosing_plan)`,
-    показать `plans_kb(list_active())`. Если нет тарифов — соответствующее
-    сообщение.
-  - `cb_pick_plan` (`action=plan`) — сохраняет `plan_id` в FSM,
-    переходит в `BuyFlow.confirming`, рендерит `confirm_kb(plan_id, promo_id)`.
-    Сохраняет уже привязанный promo_id, если он валиден.
-  - `cb_apply_promo` (`action=apply_promo`) — `BuyFlow.entering_promo` +
+  - `cb_open` (`BuyCB action=open`) — `BuyFlow.choosing_plan`,
+    показывает `plans_kb(list_active())`. Если нет тарифов —
+    соответствующее сообщение.
+  - `cb_pick_plan` (`action=plan`) — загружает
+    `plans_repo.get_inbounds(plan_id)`; если `len == 1` → резолвит
+    remark через `list_user_inbounds`, FSM(`inbound_id`),
+    `BuyFlow.confirming`; если `len > 1` → `list_user_inbounds` +
+    фильтр по allow-list, FSM(`inbound_options`),
+    `BuyFlow.choosing_inbound`, рендер `inbound_select_kb`; пустой
+    список / XuiError — answer alert. Сохраняет уже привязанный
+    `promo_id`, если он валиден.
+  - `cb_pick_inbound` (`InboundCB action=pick` в
+    `BuyFlow.choosing_inbound`) — валидирует `inbound_id ∈
+    get_inbounds(plan_id)`; на успехе сохраняет в FSM, переходит в
+    `confirming`, рендерит `confirm_kb(plan_id, promo_id, inbound_id)`.
+  - `cb_pick_inbound_back` (`InboundCB action=back` в
+    `BuyFlow.choosing_inbound`) — возврат к списку тарифов
+    (`BuyFlow.choosing_plan`).
+  - `cb_apply_promo` (`action=apply_promo`) — сохраняет `plan_id` и
+    `inbound_id` (из callback / FSM), `BuyFlow.entering_promo` +
     подсказка ввести код.
   - `msg_promo_code` (handler в `BuyFlow.entering_promo`) — валидирует
     через `promos_service.validate(plan=plan)`; на ошибке остаётся в
-    стейте; на успехе сохраняет `promo_id`, возвращает в confirming.
-  - `cb_confirm` (`action=confirm`) — рев-валидирует plan/promo,
-    `billing.send_invoice(bot, chat_id, plan, promo)`, `state.clear()`.
+    стейте; на успехе сохраняет `promo_id`, резолвит remark inbound и
+    `has_active_sub`, возвращает в `confirming`.
+  - `cb_confirm` (`action=confirm`) — резолвит `inbound_id` из
+    callback_data (fallback на FSM), валидирует `plan` активен,
+    `promo` usable, `inbound_id ∈ get_inbounds(plan_id)`; при mismatch
+    возвращает в `choosing_inbound` со свежим `inbound_select_kb`;
+    иначе `billing.send_invoice(..., inbound_id=…)` и `state.clear()`.
 - Stateless-обработчики платежа:
-  - `on_pre_checkout` (`pre_checkout_query`) — parse_invoice_payload,
-    read-only проверки, `answer_pre_checkout_query(ok=...)`.
+  - `on_pre_checkout` (`pre_checkout_query`) — `parse_invoice_payload`
+    возвращает `(plan_id, promo_id, inbound_id)`; read-only проверки
+    plan/promo/inbound (`inbound_id ∈ get_inbounds`); answer
+    `ok=True/False`.
   - `on_successful_payment` (`F.successful_payment`) — идемпотентен по
-    `payments_repo.get_by_charge_id`; parse payload; refetch plan/promo;
-    `subs_service.create_or_extend` (xui-first; на `XuiError` фиксирует
-    платёж без подписки и уведомляет юзера); `payments_repo.create`
-    (`IntegrityError` на duplicate игнорируется); `promos.apply`
-    (best-effort); `deliver_keys`.
+    `payments_repo.get_by_charge_id`; парсит 3-tuple payload; логирует
+    WARNING для legacy-payload без `i` (fallback на
+    `settings.XUI_INBOUND_ID`); refetch plan/promo;
+    `subs_service.create_or_extend(..., inbound_id=…)` (xui-first; на
+    `XuiError` фиксирует платёж без подписки и уведомляет юзера);
+    `payments_repo.create` (`IntegrityError` на duplicate
+    игнорируется); `promos.apply` (best-effort); `deliver_keys`.
 
 ### [app/handlers/user/promo.py](./app/handlers/user/promo.py)
-Standalone-активация промокода (без оплаты, для `free_days`).
+Standalone-активация промокода (без оплаты, для `free_days`) с выбором inbound.
 
 - `router = Router(name="user_promo")`.
+- Хелперы: `_options_to_jsonable` / `_jsonable_to_options` —
+  сериализация `InboundOption` для FSM storage (зеркало хелперов в
+  `buy.py`).
 - `cb_open` (`PromoActCB action=open`) — `state.set_state(PromoActivate.waiting_code)`
   + `cancel_kb`.
-- `msg_code` (handler в `PromoActivate.waiting_code`) — `promos_service.validate(plan=None)`;
-  если `promo.type != "free_days"` → подсказка использовать buy flow и
-  `state.clear()`; на ошибке остаётся в стейте; на успехе вызывает
-  `subs_service.activate_free_days` (xui-first; при `XuiError` промокод
-  не редимится — юзер может повторить); затем `promos.apply` (best-effort);
-  `deliver_keys` с header упоминающим код.
+- `msg_code` (handler в `PromoActivate.waiting_code`) —
+  `promos_service.validate(plan=None)`; если `promo.type != "free_days"`
+  → подсказка использовать buy flow и `state.clear()`; на ошибке
+  остаётся в стейте; для `free_days` вызывает
+  `list_user_inbounds(xui)` (на `XuiError` или пустом списке — извинение
+  и `state.clear()`), сохраняет в FSM `promo_id` + `inbound_options`
+  (jsonable), переходит в `PromoActivate.choosing_inbound`, рендерит
+  `inbound_select_kb(plan_id=0, options, promo_id=promo.id)` с
+  подсказкой «Выберите подключение для активации промокода:».
+- `cb_pick_inbound_for_promo` (state-filter `PromoActivate.choosing_inbound`
+  + `InboundCB action=pick`) — повторно валидирует промо через
+  `promos_service.validate` (анти-гонка), сверяет `inbound_id` со
+  снэпшотом `inbound_options` в FSM (защита от подделки callback),
+  вызывает `subs_service.activate_free_days(conn, xui, user, promo,
+  inbound_id=inbound_id)` (xui-first; при `XuiError` промо НЕ редимится);
+  затем `promos_service.apply` (best-effort), `deliver_keys`,
+  `state.clear()`.
+- `cb_back_inbound_for_promo` (state-filter `PromoActivate.choosing_inbound`
+  + `InboundCB action=back`) — возврат в `PromoActivate.waiting_code`,
+  сброс FSM-полей `promo_id` и `inbound_options`.
+- Разделение с buy-флоу: фабрика `InboundCB` общая, но хендлеры
+  фильтруются по своему FSM-стейту (`BuyFlow.choosing_inbound` vs
+  `PromoActivate.choosing_inbound`), так что не конфликтуют.
 
 ## Пакет `app/keyboards/` — пользовательские клавиатуры
 
@@ -1176,8 +1341,14 @@ Inline-клавиатуры юзерского флоу.
 
 **CallbackData-фабрики:**
 - `UserCB(prefix="u", area)` — area ∈ menu/help/my/cancel.
-- `BuyCB(prefix="ub", action, plan_id=0, promo_id=0)` — action ∈
-  open/plan/apply_promo/confirm/cancel.
+- `BuyCB(prefix="ub", action, plan_id=0, promo_id=0, inbound_id=0)` —
+  action ∈ open/plan/apply_promo/confirm/cancel. Поле `inbound_id`
+  пробрасывается через шаги после выбора inbound (`0` = шаг был
+  автоматически пропущен из-за единственного inbound в allow-list).
+- `InboundCB(prefix="inb", action, plan_id=0, promo_id=0, inbound_id=0)` —
+  action ∈ pick/back. Используется и в buy-флоу (`plan_id>0`), и в
+  free-days promo-флоу (`plan_id=0`, `promo_id>0`); хендлер маршрутизирует
+  по тому, какой id ненулевой.
 - `SubCB(prefix="us", action, sub_id=0)` — action ∈ keys/back.
 - `PromoActCB(prefix="up", action)` — action ∈ open/cancel.
 
@@ -1188,8 +1359,15 @@ Inline-клавиатуры юзерского флоу.
 - `back_to_menu_kb()` — одна кнопка «◀ В меню».
 - `cancel_kb()` — одна кнопка «✖ Отмена» (cancel-таргет — `UserCB(area=cancel)`).
 - `plans_kb(plans)` — один пункт на тариф (`title · Nд · M⭐`) + «В меню».
-- `confirm_kb(plan_id, promo_id=0)` — «Оплатить» / «Применить промокод»
-  (скрыта если promo_id≠0) / «Отмена».
+- `inbound_select_kb(plan_id, options, promo_id=0)` — single-select
+  inbounds: одна кнопка на `InboundOption` с текстом
+  `<remark> (port <port>)`, callback
+  `InboundCB(action="pick", plan_id, promo_id, inbound_id=option.id)`.
+  Внизу «◀ Назад» (`InboundCB(action="back", plan_id, promo_id)`).
+- `confirm_kb(plan_id, promo_id=0, inbound_id=0)` — «Оплатить»
+  (`BuyCB(action="confirm", plan_id, promo_id, inbound_id)`) /
+  «Применить промокод» (скрыта если `promo_id≠0`; пробрасывает
+  `inbound_id`) / «Отмена».
 - `subscription_kb(sub_id)` — «Получить ключ ещё раз» / «◀ В меню».
 
 callback_data укладывается в 64-байтовый лимит TG.
@@ -1199,11 +1377,19 @@ callback_data укладывается в 64-байтовый лимит TG.
 ### [app/states/user.py](./app/states/user.py)
 FSM-стейты юзерского флоу.
 
-- `BuyFlow(choosing_plan, entering_promo, confirming)` — покупка.
-  Состояние очищается после `send_invoice`; pre_checkout и
-  successful_payment приходят stateless, используя `invoice_payload`
-  как state-carrier.
-- `PromoActivate(waiting_code)` — standalone-активация free_days.
+- `BuyFlow(choosing_plan, choosing_inbound, entering_promo, confirming)` —
+  покупка. Шаг `choosing_inbound` между `choosing_plan` и `confirming`
+  отвечает за выбор сервера из allow-list тарифа; хендлер пропускает
+  его автоматически при единственном inbound. Состояние очищается после
+  `send_invoice`; pre_checkout и successful_payment приходят stateless,
+  используя `invoice_payload` как state-carrier (несёт `plan_id`,
+  `promo_id`, `inbound_id`).
+- `PromoActivate(waiting_code, choosing_inbound)` — standalone-активация
+  free_days. После валидации кода (тип `free_days`) всегда переходим в
+  `choosing_inbound`: пользователь выбирает inbound из 3x-ui, и только
+  тогда вызывается `subs_service.activate_free_days(inbound_id=...)`.
+  Discount-промокоды (`percent`/`flat_stars`) на этом шаге отклоняются
+  с подсказкой использовать buy flow.
 
 ## Связи между модулями
 
@@ -1325,7 +1511,9 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
   - `db_conn` — in-memory aiosqlite + schema/migrations
   - `file_db` — файловая БД + monkeypatch `settings.DB_PATH`
   - `monkey_settings` — патч атрибутов `app.config.settings`
-  - фабрики: `make_user`, `make_plan`, `make_promo`, `make_subscription`
+  - фабрики: `make_user`, `make_plan` (auto-attaches default inbound
+    из `settings.XUI_INBOUND_ID`; параметр `inbound_ids=[...]` для
+    кастомизации), `make_promo`, `make_subscription`
   - `mock_bot`, `mock_xui_client` — AsyncMock для aiogram.Bot и XuiClient
 - [`tests/test_config.py`](tests/test_config.py) — Settings, CSV-парсинг
   ADMIN_IDS, дефолты, валидация.
@@ -1355,7 +1543,10 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
   / ws+tls / grpc / http / kcp / quic, graceful fallback.
 - [`tests/test_services_billing.py`](tests/test_services_billing.py) —
   `calc_price` (no-promo / percent / flat_stars / free_days), Stars-min,
-  ceil-rounding, payload encode/decode.
+  ceil-rounding, `build_invoice_payload`/`parse_invoice_payload` с
+  3-tuple `(plan_id, promo_id, inbound_id)`, legacy payload без `i`
+  → fallback на `settings.XUI_INBOUND_ID`, byte-limit guard,
+  `send_invoice` с kwarg `inbound_id` (embedded в payload как `i`).
 - [`tests/test_services_promos.py`](tests/test_services_promos.py) —
   `validate` (все ветки), `apply` race на capacity=1.
 - [`tests/test_services_subscriptions.py`](tests/test_services_subscriptions.py) —
@@ -1375,15 +1566,27 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
 - [`tests/test_handlers_user_menu.py`](tests/test_handlers_user_menu.py) —
   `/menu`, cancel, help, admin menu.
 - [`tests/test_handlers_user_buy.py`](tests/test_handlers_user_buy.py) —
-  flow выбор → инвойс → pre_checkout → successful_payment, идемпотентность
-  по charge_id, обработка xui failure.
+  полный buy flow с выбором inbound: skip-логика для одного inbound,
+  multi-inbound селектор, валидация принадлежности inbound тарифу в
+  `cb_confirm`/`on_pre_checkout`, recovery с возвратом к селектору,
+  legacy payload (без `i`) → fallback на `settings.XUI_INBOUND_ID`,
+  идемпотентность по `charge_id`, xui failure → запись payment с
+  `subscription_id=None`, redemption промо, warning в `_format_confirm`
+  при активной подписке.
 - [`tests/test_handlers_user_my_subscription.py`](tests/test_handlers_user_my_subscription.py)
   — карточка с/без подписки, fallback при XuiError, ownership-check.
 - [`tests/test_handlers_user_promo.py`](tests/test_handlers_user_promo.py) —
-  free_days активация, отказ для percent/flat_stars, double-activation
-  guard.
+  двухшаговый flow free_days (msg_code → choosing_inbound →
+  cb_pick_inbound_for_promo): валидация кода, отказ для percent/flat_stars,
+  double-activation guard, выбор inbound из FSM-options, race с
+  invalidated promo (deactivate между шагами), xui failure не редимит
+  промо, back-callback в waiting_code.
 - [`tests/test_handlers_admin_plans.py`](tests/test_handlers_admin_plans.py) —
-  FSM создания/редактирования, валидация, деактивация.
+  FSM создания/редактирования с шагом `waiting_inbounds`, multi-select
+  (`toggle_inbound` XOR), `inbounds_done` (empty alert, create/edit
+  режимы), `cb_edit_inbounds` (preload current set, xui unavailable,
+  empty panel), `_format_plan` рендер (с/без remarks, «(удалён)», «не
+  настроены»), валидация полей, деактивация.
 - [`tests/test_handlers_admin_promos.py`](tests/test_handlers_admin_promos.py)
   — FSM создания (все 3 типа), expires_at parsing, max_uses=0 unlimited.
 - [`tests/test_handlers_admin_users.py`](tests/test_handlers_admin_users.py)
@@ -1395,3 +1598,17 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
   happy / XuiError fallback / без sub URL.
 - [`tests/test_handlers_init.py`](tests/test_handlers_init.py) —
   `register_routers` подключает все маршруты к Dispatcher.
+- [`tests/test_db_repos_plans_inbounds.py`](tests/test_db_repos_plans_inbounds.py)
+  — `plans_repo.set_inbounds`/`get_inbounds` + таблица `plan_inbounds`:
+  ValueError на пустом списке, sort по возрастанию, replace-семантика,
+  dedup дубликатов, `[]` для несуществующего plan_id, `ON DELETE CASCADE`
+  при hard-delete плана.
+- [`tests/test_services_inbounds.py`](tests/test_services_inbounds.py) —
+  `list_user_inbounds`: фильтрация `enable=False`, TTL-кэш 30s (через
+  `monkeypatch` на `time.monotonic`), `clear_cache()`, propagation
+  исключений xui без обновления кэша, skip malformed entries.
+- [`tests/test_db_migration_plan_inbounds.py`](tests/test_db_migration_plan_inbounds.py)
+  — backfill `plan_inbounds` в `init_db`: legacy плановые строки получают
+  `settings.XUI_INBOUND_ID`, идемпотентность (admin set_inbounds
+  сохраняется при повторном `init_db`), селективность (только планы без
+  записей), graceful no-op при `XUI_INBOUND_ID=0`.

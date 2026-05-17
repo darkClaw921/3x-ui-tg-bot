@@ -28,6 +28,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.db.repos.plans import Plan
 from app.db.repos.promos import Promo
+from app.services.inbounds import InboundOption
 
 
 # ---------------------------------------------------------------------------
@@ -46,22 +47,28 @@ class PlanCB(CallbackData, prefix="admp"):
     """Plan CRUD callbacks.
 
     ``action``:
-    * ``list``       — show plan list (no ``id``).
-    * ``create``     — start :class:`PlanCreate` FSM (no ``id``).
-    * ``card``       — open a plan card.
-    * ``edit_menu``  — open the «choose field to edit» keyboard.
-    * ``edit``       — start :class:`PlanEdit` FSM for a specific field.
-    * ``deactivate`` — soft-disable the plan.
-    * ``preset``     — preset button inside the create-plan wizard
+    * ``list``           — show plan list (no ``id``).
+    * ``create``         — start :class:`PlanCreate` FSM (no ``id``).
+    * ``card``           — open a plan card.
+    * ``edit_menu``      — open the «choose field to edit» keyboard.
+    * ``edit``           — start :class:`PlanEdit` FSM for a specific field
+      (``field`` = ``title``/``days``/``price_stars``/``traffic_gb``/
+      ``inbounds``).
+    * ``deactivate``     — soft-disable the plan.
+    * ``preset``         — preset button inside the create-plan wizard
       (``field`` = ``days``/``price``/``gb``; ``id`` carries the chosen
       integer value).
-    * ``manual``     — «введу вручную» button inside the create-plan
+    * ``manual``         — «введу вручную» button inside the create-plan
       wizard (``field`` = ``days``/``price``/``gb``).
+    * ``toggle_inbound`` — flip the selection of one inbound inside the
+      multi-select screen (``id`` carries the ``inbound_id``).
+    * ``inbounds_done``  — confirm the inbound multi-select and proceed
+      (no ``id``; used both in the create wizard and in the edit flow).
     """
 
     action: str
     id: int = 0
-    field: str = ""  # title | days | price_stars | traffic_gb (edit); days|price|gb (preset/manual)
+    field: str = ""  # title | days | price_stars | traffic_gb | inbounds (edit); days|price|gb (preset/manual)
 
 
 class UserCB(CallbackData, prefix="admu"):
@@ -198,7 +205,7 @@ def plan_card_kb(plan_id: int, *, is_active: bool = True) -> InlineKeyboardMarku
 
 
 def plan_edit_fields_kb(plan_id: int) -> InlineKeyboardMarkup:
-    """Choose which plan field to edit (title / days / price / traffic_gb)."""
+    """Choose which plan field to edit (title / days / price / traffic_gb / inbounds)."""
     builder = InlineKeyboardBuilder()
     builder.button(
         text="Название",
@@ -216,7 +223,44 @@ def plan_edit_fields_kb(plan_id: int) -> InlineKeyboardMarkup:
         text="Лимит трафика (ГБ)",
         callback_data=PlanCB(action="edit", id=plan_id, field="traffic_gb"),
     )
+    builder.button(
+        text="🔌 Подключения",
+        callback_data=PlanCB(action="edit", id=plan_id, field="inbounds"),
+    )
     builder.button(text="◀ Назад", callback_data=PlanCB(action="card", id=plan_id))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def plan_inbounds_select_kb(
+    options: Sequence[InboundOption],
+    selected: set[int],
+) -> InlineKeyboardMarkup:
+    """Multi-select keyboard over the available xui inbounds for a plan.
+
+    Used by both :class:`PlanCreate` (step ``waiting_inbounds``) and the
+    ``field='inbounds'`` branch of the plan-edit flow.
+
+    Each row corresponds to one inbound and is prefixed with ``☑`` when
+    its id is present in ``selected`` and ``☐`` otherwise; tapping the
+    row sends ``PlanCB(action='toggle_inbound', id=inbound_id)`` which
+    the handler uses to flip the selection in FSM data.
+
+    Two trailing rows close the screen: «✅ Готово»
+    (:class:`PlanCB` ``action='inbounds_done'``) confirms the choice;
+    «✖ Отмена» (:class:`AdminCB` ``area='main'`` / ``action='cancel'``)
+    aborts the wizard — the latter reuses the universal admin cancel
+    callback to share routing logic with the other wizards.
+    """
+    builder = InlineKeyboardBuilder()
+    for option in options:
+        marker = "☑" if option.id in selected else "☐"
+        builder.button(
+            text=f"{marker} {option.remark} (port {option.port})",
+            callback_data=PlanCB(action="toggle_inbound", id=option.id),
+        )
+    builder.button(text="✅ Готово", callback_data=PlanCB(action="inbounds_done"))
+    builder.button(text="✖ Отмена", callback_data=AdminCB(area="main", action="cancel"))
     builder.adjust(1)
     return builder.as_markup()
 
@@ -502,6 +546,7 @@ __all__ = [
     "plan_days_presets_kb",
     "plan_edit_fields_kb",
     "plan_gb_presets_kb",
+    "plan_inbounds_select_kb",
     "plan_price_presets_kb",
     "plans_list_kb",
     "promo_card_kb",

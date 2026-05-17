@@ -1,6 +1,6 @@
 {
   "root": "/Users/igorgerasimov/claudeWorkspace/3x-ui-tg-bot",
-  "generatedAt": "2026-05-16T21:44:40.661Z",
+  "generatedAt": "2026-05-17T08:47:19.556Z",
   "nodes": [
     {
       "id": "app/__init__.py",
@@ -170,7 +170,7 @@
           "name": "_UPDATABLE_COLUMNS",
           "type": "variable",
           "path": "app/db/repos/plans.py",
-          "line": 20,
+          "line": 21,
           "exports": []
         },
         {
@@ -178,7 +178,7 @@
           "name": "Plan",
           "type": "class",
           "path": "app/db/repos/plans.py",
-          "line": 24,
+          "line": 25,
           "exports": [
             "Plan"
           ]
@@ -485,7 +485,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 62,
+          "line": 80,
           "exports": [
             "router"
           ]
@@ -495,7 +495,15 @@
           "name": "_format_plan",
           "type": "function",
           "path": "app/handlers/admin/plans.py",
-          "line": 70,
+          "line": 88,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/plans.py:_options_from_data",
+          "name": "_options_from_data",
+          "type": "function",
+          "path": "app/handlers/admin/plans.py",
+          "line": 399,
           "exports": []
         },
         {
@@ -503,7 +511,7 @@
           "name": "_PRESET_FLOW",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 318,
+          "line": 569,
           "exports": []
         },
         {
@@ -511,7 +519,7 @@
           "name": "_FIELD_LABELS",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 400,
+          "line": 657,
           "exports": []
         },
         {
@@ -519,7 +527,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 486,
+          "line": 812,
           "exports": []
         }
       ]
@@ -868,7 +876,7 @@
           "name": "The",
           "type": "variable",
           "path": "app/handlers/user/buy.py",
-          "line": 29,
+          "line": 37,
           "exports": [
             "The"
           ]
@@ -878,7 +886,7 @@
           "name": "router",
           "type": "variable",
           "path": "app/handlers/user/buy.py",
-          "line": 62,
+          "line": 75,
           "exports": [
             "router"
           ]
@@ -888,7 +896,7 @@
           "name": "_format_confirm",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 70,
+          "line": 83,
           "exports": []
         },
         {
@@ -896,7 +904,7 @@
           "name": "_plan_is_buyable",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 106,
+          "line": 138,
           "exports": []
         },
         {
@@ -904,7 +912,31 @@
           "name": "_promo_is_usable",
           "type": "function",
           "path": "app/handlers/user/buy.py",
-          "line": 111,
+          "line": 143,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:_remark_for",
+          "name": "_remark_for",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 203,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:_options_to_jsonable",
+          "name": "_options_to_jsonable",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 221,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/buy.py:_jsonable_to_options",
+          "name": "_jsonable_to_options",
+          "type": "function",
+          "path": "app/handlers/user/buy.py",
+          "line": 233,
           "exports": []
         },
         {
@@ -912,7 +944,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/user/buy.py",
-          "line": 518,
+          "line": 927,
           "exports": []
         }
       ]
@@ -1106,25 +1138,74 @@
       "type": "file",
       "path": "app/handlers/user/promo.py",
       "exports": [
+        "activation",
+        "The",
+        "to",
         "router"
       ],
       "children": [
+        {
+          "id": "app/handlers/user/promo.py:activation",
+          "name": "activation",
+          "type": "variable",
+          "path": "app/handlers/user/promo.py",
+          "line": 9,
+          "exports": [
+            "activation"
+          ]
+        },
+        {
+          "id": "app/handlers/user/promo.py:The",
+          "name": "The",
+          "type": "variable",
+          "path": "app/handlers/user/promo.py",
+          "line": 34,
+          "exports": [
+            "The"
+          ]
+        },
+        {
+          "id": "app/handlers/user/promo.py:to",
+          "name": "to",
+          "type": "variable",
+          "path": "app/handlers/user/promo.py",
+          "line": 38,
+          "exports": [
+            "to"
+          ]
+        },
         {
           "id": "app/handlers/user/promo.py:router",
           "name": "router",
           "type": "variable",
           "path": "app/handlers/user/promo.py",
-          "line": 45,
+          "line": 68,
           "exports": [
             "router"
           ]
+        },
+        {
+          "id": "app/handlers/user/promo.py:_options_to_jsonable",
+          "name": "_options_to_jsonable",
+          "type": "function",
+          "path": "app/handlers/user/promo.py",
+          "line": 76,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/user/promo.py:_jsonable_to_options",
+          "name": "_jsonable_to_options",
+          "type": "function",
+          "path": "app/handlers/user/promo.py",
+          "line": 89,
+          "exports": []
         },
         {
           "id": "app/handlers/user/promo.py:__all__",
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/user/promo.py",
-          "line": 155,
+          "line": 399,
           "exports": []
         }
       ]
@@ -1154,6 +1235,7 @@
         "plans_list_kb",
         "plan_card_kb",
         "plan_edit_fields_kb",
+        "plan_inbounds_select_kb",
         "plan_days_presets_kb",
         "plan_price_presets_kb",
         "plan_gb_presets_kb",
@@ -1172,7 +1254,7 @@
           "name": "AdminCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 38,
+          "line": 39,
           "exports": [
             "AdminCB"
           ]
@@ -1182,7 +1264,7 @@
           "name": "PlanCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 45,
+          "line": 46,
           "exports": [
             "PlanCB"
           ]
@@ -1192,7 +1274,7 @@
           "name": "UserCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 67,
+          "line": 74,
           "exports": [
             "UserCB"
           ]
@@ -1202,7 +1284,7 @@
           "name": "StatsCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 85,
+          "line": 92,
           "exports": [
             "StatsCB"
           ]
@@ -1212,7 +1294,7 @@
           "name": "PromoCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 101,
+          "line": 108,
           "exports": [
             "PromoCB"
           ]
@@ -1222,7 +1304,7 @@
           "name": "admin_main_menu",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 130,
+          "line": 137,
           "exports": [
             "admin_main_menu"
           ]
@@ -1232,7 +1314,7 @@
           "name": "back_to_main_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 146,
+          "line": 153,
           "exports": [
             "back_to_main_kb"
           ]
@@ -1242,7 +1324,7 @@
           "name": "cancel_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 153,
+          "line": 160,
           "exports": [
             "cancel_kb"
           ]
@@ -1252,7 +1334,7 @@
           "name": "plans_list_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 163,
+          "line": 170,
           "exports": [
             "plans_list_kb"
           ]
@@ -1262,7 +1344,7 @@
           "name": "plan_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 183,
+          "line": 190,
           "exports": [
             "plan_card_kb"
           ]
@@ -1272,9 +1354,19 @@
           "name": "plan_edit_fields_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 200,
+          "line": 207,
           "exports": [
             "plan_edit_fields_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:plan_inbounds_select_kb",
+          "name": "plan_inbounds_select_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 235,
+          "exports": [
+            "plan_inbounds_select_kb"
           ]
         },
         {
@@ -1282,7 +1374,7 @@
           "name": "_plan_preset_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 227,
+          "line": 271,
           "exports": []
         },
         {
@@ -1290,7 +1382,7 @@
           "name": "plan_days_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 251,
+          "line": 295,
           "exports": [
             "plan_days_presets_kb"
           ]
@@ -1300,7 +1392,7 @@
           "name": "plan_price_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 258,
+          "line": 302,
           "exports": [
             "plan_price_presets_kb"
           ]
@@ -1310,7 +1402,7 @@
           "name": "plan_gb_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 265,
+          "line": 309,
           "exports": [
             "plan_gb_presets_kb"
           ]
@@ -1320,7 +1412,7 @@
           "name": "promos_list_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 279,
+          "line": 323,
           "exports": [
             "promos_list_kb"
           ]
@@ -1330,7 +1422,7 @@
           "name": "promo_type_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 297,
+          "line": 341,
           "exports": [
             "promo_type_kb"
           ]
@@ -1340,7 +1432,7 @@
           "name": "_promo_preset_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 320,
+          "line": 364,
           "exports": []
         },
         {
@@ -1348,7 +1440,7 @@
           "name": "promo_value_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 349,
+          "line": 393,
           "exports": [
             "promo_value_presets_kb"
           ]
@@ -1358,7 +1450,7 @@
           "name": "promo_max_uses_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 374,
+          "line": 418,
           "exports": [
             "promo_max_uses_presets_kb"
           ]
@@ -1368,7 +1460,7 @@
           "name": "promo_expires_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 385,
+          "line": 429,
           "exports": [
             "promo_expires_presets_kb"
           ]
@@ -1378,7 +1470,7 @@
           "name": "promo_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 398,
+          "line": 442,
           "exports": [
             "promo_card_kb"
           ]
@@ -1388,7 +1480,7 @@
           "name": "user_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 418,
+          "line": 462,
           "exports": [
             "user_card_kb"
           ]
@@ -1398,7 +1490,7 @@
           "name": "stats_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 458,
+          "line": 502,
           "exports": [
             "stats_kb"
           ]
@@ -1408,7 +1500,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/keyboards/admin.py",
-          "line": 492,
+          "line": 536,
           "exports": []
         }
       ]
@@ -1421,12 +1513,14 @@
       "exports": [
         "UserCB",
         "BuyCB",
+        "InboundCB",
         "SubCB",
         "PromoActCB",
         "user_main_menu",
         "back_to_menu_kb",
         "cancel_kb",
         "plans_kb",
+        "inbound_select_kb",
         "confirm_kb",
         "subscription_kb"
       ],
@@ -1436,7 +1530,7 @@
           "name": "UserCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 38,
+          "line": 42,
           "exports": [
             "UserCB"
           ]
@@ -1446,9 +1540,19 @@
           "name": "BuyCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 44,
+          "line": 48,
           "exports": [
             "BuyCB"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:InboundCB",
+          "name": "InboundCB",
+          "type": "class",
+          "path": "app/keyboards/user.py",
+          "line": 67,
+          "exports": [
+            "InboundCB"
           ]
         },
         {
@@ -1456,7 +1560,7 @@
           "name": "SubCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 60,
+          "line": 85,
           "exports": [
             "SubCB"
           ]
@@ -1466,7 +1570,7 @@
           "name": "PromoActCB",
           "type": "class",
           "path": "app/keyboards/user.py",
-          "line": 72,
+          "line": 97,
           "exports": [
             "PromoActCB"
           ]
@@ -1476,7 +1580,7 @@
           "name": "user_main_menu",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 88,
+          "line": 113,
           "exports": [
             "user_main_menu"
           ]
@@ -1486,7 +1590,7 @@
           "name": "back_to_menu_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 112,
+          "line": 137,
           "exports": [
             "back_to_menu_kb"
           ]
@@ -1496,7 +1600,7 @@
           "name": "cancel_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 119,
+          "line": 144,
           "exports": [
             "cancel_kb"
           ]
@@ -1506,9 +1610,19 @@
           "name": "plans_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 126,
+          "line": 151,
           "exports": [
             "plans_kb"
+          ]
+        },
+        {
+          "id": "app/keyboards/user.py:inbound_select_kb",
+          "name": "inbound_select_kb",
+          "type": "function",
+          "path": "app/keyboards/user.py",
+          "line": 168,
+          "exports": [
+            "inbound_select_kb"
           ]
         },
         {
@@ -1516,7 +1630,7 @@
           "name": "confirm_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 143,
+          "line": 203,
           "exports": [
             "confirm_kb"
           ]
@@ -1526,7 +1640,7 @@
           "name": "subscription_kb",
           "type": "function",
           "path": "app/keyboards/user.py",
-          "line": 164,
+          "line": 240,
           "exports": [
             "subscription_kb"
           ]
@@ -1536,7 +1650,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/keyboards/user.py",
-          "line": 176,
+          "line": 252,
           "exports": []
         }
       ]
@@ -1811,7 +1925,7 @@
           "name": "_STARS_MIN",
           "type": "variable",
           "path": "app/services/billing.py",
-          "line": 39,
+          "line": 41,
           "exports": []
         },
         {
@@ -1819,7 +1933,7 @@
           "name": "_PAYLOAD_BYTE_LIMIT",
           "type": "variable",
           "path": "app/services/billing.py",
-          "line": 44,
+          "line": 46,
           "exports": []
         },
         {
@@ -1827,7 +1941,7 @@
           "name": "InvoicePrice",
           "type": "class",
           "path": "app/services/billing.py",
-          "line": 48,
+          "line": 50,
           "exports": [
             "InvoicePrice"
           ]
@@ -1837,7 +1951,7 @@
           "name": "calc_price",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 68,
+          "line": 70,
           "exports": [
             "calc_price"
           ]
@@ -1847,7 +1961,7 @@
           "name": "build_invoice_payload",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 85,
+          "line": 87,
           "exports": [
             "build_invoice_payload"
           ]
@@ -1857,7 +1971,7 @@
           "name": "parse_invoice_payload",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 108,
+          "line": 123,
           "exports": [
             "parse_invoice_payload"
           ]
@@ -1867,7 +1981,7 @@
           "name": "_invoice_title",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 146,
+          "line": 200,
           "exports": []
         },
         {
@@ -1875,7 +1989,7 @@
           "name": "_invoice_description",
           "type": "function",
           "path": "app/services/billing.py",
-          "line": 151,
+          "line": 205,
           "exports": []
         },
         {
@@ -1883,7 +1997,87 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/services/billing.py",
-          "line": 197,
+          "line": 263,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/services/inbounds.py",
+      "name": "inbounds.py",
+      "type": "file",
+      "path": "app/services/inbounds.py",
+      "exports": [
+        "InboundOption",
+        "clear_cache"
+      ],
+      "children": [
+        {
+          "id": "app/services/inbounds.py:_CACHE_TTL_SEC",
+          "name": "_CACHE_TTL_SEC",
+          "type": "variable",
+          "path": "app/services/inbounds.py",
+          "line": 39,
+          "exports": []
+        },
+        {
+          "id": "app/services/inbounds.py:InboundOption",
+          "name": "InboundOption",
+          "type": "class",
+          "path": "app/services/inbounds.py",
+          "line": 43,
+          "exports": [
+            "InboundOption"
+          ]
+        },
+        {
+          "id": "app/services/inbounds.py:_cache",
+          "name": "_cache",
+          "type": "variable",
+          "path": "app/services/inbounds.py",
+          "line": 63,
+          "exports": []
+        },
+        {
+          "id": "app/services/inbounds.py:_ts",
+          "name": "_ts",
+          "type": "variable",
+          "path": "app/services/inbounds.py",
+          "line": 64,
+          "exports": []
+        },
+        {
+          "id": "app/services/inbounds.py:_lock",
+          "name": "_lock",
+          "type": "variable",
+          "path": "app/services/inbounds.py",
+          "line": 65,
+          "exports": []
+        },
+        {
+          "id": "app/services/inbounds.py:_is_fresh",
+          "name": "_is_fresh",
+          "type": "function",
+          "path": "app/services/inbounds.py",
+          "line": 68,
+          "exports": []
+        },
+        {
+          "id": "app/services/inbounds.py:clear_cache",
+          "name": "clear_cache",
+          "type": "function",
+          "path": "app/services/inbounds.py",
+          "line": 73,
+          "exports": [
+            "clear_cache"
+          ]
+        },
+        {
+          "id": "app/services/inbounds.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/services/inbounds.py",
+          "line": 155,
           "exports": []
         }
       ]
@@ -2015,7 +2209,7 @@
           "name": "_expiry_ms",
           "type": "function",
           "path": "app/services/subscriptions.py",
-          "line": 58,
+          "line": 57,
           "exports": []
         },
         {
@@ -2023,7 +2217,7 @@
           "name": "_parse_iso",
           "type": "function",
           "path": "app/services/subscriptions.py",
-          "line": 69,
+          "line": 68,
           "exports": []
         },
         {
@@ -2031,7 +2225,7 @@
           "name": "_bonus_days_from_promo",
           "type": "function",
           "path": "app/services/subscriptions.py",
-          "line": 89,
+          "line": 88,
           "exports": []
         },
         {
@@ -2039,7 +2233,7 @@
           "name": "_make_sub_id",
           "type": "function",
           "path": "app/services/subscriptions.py",
-          "line": 98,
+          "line": 97,
           "exports": []
         },
         {
@@ -2047,7 +2241,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/services/subscriptions.py",
-          "line": 324,
+          "line": 357,
           "exports": []
         }
       ]
@@ -2096,7 +2290,7 @@
           "name": "PlanEdit",
           "type": "class",
           "path": "app/states/admin.py",
-          "line": 29,
+          "line": 32,
           "exports": [
             "PlanEdit"
           ]
@@ -2106,7 +2300,7 @@
           "name": "AdminSearchUser",
           "type": "class",
           "path": "app/states/admin.py",
-          "line": 41,
+          "line": 44,
           "exports": [
             "AdminSearchUser"
           ]
@@ -2116,7 +2310,7 @@
           "name": "PromoCreate",
           "type": "class",
           "path": "app/states/admin.py",
-          "line": 53,
+          "line": 56,
           "exports": [
             "PromoCreate"
           ]
@@ -2126,7 +2320,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/states/admin.py",
-          "line": 70,
+          "line": 73,
           "exports": []
         }
       ]
@@ -2156,7 +2350,7 @@
           "name": "PromoActivate",
           "type": "class",
           "path": "app/states/user.py",
-          "line": 33,
+          "line": 36,
           "exports": [
             "PromoActivate"
           ]
@@ -2166,7 +2360,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/states/user.py",
-          "line": 43,
+          "line": 49,
           "exports": []
         }
       ]
@@ -2535,7 +2729,7 @@
           "name": "make_promo",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 163,
+          "line": 179,
           "exports": [
             "make_promo"
           ]
@@ -2545,7 +2739,7 @@
           "name": "make_subscription",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 191,
+          "line": 207,
           "exports": [
             "make_subscription"
           ]
@@ -2555,7 +2749,7 @@
           "name": "mock_bot",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 228,
+          "line": 244,
           "exports": [
             "mock_bot"
           ]
@@ -2565,7 +2759,7 @@
           "name": "mock_xui_client",
           "type": "function",
           "path": "tests/conftest.py",
-          "line": 239,
+          "line": 255,
           "exports": [
             "mock_xui_client"
           ]
@@ -2742,6 +2936,14 @@
       "children": []
     },
     {
+      "id": "tests/test_db_migration_plan_inbounds.py",
+      "name": "test_db_migration_plan_inbounds.py",
+      "type": "file",
+      "path": "tests/test_db_migration_plan_inbounds.py",
+      "exports": [],
+      "children": []
+    },
+    {
       "id": "tests/test_db_payments.py",
       "name": "test_db_payments.py",
       "type": "file",
@@ -2775,6 +2977,14 @@
       ]
     },
     {
+      "id": "tests/test_db_repos_plans_inbounds.py",
+      "name": "test_db_repos_plans_inbounds.py",
+      "type": "file",
+      "path": "tests/test_db_repos_plans_inbounds.py",
+      "exports": [],
+      "children": []
+    },
+    {
       "id": "tests/test_db_subscriptions.py",
       "name": "test_db_subscriptions.py",
       "type": "file",
@@ -2795,15 +3005,76 @@
       "name": "test_handlers_admin_plans.py",
       "type": "file",
       "path": "tests/test_handlers_admin_plans.py",
-      "exports": [],
+      "exports": [
+        "test_format_plan_with_remarks",
+        "test_format_plan_with_missing_remark",
+        "test_format_plan_no_inbound_remarks_arg",
+        "test_format_plan_empty_remarks_dict"
+      ],
       "children": [
         {
           "id": "tests/test_handlers_admin_plans.py:_state",
           "name": "_state",
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
-          "line": 13,
+          "line": 15,
           "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_plans.py:_stub_inbounds",
+          "name": "_stub_inbounds",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 24,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_plans.py:_clear_inbounds_cache",
+          "name": "_clear_inbounds_cache",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 33,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_plans.py:test_format_plan_with_remarks",
+          "name": "test_format_plan_with_remarks",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 831,
+          "exports": [
+            "test_format_plan_with_remarks"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_plans.py:test_format_plan_with_missing_remark",
+          "name": "test_format_plan_with_missing_remark",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 843,
+          "exports": [
+            "test_format_plan_with_missing_remark"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_plans.py:test_format_plan_no_inbound_remarks_arg",
+          "name": "test_format_plan_no_inbound_remarks_arg",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 855,
+          "exports": [
+            "test_format_plan_no_inbound_remarks_arg"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_admin_plans.py:test_format_plan_empty_remarks_dict",
+          "name": "test_format_plan_empty_remarks_dict",
+          "type": "function",
+          "path": "tests/test_handlers_admin_plans.py",
+          "line": 865,
+          "exports": [
+            "test_format_plan_empty_remarks_dict"
+          ]
         }
       ]
     },
@@ -3053,14 +3324,17 @@
       "name": "test_handlers_user_buy.py",
       "type": "file",
       "path": "tests/test_handlers_user_buy.py",
-      "exports": [],
+      "exports": [
+        "test_format_confirm_warning_when_active_sub_exists",
+        "test_format_confirm_no_warning_when_no_active_sub"
+      ],
       "children": [
         {
           "id": "tests/test_handlers_user_buy.py:_user",
           "name": "_user",
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
-          "line": 17,
+          "line": 18,
           "exports": []
         },
         {
@@ -3068,8 +3342,44 @@
           "name": "_state",
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
-          "line": 24,
+          "line": 25,
           "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_buy.py:_stub_inbounds",
+          "name": "_stub_inbounds",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 35,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_buy.py:_clear_inbounds_cache",
+          "name": "_clear_inbounds_cache",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 44,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_buy.py:test_format_confirm_warning_when_active_sub_exists",
+          "name": "test_format_confirm_warning_when_active_sub_exists",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 851,
+          "exports": [
+            "test_format_confirm_warning_when_active_sub_exists"
+          ]
+        },
+        {
+          "id": "tests/test_handlers_user_buy.py:test_format_confirm_no_warning_when_no_active_sub",
+          "name": "test_format_confirm_no_warning_when_no_active_sub",
+          "type": "function",
+          "path": "tests/test_handlers_user_buy.py",
+          "line": 864,
+          "exports": [
+            "test_format_confirm_no_warning_when_no_active_sub"
+          ]
         }
       ]
     },
@@ -3215,14 +3525,42 @@
       "name": "test_handlers_user_promo.py",
       "type": "file",
       "path": "tests/test_handlers_user_promo.py",
-      "exports": [],
+      "exports": [
+        "Flow"
+      ],
       "children": [
+        {
+          "id": "tests/test_handlers_user_promo.py:Flow",
+          "name": "Flow",
+          "type": "variable",
+          "path": "tests/test_handlers_user_promo.py",
+          "line": 4,
+          "exports": [
+            "Flow"
+          ]
+        },
         {
           "id": "tests/test_handlers_user_promo.py:_state",
           "name": "_state",
           "type": "function",
           "path": "tests/test_handlers_user_promo.py",
-          "line": 14,
+          "line": 26,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_promo.py:_stub_inbounds",
+          "name": "_stub_inbounds",
+          "type": "function",
+          "path": "tests/test_handlers_user_promo.py",
+          "line": 35,
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_user_promo.py:_clear_inbounds_cache",
+          "name": "_clear_inbounds_cache",
+          "type": "function",
+          "path": "tests/test_handlers_user_promo.py",
+          "line": 43,
           "exports": []
         }
       ]
@@ -3442,7 +3780,12 @@
         "test_parse_payload_not_object",
         "test_parse_payload_missing_plan_id",
         "test_parse_payload_bad_promo_id_type",
-        "test_payload_byte_limit_guard"
+        "test_parse_payload_bad_inbound_id_type",
+        "test_parse_payload_legacy_long_keys",
+        "test_parse_payload_legacy_missing_inbound_falls_back",
+        "test_parse_payload_legacy_uses_patched_default",
+        "test_payload_byte_limit_guard",
+        "test_payload_fits_in_128_bytes_for_large_ids"
       ],
       "children": [
         {
@@ -3450,7 +3793,7 @@
           "name": "_plan",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 14,
+          "line": 15,
           "exports": []
         },
         {
@@ -3458,7 +3801,7 @@
           "name": "_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 26,
+          "line": 27,
           "exports": []
         },
         {
@@ -3466,7 +3809,7 @@
           "name": "test_calc_price_no_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 40,
+          "line": 41,
           "exports": [
             "test_calc_price_no_promo"
           ]
@@ -3476,7 +3819,7 @@
           "name": "test_calc_price_percent_basic",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 46,
+          "line": 47,
           "exports": [
             "test_calc_price_percent_basic"
           ]
@@ -3486,7 +3829,7 @@
           "name": "test_calc_price_percent_ceiling",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 52,
+          "line": 53,
           "exports": [
             "test_calc_price_percent_ceiling"
           ]
@@ -3496,7 +3839,7 @@
           "name": "test_calc_price_percent_100_floors_to_one",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 59,
+          "line": 60,
           "exports": [
             "test_calc_price_percent_100_floors_to_one"
           ]
@@ -3506,7 +3849,7 @@
           "name": "test_calc_price_percent_clamped_high",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 64,
+          "line": 65,
           "exports": [
             "test_calc_price_percent_clamped_high"
           ]
@@ -3516,7 +3859,7 @@
           "name": "test_calc_price_percent_clamped_low",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 70,
+          "line": 71,
           "exports": [
             "test_calc_price_percent_clamped_low"
           ]
@@ -3526,7 +3869,7 @@
           "name": "test_calc_price_flat_stars",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 75,
+          "line": 76,
           "exports": [
             "test_calc_price_flat_stars"
           ]
@@ -3536,7 +3879,7 @@
           "name": "test_calc_price_flat_stars_exceeds_floor",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 80,
+          "line": 81,
           "exports": [
             "test_calc_price_flat_stars_exceeds_floor"
           ]
@@ -3546,7 +3889,7 @@
           "name": "test_calc_price_free_days_keeps_price",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 85,
+          "line": 86,
           "exports": [
             "test_calc_price_free_days_keeps_price"
           ]
@@ -3556,7 +3899,7 @@
           "name": "test_calc_price_free_days_negative_clamped",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 91,
+          "line": 92,
           "exports": [
             "test_calc_price_free_days_negative_clamped"
           ]
@@ -3566,7 +3909,7 @@
           "name": "test_calc_price_unknown_type_fallback",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 96,
+          "line": 97,
           "exports": [
             "test_calc_price_unknown_type_fallback"
           ]
@@ -3576,7 +3919,7 @@
           "name": "test_calc_price_min_one_zero_priced_plan",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 102,
+          "line": 103,
           "exports": [
             "test_calc_price_min_one_zero_priced_plan"
           ]
@@ -3586,7 +3929,7 @@
           "name": "test_build_payload_encodes_correctly",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 108,
+          "line": 114,
           "exports": [
             "test_build_payload_encodes_correctly"
           ]
@@ -3596,7 +3939,7 @@
           "name": "test_build_payload_no_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 115,
+          "line": 123,
           "exports": [
             "test_build_payload_no_promo"
           ]
@@ -3606,7 +3949,7 @@
           "name": "test_build_payload_promo_zero_treated_as_none",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 121,
+          "line": 130,
           "exports": [
             "test_build_payload_promo_zero_treated_as_none"
           ]
@@ -3616,7 +3959,7 @@
           "name": "test_parse_payload_basic",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 127,
+          "line": 136,
           "exports": [
             "test_parse_payload_basic"
           ]
@@ -3626,7 +3969,7 @@
           "name": "test_parse_payload_no_promo",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 133,
+          "line": 144,
           "exports": [
             "test_parse_payload_no_promo"
           ]
@@ -3636,7 +3979,7 @@
           "name": "test_parse_payload_zero_promo_id_becomes_none",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 139,
+          "line": 151,
           "exports": [
             "test_parse_payload_zero_promo_id_becomes_none"
           ]
@@ -3646,7 +3989,7 @@
           "name": "test_parse_payload_bad_json",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 147,
+          "line": 160,
           "exports": [
             "test_parse_payload_bad_json"
           ]
@@ -3656,7 +3999,7 @@
           "name": "test_parse_payload_not_object",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 152,
+          "line": 165,
           "exports": [
             "test_parse_payload_not_object"
           ]
@@ -3666,7 +4009,7 @@
           "name": "test_parse_payload_missing_plan_id",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 157,
+          "line": 170,
           "exports": [
             "test_parse_payload_missing_plan_id"
           ]
@@ -3676,9 +4019,49 @@
           "name": "test_parse_payload_bad_promo_id_type",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 162,
+          "line": 175,
           "exports": [
             "test_parse_payload_bad_promo_id_type"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_bad_inbound_id_type",
+          "name": "test_parse_payload_bad_inbound_id_type",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 180,
+          "exports": [
+            "test_parse_payload_bad_inbound_id_type"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_legacy_long_keys",
+          "name": "test_parse_payload_legacy_long_keys",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 189,
+          "exports": [
+            "test_parse_payload_legacy_long_keys"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_legacy_missing_inbound_falls_back",
+          "name": "test_parse_payload_legacy_missing_inbound_falls_back",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 199,
+          "exports": [
+            "test_parse_payload_legacy_missing_inbound_falls_back"
+          ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_parse_payload_legacy_uses_patched_default",
+          "name": "test_parse_payload_legacy_uses_patched_default",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 208,
+          "exports": [
+            "test_parse_payload_legacy_uses_patched_default"
           ]
         },
         {
@@ -3686,10 +4069,45 @@
           "name": "test_payload_byte_limit_guard",
           "type": "function",
           "path": "tests/test_services_billing.py",
-          "line": 167,
+          "line": 221,
           "exports": [
             "test_payload_byte_limit_guard"
           ]
+        },
+        {
+          "id": "tests/test_services_billing.py:test_payload_fits_in_128_bytes_for_large_ids",
+          "name": "test_payload_fits_in_128_bytes_for_large_ids",
+          "type": "function",
+          "path": "tests/test_services_billing.py",
+          "line": 228,
+          "exports": [
+            "test_payload_fits_in_128_bytes_for_large_ids"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_services_inbounds.py",
+      "name": "test_services_inbounds.py",
+      "type": "file",
+      "path": "tests/test_services_inbounds.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_services_inbounds.py:_reset_cache",
+          "name": "_reset_cache",
+          "type": "function",
+          "path": "tests/test_services_inbounds.py",
+          "line": 28,
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_inbounds.py:_make_panel_inbound",
+          "name": "_make_panel_inbound",
+          "type": "function",
+          "path": "tests/test_services_inbounds.py",
+          "line": 39,
+          "exports": []
         }
       ]
     },
