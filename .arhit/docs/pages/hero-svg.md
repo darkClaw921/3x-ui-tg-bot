@@ -1,0 +1,1 @@
+assets/hero.svg — векторный hero-баннер README. Поток Пользователь→Telegram-бот→3x-ui Panel→VPN-доступ с анимированными коннекторами, Telegram Stars и возвратом ключа (vless://·QR·Subscription URL). Самодостаточный SVG: градиенты, glow-фильтры, dot-grid и SMIL-анимации в defs, тёмный фон вшит. README.md в шапке встраивает его через <img src=./assets/hero.svg>.

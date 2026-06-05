@@ -1,0 +1,272 @@
+<svg width="1200" height="500" viewBox="0 0 1200 500" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d">
+  <title id="t">3x-ui Telegram Bot</title>
+  <desc id="d">Telegram-бот продаёт VPN-подписки за Telegram Stars и выдаёт VLESS-ключи через панель 3x-ui</desc>
+
+  <defs>
+    <!-- background -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1026"/>
+      <stop offset="0.55" stop-color="#0c1733"/>
+      <stop offset="1" stop-color="#0a1228"/>
+    </linearGradient>
+    <linearGradient id="border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2aabee" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#22d3ee" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#34d399" stop-opacity="0.5"/>
+    </linearGradient>
+
+    <!-- accent gradients -->
+    <linearGradient id="tg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2aabee"/>
+      <stop offset="1" stop-color="#229ed9"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe066"/>
+      <stop offset="1" stop-color="#ffc933"/>
+    </linearGradient>
+    <linearGradient id="emerald" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11203f"/>
+      <stop offset="1" stop-color="#0c1730"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#cfe6ff"/>
+      <stop offset="0.40" stop-color="#cfe6ff"/>
+      <stop offset="0.50" stop-color="#ffffff"/>
+      <stop offset="0.60" stop-color="#cfe6ff"/>
+      <stop offset="1" stop-color="#cfe6ff"/>
+      <animateTransform attributeName="gradientTransform" type="translate" values="-1 0;1 0;1 0" keyTimes="0;0.55;1" dur="4.5s" repeatCount="indefinite"/>
+    </linearGradient>
+
+    <!-- atmosphere orbs -->
+    <radialGradient id="orbBlue" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2aabee" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#2aabee" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbEmer" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#10b981" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbGold" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffc933" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#ffc933" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- glow filters -->
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowSm" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- dotted grid -->
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1.2" cy="1.2" r="1.2" fill="#2a3f6b" fill-opacity="0.35"/>
+    </pattern>
+  </defs>
+
+  <!-- frame -->
+  <rect x="2" y="2" width="1196" height="496" rx="30" fill="url(#bg)"/>
+  <rect x="2" y="2" width="1196" height="496" rx="30" fill="url(#dots)"/>
+  <ellipse cx="210" cy="120" rx="320" ry="220" fill="url(#orbBlue)">
+    <animate attributeName="opacity" values="0.8;1;0.8" dur="7s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="1000" cy="400" rx="340" ry="240" fill="url(#orbEmer)">
+    <animate attributeName="opacity" values="1;0.75;1" dur="9s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="600" cy="180" rx="220" ry="150" fill="url(#orbGold)">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+  <rect x="2.75" y="2.75" width="1194.5" height="494.5" rx="29.5" fill="none" stroke="url(#border)" stroke-width="1.5"/>
+
+  <!-- ===== Title ===== -->
+  <text x="600" y="92" text-anchor="middle" font-family="'Segoe UI',system-ui,-apple-system,sans-serif" font-size="48" font-weight="800" letter-spacing="0.5">
+    <tspan fill="#38e1ff" filter="url(#glowSm)">3x-ui</tspan><tspan fill="url(#title)">&#160;&#160;·&#160;&#160;Telegram VPN Bot</tspan>
+  </text>
+  <text x="600" y="128" text-anchor="middle" font-family="'Segoe UI',system-ui,-apple-system,sans-serif" font-size="18" font-weight="500" fill="#9fb3d4" letter-spacing="0.3">
+    VPN-подписки внутри Telegram&#160;&#160;·&#160;&#160;оплата в Stars&#160;&#160;·&#160;&#160;ключи VLESS, QR и Subscription URL
+  </text>
+
+  <!-- ===== Telegram Stars falling onto the bot ===== -->
+  <g font-family="system-ui,sans-serif" fill="url(#gold)">
+    <g transform="translate(452,170)">
+      <path d="M0,-11 L3.2,-3.4 L11,-2.6 L5.2,2.6 L7,10.4 L0,6.2 L-7,10.4 L-5.2,2.6 L-11,-2.6 L-3.2,-3.4 Z" filter="url(#glowSm)">
+        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.4s" repeatCount="indefinite"/>
+        <animateTransform attributeName="transform" type="translate" values="0,-6;0,6;0,-6" dur="3.6s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    <g transform="translate(518,158)">
+      <path d="M0,-8 L2.3,-2.5 L8,-1.9 L3.8,1.9 L5.1,7.6 L0,4.5 L-5.1,7.6 L-3.8,1.9 L-8,-1.9 L-2.3,-2.5 Z">
+        <animate attributeName="opacity" values="1;0.35;1" dur="2.9s" repeatCount="indefinite"/>
+        <animateTransform attributeName="transform" type="translate" values="0,6;0,-6;0,6" dur="4.2s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    <g transform="translate(485,150)">
+      <path d="M0,-6 L1.8,-1.9 L6,-1.4 L2.9,1.4 L3.8,5.7 L0,3.4 L-3.8,5.7 L-2.9,1.4 L-6,-1.4 L-1.8,-1.9 Z">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2.1s" repeatCount="indefinite"/>
+      </path>
+    </g>
+  </g>
+
+  <!-- ===== Flow connectors ===== -->
+  <g stroke-linecap="round">
+    <!-- A: user -> bot -->
+    <line x1="325" y1="268" x2="411" y2="268" stroke="url(#cyan)" stroke-width="2.5" stroke-dasharray="5 8" opacity="0.85">
+      <animate attributeName="stroke-dashoffset" from="0" to="-26" dur="0.9s" repeatCount="indefinite"/>
+    </line>
+    <path d="M415,268 L406,263 L406,273 Z" fill="#38bdf8"/>
+    <circle r="3.5" cy="268" fill="#eafdff" filter="url(#glowSm)">
+      <animate attributeName="cx" from="325" to="411" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+
+    <!-- B: bot -> 3x-ui -->
+    <line x1="555" y1="268" x2="641" y2="268" stroke="url(#cyan)" stroke-width="2.5" stroke-dasharray="5 8" opacity="0.85">
+      <animate attributeName="stroke-dashoffset" from="0" to="-26" dur="0.9s" repeatCount="indefinite"/>
+    </line>
+    <path d="M645,268 L636,263 L636,273 Z" fill="#38bdf8"/>
+    <circle r="3.5" cy="268" fill="#eafdff" filter="url(#glowSm)">
+      <animate attributeName="cx" from="555" to="641" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
+    </circle>
+
+    <!-- C: 3x-ui -> key -->
+    <line x1="785" y1="268" x2="871" y2="268" stroke="url(#emerald)" stroke-width="2.5" stroke-dasharray="5 8" opacity="0.85">
+      <animate attributeName="stroke-dashoffset" from="0" to="-26" dur="0.9s" repeatCount="indefinite"/>
+    </line>
+    <path d="M875,268 L866,263 L866,273 Z" fill="#34d399"/>
+    <circle r="3.5" cy="268" fill="#d7fff0" filter="url(#glowSm)">
+      <animate attributeName="cx" from="785" to="871" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ===== Return path: key delivered back to user ===== -->
+  <path id="ret" d="M945,355 C945,396 905,402 600,402 C295,402 255,396 255,355" fill="none" stroke="#34d399" stroke-width="1.6" stroke-dasharray="2 9" opacity="0.5">
+    <animate attributeName="stroke-dashoffset" from="0" to="33" dur="1.4s" repeatCount="indefinite"/>
+  </path>
+  <circle r="3" fill="#7dffcf" filter="url(#glowSm)">
+    <animateMotion dur="3.4s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
+      <mpath href="#ret"/>
+    </animateMotion>
+  </circle>
+  <text x="600" y="397" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#5fd6aa" letter-spacing="0.4">vless://  ·  QR-код  ·  Subscription URL</text>
+
+  <!-- ================= NODE 1: User ================= -->
+  <g>
+    <rect x="185" y="205" width="140" height="150" rx="20" fill="url(#card)" stroke="#1e3a6e" stroke-width="1.5"/>
+    <g transform="translate(255,256)" filter="url(#glowSm)">
+      <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="3.4s" repeatCount="indefinite" additive="sum"/>
+      <circle cy="-15" r="14" fill="url(#tg)"/>
+      <path d="M-22,30 C-22,5 22,5 22,30 Z" fill="url(#tg)"/>
+    </g>
+    <text x="255" y="328" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="17" font-weight="700" fill="#eaf2ff">Пользователь</text>
+    <text x="255" y="345" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#7e93b8">/start → меню</text>
+  </g>
+
+  <!-- ================= NODE 2: Bot (highlight) ================= -->
+  <g>
+    <ellipse cx="485" cy="268" rx="92" ry="92" fill="url(#orbBlue)" opacity="0.7"/>
+    <rect x="415" y="205" width="140" height="150" rx="20" fill="url(#card)" stroke="#2aabee" stroke-width="2"/>
+    <g transform="translate(485,262)">
+      <circle r="40" fill="url(#tg)" filter="url(#glow)"/>
+      <circle r="40" fill="none" stroke="#bfe9ff" stroke-width="1.5" opacity="0.6">
+        <animate attributeName="r" values="40;47;40" dur="2.8s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.6;0;0.6" dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+      <g transform="scale(2.55) translate(-12.5,-12)">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="#ffffff"/>
+      </g>
+    </g>
+    <text x="485" y="328" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="17" font-weight="700" fill="#eaf2ff">Telegram-бот</text>
+    <text x="485" y="345" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#7e93b8">aiogram 3 · биллинг</text>
+  </g>
+
+  <!-- ================= NODE 3: 3x-ui panel ================= -->
+  <g>
+    <rect x="645" y="205" width="140" height="150" rx="20" fill="url(#card)" stroke="#1e3a6e" stroke-width="1.5"/>
+    <g transform="translate(715,262)" filter="url(#glowSm)">
+      <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="3.8s" begin="0.5s" repeatCount="indefinite" additive="sum"/>
+      <g fill="url(#cyan)">
+        <rect x="-34" y="-36" width="68" height="22" rx="6"/>
+        <rect x="-34" y="-11" width="68" height="22" rx="6"/>
+        <rect x="-34" y="14" width="68" height="22" rx="6"/>
+      </g>
+      <g fill="#0b1228">
+        <circle cx="-23" cy="-25" r="3.4"/>
+        <circle cx="-23" cy="0" r="3.4"/>
+        <circle cx="-23" cy="25" r="3.4"/>
+      </g>
+      <g>
+        <circle cx="-23" cy="-25" r="2" fill="#5eead4">
+          <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="-23" cy="0" r="2" fill="#ffd866">
+          <animate attributeName="opacity" values="0.25;1;0.25" dur="1.9s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="-23" cy="25" r="2" fill="#5eead4">
+          <animate attributeName="opacity" values="1;0.3;1" dur="1.3s" begin="0.4s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+      <g stroke="#0b1228" stroke-width="2.4" stroke-linecap="round">
+        <line x1="-10" y1="-25" x2="22" y2="-25"/>
+        <line x1="-10" y1="0" x2="22" y2="0"/>
+        <line x1="-10" y1="25" x2="22" y2="25"/>
+      </g>
+    </g>
+    <text x="715" y="328" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="17" font-weight="700" fill="#eaf2ff">3x-ui Panel</text>
+    <text x="715" y="345" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#7e93b8">REST API · клиенты</text>
+  </g>
+
+  <!-- ================= NODE 4: VPN key ================= -->
+  <g>
+    <rect x="875" y="205" width="140" height="150" rx="20" fill="url(#card)" stroke="#1e5e49" stroke-width="1.5"/>
+    <g transform="translate(945,260)" filter="url(#glowSm)">
+      <path d="M0,-38 L32,-25 V2 C32,24 17,37 0,43 C-17,37 -32,24 -32,2 V-25 Z" fill="none" stroke="#5eead4" stroke-width="2">
+        <animateTransform attributeName="transform" type="scale" values="0.95;1.18;0.95" dur="3s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.65;0;0.65" dur="3s" repeatCount="indefinite"/>
+      </path>
+      <path d="M0,-38 L32,-25 V2 C32,24 17,37 0,43 C-17,37 -32,24 -32,2 V-25 Z" fill="url(#emerald)" opacity="0.95"/>
+      <path d="M0,-38 L32,-25 V2 C32,24 17,37 0,43 C-17,37 -32,24 -32,2 V-25 Z" fill="none" stroke="#aef7da" stroke-width="1.4" opacity="0.7"/>
+      <!-- keyhole -->
+      <circle cy="-6" r="7" fill="#06281c"/>
+      <path d="M-3.4,-3 L3.4,-3 L6,16 L-6,16 Z" fill="#06281c"/>
+    </g>
+    <text x="945" y="328" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="17" font-weight="700" fill="#eaf2ff">VPN-доступ</text>
+    <text x="945" y="345" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#7e93b8">VLESS + Reality</text>
+  </g>
+
+  <!-- ================= Tech badges ================= -->
+  <g font-family="'Segoe UI',system-ui,sans-serif" font-size="13" font-weight="600">
+    <g>
+      <rect x="264" y="438" width="120" height="30" rx="15" fill="#0e1c3c" stroke="#274875"/>
+      <text x="324" y="458" text-anchor="middle" fill="#9fd0ff">Python 3.12</text>
+    </g>
+    <g>
+      <rect x="398" y="438" width="120" height="30" rx="15" fill="#0e1c3c" stroke="#274875"/>
+      <text x="458" y="458" text-anchor="middle" fill="#9fd0ff">aiogram 3.x</text>
+    </g>
+    <g>
+      <rect x="532" y="438" width="86" height="30" rx="15" fill="#0e1c3c" stroke="#274875"/>
+      <text x="575" y="458" text-anchor="middle" fill="#9fd0ff">SQLite</text>
+    </g>
+    <g>
+      <rect x="632" y="438" width="150" height="30" rx="15" fill="#0f2a22" stroke="#1f6a50"/>
+      <text x="707" y="458" text-anchor="middle" fill="#74e9b8">VLESS + Reality</text>
+    </g>
+    <g>
+      <rect x="796" y="438" width="140" height="30" rx="15" fill="#2a230c" stroke="#7a6320"/>
+      <text x="866" y="458" text-anchor="middle" fill="#ffd768">★ Telegram Stars</text>
+    </g>
+  </g>
+</svg>
