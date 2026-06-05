@@ -1,0 +1,3 @@
+# auto_renew_job
+
+Scheduler job (app/scheduler.py), CronTrigger(hour=9, minute=0) UTC (before reminders at 10:00), max_instances=1. Wallet-fallback auto-renewal: short-circuits if settings.AUTO_RENEW_ENABLED is False; else list_auto_renew_due(within_hours=24) (auto_renew=1 AND tg_sub_charge_id IS NULL) and delegates each to _renew_one_from_wallet under per-sub try/except. _renew_one_from_wallet: resolves plan+price (billing.calc_price), wallet.try_spend(ref=f'autorenew:{sub}:{expires_at}') replay-safe; on insufficient balance DMs the user; on success create_or_extend(extend_sub_id) xui-first (refund on XuiError), synthetic payment telegram_charge_id=f'wallet:autorenew:{txn_id}', then renewed DM. Registered as 4th job in setup_scheduler.

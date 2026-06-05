@@ -40,25 +40,37 @@ the parent admin router); no per-handler admin checks needed.
 
 from __future__ import annotations
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
 
+from app.config import settings
 from app.db.engine import get_conn
 from app.db.repos import payments as payments_repo
+from app.db.repos import plans as plans_repo
 from app.db.repos import subscriptions as subs_repo
 from app.db.repos import users as users_repo
 from app.db.repos.payments import Payment
 from app.db.repos.subscriptions import Subscription
 from app.db.repos.users import User
+from app.handlers.user._keys import deliver_keys
 from app.handlers.user.my_subscription import (  # internal helper reuse
     _format_bytes,
     _is_active,
 )
-from app.keyboards.admin import AdminCB, UserCB, cancel_kb, user_card_kb
+from app.i18n import DEFAULT_LANG, t
+from app.keyboards.admin import (
+    AdminCB,
+    GrantCB,
+    UserCB,
+    cancel_kb,
+    grant_plans_kb,
+    user_card_kb,
+)
+from app.services import audit as audit_service
 from app.services import subscriptions as subs_service
-from app.states.admin import AdminSearchUser
+from app.states.admin import AdminGrantSub, AdminSearchUser
 from app.xui import XuiError, get_xui_client
 from app.xui.clients import get_client_traffics
 
@@ -146,7 +158,8 @@ async def _build_card(target: User) -> tuple[str, int | None, bool]:
 
     Returns ``(text, active_sub_id, is_admin)`` so the caller can wire
     the keyboard's "Отозвать" / "Сделать админа" buttons correctly
-    without re-querying.
+    without re-querying. The blocked state is read from ``target.is_blocked``
+    by the caller for the block-toggle button.
     """
     async with get_conn() as conn:
         all_subs = await subs_repo.list_for_user(conn, target.id)
@@ -158,6 +171,7 @@ async def _build_card(target: User) -> tuple[str, int | None, bool]:
         f"tg_id: <code>{target.tg_id}</code>",
         f"username: <code>@{_safe(target.username) if target.username else '—'}</code>",
         f"Админ: {'✅ да' if target.is_admin else '— нет'}",
+        f"Блокировка: {'🚫 да' if target.is_blocked else '— нет'}",
         f"Зарегистрирован: <code>{target.created_at}</code>",
     ]
 
@@ -220,6 +234,7 @@ async def _render_card_message(
         target.id,
         active_sub_id=active_sub_id,
         is_admin=is_admin,
+        is_blocked=target.is_blocked,
     )
     if edit:
         await message.edit_text(text, reply_markup=kb)
@@ -322,10 +337,22 @@ async def cb_card(
 # --------------------------------------------------------------------- #
 
 
+def _admin_id(user: User | None) -> int | None:
+    """Return the acting admin's ``users.id`` for audit rows, or ``None``.
+
+    The admin user row is injected as ``data['user']`` by
+    :class:`app.middlewares.user_ctx.UserContextMiddleware` and surfaced to the
+    handler signature; mutation handlers declare ``user`` so the audit trail can
+    record who acted.
+    """
+    return user.id if user is not None else None
+
+
 @router.callback_query(UserCB.filter(F.action == "revoke"))
 async def cb_revoke(
     callback: CallbackQuery,
     callback_data: UserCB,
+    user: User | None = None,
 ) -> None:
     """Revoke a subscription (services.subscriptions.revoke) and refresh card."""
     sub_id = callback_data.id
@@ -368,6 +395,15 @@ async def cb_revoke(
         sub.id,
         target.id,
     )
+    async with get_conn() as conn:
+        await audit_service.log_action(
+            conn,
+            _admin_id(user),
+            "user.revoke_sub",
+            target_type="subscription",
+            target_id=sub.id,
+            details={"user_id": target.id},
+        )
     if callback.message is not None:
         await _render_card_message(callback.message, target, edit=True)
     await callback.answer("Подписка отозвана")
@@ -377,6 +413,7 @@ async def cb_revoke(
 async def cb_toggle_admin(
     callback: CallbackQuery,
     callback_data: UserCB,
+    user: User | None = None,
 ) -> None:
     """Flip the ``is_admin`` flag for the target user."""
     user_id = callback_data.id
@@ -397,11 +434,263 @@ async def cb_toggle_admin(
         refreshed.id,
         refreshed.is_admin,
     )
+    async with get_conn() as conn:
+        await audit_service.log_action(
+            conn,
+            _admin_id(user),
+            "user.toggle_admin",
+            target_type="user",
+            target_id=refreshed.id,
+            details={"is_admin": refreshed.is_admin},
+        )
     if callback.message is not None:
         await _render_card_message(callback.message, refreshed, edit=True)
     await callback.answer(
         "Назначен админом" if new_value else "Снят флаг админа",
     )
+
+
+@router.callback_query(UserCB.filter(F.action == "toggle_block"))
+async def cb_toggle_block(
+    callback: CallbackQuery,
+    callback_data: UserCB,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Flip the ``is_blocked`` flag for the target user (ban / unban).
+
+    Guards: an admin cannot block themselves, and a target that is an admin (by
+    flag or by :data:`settings.ADMIN_IDS`) cannot be blocked — blocking must
+    never lock an admin out of the bot (the middleware also never blocks admins,
+    but we keep the UI honest).
+    """
+    user_id = callback_data.id
+    async with get_conn() as conn:
+        target = await users_repo.get_by_id(conn, user_id)
+    if target is None:
+        await callback.answer(t("admin.tickets.not_found", lang), show_alert=True)
+        return
+
+    new_value = not target.is_blocked
+    if new_value:
+        if user is not None and target.id == user.id:
+            await callback.answer(t("admin.ban.self", lang), show_alert=True)
+            return
+        if target.is_admin or target.tg_id in set(settings.ADMIN_IDS):
+            await callback.answer(
+                t("admin.ban.cannot_block_admin", lang), show_alert=True
+            )
+            return
+
+    async with get_conn() as conn:
+        await users_repo.set_blocked(conn, target.id, new_value)
+        refreshed = await users_repo.get_by_id(conn, target.id)
+        await audit_service.log_action(
+            conn,
+            _admin_id(user),
+            "user.block" if new_value else "user.unblock",
+            target_type="user",
+            target_id=target.id,
+            details={"is_blocked": new_value, "tg_id": target.tg_id},
+        )
+    if refreshed is None:
+        await callback.answer(t("admin.tickets.not_found", lang), show_alert=True)
+        return
+    logger.info(
+        "admin_users: toggle_block user={} → is_blocked={}",
+        refreshed.id,
+        refreshed.is_blocked,
+    )
+    if callback.message is not None:
+        await _render_card_message(callback.message, refreshed, edit=True)
+    await callback.answer(
+        t("admin.ban.blocked", lang) if new_value else t("admin.ban.unblocked", lang)
+    )
+
+
+# --------------------------------------------------------------------- #
+# Manual subscription grant (AdminGrantSub FSM)
+# --------------------------------------------------------------------- #
+
+
+async def _resolve_plan_inbound(plan_id: int) -> int:
+    """Return the inbound to provision a granted subscription on.
+
+    Picks the plan's first attached inbound, falling back to
+    :data:`app.config.settings.XUI_INBOUND_ID` when the plan has none attached
+    (defence — every active plan should have at least one inbound after the
+    migration backfill). Keeps the admin grant a one-tap action without an
+    extra inbound-picker step.
+    """
+    async with get_conn() as conn:
+        inbound_ids = await plans_repo.get_inbounds(conn, plan_id)
+    if inbound_ids:
+        return int(inbound_ids[0])
+    return int(settings.XUI_INBOUND_ID)
+
+
+@router.callback_query(UserCB.filter(F.action == "grant_sub"))
+async def cb_grant_open(
+    callback: CallbackQuery,
+    callback_data: UserCB,
+    state: FSMContext,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Start the manual-grant wizard: pick a plan for the target user."""
+    target_id = callback_data.id
+    async with get_conn() as conn:
+        target = await users_repo.get_by_id(conn, target_id)
+        plans = await plans_repo.list_active(conn)
+    if target is None:
+        await callback.answer(t("admin.grant.plan_not_found", lang), show_alert=True)
+        return
+    if not plans:
+        await callback.answer(t("admin.grant.no_plans", lang), show_alert=True)
+        return
+
+    await state.set_state(AdminGrantSub.waiting_plan)
+    await state.update_data(grant_user_id=target.id)
+    if callback.message is not None:
+        await callback.message.edit_text(
+            t("admin.grant.choose_plan", lang),
+            reply_markup=grant_plans_kb(plans, lang=lang),
+        )
+    await callback.answer()
+
+
+@router.callback_query(
+    AdminGrantSub.waiting_plan, GrantCB.filter(F.action == "plan")
+)
+async def cb_grant_plan(
+    callback: CallbackQuery,
+    callback_data: GrantCB,
+    state: FSMContext,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Record the chosen plan and ask for the term (days or '-')."""
+    plan_id = callback_data.plan_id
+    async with get_conn() as conn:
+        plan = await plans_repo.get(conn, plan_id)
+    if plan is None:
+        await callback.answer(t("admin.grant.plan_not_found", lang), show_alert=True)
+        return
+
+    inbound_id = await _resolve_plan_inbound(plan.id)
+    await state.update_data(grant_plan_id=plan.id, grant_inbound_id=inbound_id)
+    await state.set_state(AdminGrantSub.waiting_days)
+    if callback.message is not None:
+        await callback.message.edit_text(
+            t("admin.grant.enter_days", lang, days=plan.days),
+            reply_markup=cancel_kb(lang),
+        )
+    await callback.answer()
+
+
+@router.message(AdminGrantSub.waiting_days)
+async def st_grant_days(
+    message: Message,
+    state: FSMContext,
+    bot: Bot,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Accept the term, provision the subscription, notify the user, audit."""
+    raw = (message.text or "").strip()
+    data = await state.get_data()
+    target_id = int(data.get("grant_user_id", 0))
+    plan_id = int(data.get("grant_plan_id", 0))
+    inbound_id = int(data.get("grant_inbound_id", 0))
+
+    days: int | None
+    if raw in {"-", "—"}:
+        days = None
+    else:
+        if not raw.isdigit() or int(raw) <= 0:
+            await message.answer(t("admin.grant.bad_days", lang), reply_markup=cancel_kb(lang))
+            return
+        days = int(raw)
+
+    async with get_conn() as conn:
+        target = await users_repo.get_by_id(conn, target_id)
+        plan = await plans_repo.get(conn, plan_id)
+    if target is None or plan is None:
+        await state.clear()
+        await message.answer(t("admin.grant.plan_not_found", lang))
+        return
+
+    try:
+        xui = await get_xui_client()
+        async with get_conn() as conn:
+            sub = await subs_service.grant_subscription(
+                conn,
+                xui,
+                target,
+                plan=plan,
+                inbound_id=inbound_id,
+                days=days,
+            )
+    except XuiError as exc:
+        logger.error(
+            "admin_users: grant failed user={} plan={}: {}",
+            target.id,
+            plan.id,
+            exc,
+        )
+        await state.clear()
+        await message.answer(t("admin.grant.failed", lang, error=str(exc)))
+        return
+
+    granted_days = plan.days if days is None else days
+    async with get_conn() as conn:
+        await audit_service.log_action(
+            conn,
+            _admin_id(user),
+            "user.grant_sub",
+            target_type="user",
+            target_id=target.id,
+            details={"plan_id": plan.id, "days": granted_days, "sub_id": sub.id},
+        )
+
+    await state.clear()
+    logger.info(
+        "admin_users: granted sub={} to user={} plan={} days={}",
+        sub.id,
+        target.id,
+        plan.id,
+        granted_days,
+    )
+
+    # Best-effort: deliver keys + a notice to the target user.
+    try:
+        await bot.send_message(
+            target.tg_id,
+            t("admin.grant.user_notified", target.lang, days=granted_days),
+        )
+        await deliver_keys(
+            bot,
+            xui,
+            chat_id=target.tg_id,
+            sub=sub,
+            lang=target.lang,
+        )
+    except Exception as exc:  # noqa: BLE001 — delivery best-effort, never break
+        logger.warning(
+            "admin_users: grant delivery to user={} failed: {}", target.id, exc
+        )
+
+    await message.answer(
+        t(
+            "admin.grant.success",
+            lang,
+            user=_safe(target.first_name or target.tg_id),
+            days=granted_days,
+            sub_id=sub.id,
+            expires_at=sub.expires_at,
+        )
+    )
+    async with get_conn() as conn:
+        refreshed = await users_repo.get_by_id(conn, target.id)
+    await _render_card_message(message, refreshed or target, edit=False)
 
 
 __all__ = ["router"]

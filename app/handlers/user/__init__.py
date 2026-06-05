@@ -15,7 +15,19 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from app.handlers.user import buy, help as help_module, menu, my_subscription, promo
+from app.handlers.user import (
+    buy,
+    gift,
+    help as help_module,
+    language,
+    menu,
+    my_subscription,
+    promo,
+    referral,
+    support,
+    trial,
+    wallet,
+)
 
 
 def _build_user_router() -> Router:
@@ -26,13 +38,20 @@ def _build_user_router() -> Router:
     update), then ``my_subscription`` (owns ``UserCB(area='my')`` plus
     the ``SubCB(action='keys')`` re-delivery), buy (carries the heaviest
     set of FSM-bound handlers plus pre_checkout / successful_payment),
-    promo, and finally help (a single callback).
+    promo, wallet (the ``WalletCB`` balance / top-up screen), language
+    (the ``LangCB`` picker), and finally help (a single callback).
     """
     user_router = Router(name="user")
     user_router.include_router(menu.router)
     user_router.include_router(my_subscription.router)
     user_router.include_router(buy.router)
     user_router.include_router(promo.router)
+    user_router.include_router(trial.router)
+    user_router.include_router(referral.router)
+    user_router.include_router(gift.router)
+    user_router.include_router(support.router)
+    user_router.include_router(wallet.router)
+    user_router.include_router(language.router)
     user_router.include_router(help_module.router)
     return user_router
 

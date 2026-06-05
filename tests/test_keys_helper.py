@@ -71,3 +71,57 @@ async def test_deliver_keys_no_vless_no_sub_url(monkeypatch, mock_bot):
     await keys_mod.deliver_keys(mock_bot, AsyncMock(), chat_id=1, sub=sub)
     mock_bot.send_message.assert_awaited()
     mock_bot.send_photo.assert_not_awaited()
+
+
+# --------------------------------------------------------------------------- #
+# Phase 6 — connection guide / deep-link import URLs
+# --------------------------------------------------------------------------- #
+
+
+def test_build_howto_text_contains_all_client_links():
+    sub_url = "https://sub.test/sub/XYZ"
+    from app.xui.links import build_import_links
+
+    links = build_import_links(sub_url)
+    text_ru = keys_mod.build_howto_text(sub_url, "ru")
+    text_en = keys_mod.build_howto_text(sub_url, "en")
+    for body in (text_ru, text_en):
+        assert links["happ"] in body
+        assert links["v2rayng"] in body
+        assert links["hiddify"] in body
+        assert links["streisand"] in body
+    # Localised titles differ between languages.
+    assert "Как подключиться" in text_ru
+    assert "How to connect" in text_en
+
+
+def test_build_howto_text_empty_for_no_sub_url():
+    assert keys_mod.build_howto_text("", "ru") == ""
+
+
+async def test_deliver_keys_sends_howto_message(monkeypatch, mock_bot):
+    """When a sub URL exists, deliver_keys appends the connection-guide message."""
+    sub = _sub()
+    inbound = {
+        "port": 443,
+        "streamSettings": {"network": "tcp", "security": "none"},
+        "settings": {"clients": [{"id": "u"}]},
+    }
+    monkeypatch.setattr(keys_mod, "get_inbound", AsyncMock(return_value=inbound))
+    await keys_mod.deliver_keys(mock_bot, AsyncMock(), chat_id=1, sub=sub)
+
+    bodies = [c.args[1] for c in mock_bot.send_message.await_args_list]
+    assert any("happ://import/" in b for b in bodies)
+    assert any("v2rayng://install-config" in b for b in bodies)
+    assert any("hiddify://import/" in b for b in bodies)
+
+
+async def test_deliver_keys_skips_howto_when_no_sub_url(monkeypatch, mock_bot):
+    """No sub URL → no connection-guide message (nothing to import)."""
+    sub = _sub(xui_sub_id="")
+    monkeypatch.setattr(
+        keys_mod, "get_inbound", AsyncMock(side_effect=XuiError("down"))
+    )
+    await keys_mod.deliver_keys(mock_bot, AsyncMock(), chat_id=1, sub=sub)
+    bodies = [c.args[1] for c in mock_bot.send_message.await_args_list]
+    assert not any("install-config" in b for b in bodies)

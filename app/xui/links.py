@@ -44,6 +44,48 @@ def build_subscription_url(sub_id: str) -> str:
     return f"{base}/{sub_id.lstrip('/')}"
 
 
+def build_import_links(sub_url: str) -> dict[str, str]:
+    """Return per-client deep-link import URLs for a subscription URL.
+
+    Modern VPN clients accept a custom-scheme deep link that, when opened on the
+    device, imports a *subscription* (the bot's public ``sub_url``) in one tap.
+    The schemes differ per client:
+
+    * **Happ** — ``happ://import/<sub_url>`` (the URL is the path tail; we
+      percent-encode it so the deep link stays well-formed). Happ is
+      cross-platform (iOS / Android / Windows / macOS). If the deep link is
+      rejected on a given Happ build, the subscription URL can always be pasted
+      directly into Happ's «Add subscription» — see the connection guide's
+      manual fallback.
+    * **v2RayNG / v2RayTun** — ``v2rayng://install-config?url=<percent-encoded
+      sub_url>`` (the URL is passed as a query parameter, so it must be
+      percent-encoded).
+    * **Hiddify** — ``hiddify://import/<sub_url>`` (the URL is the path tail;
+      Hiddify expects it appended raw, but we percent-encode ``:`` / ``/`` so the
+      path stays well-formed).
+    * **Streisand** — ``streisand://import/<sub_url>`` (same path-tail shape as
+      Hiddify).
+
+    Telegram does **not** accept these custom schemes in
+    ``InlineKeyboardButton.url`` nor as HTML ``<a href>`` links, so callers
+    surface them as copyable ``<code>`` blocks in the connection guide rather
+    than as tappable buttons.
+
+    Returns a ``{client: url}`` mapping with keys ``happ``, ``v2rayng``,
+    ``hiddify`` and ``streisand``. Returns an empty dict when ``sub_url`` is
+    falsy (no subscription URL means nothing to import).
+    """
+    if not sub_url:
+        return {}
+    encoded = quote(sub_url, safe="")
+    return {
+        "happ": f"happ://import/{encoded}",
+        "v2rayng": f"v2rayng://install-config?url={encoded}",
+        "hiddify": f"hiddify://import/{encoded}",
+        "streisand": f"streisand://import/{encoded}",
+    }
+
+
 # ---------------------------------------------------------------------- #
 # vless URI
 # ---------------------------------------------------------------------- #

@@ -22,10 +22,51 @@ from aiogram.types import (
 from loguru import logger
 
 from app.db.repos.subscriptions import Subscription
+from app.i18n import DEFAULT_LANG, t
 from app.keyboards.user import subscription_kb
 from app.xui import XuiClient, XuiError
 from app.xui.inbounds import get_inbound
-from app.xui.links import build_subscription_url, build_vless_link, make_qr_png
+from app.xui.links import (
+    build_import_links,
+    build_subscription_url,
+    build_vless_link,
+    make_qr_png,
+)
+
+
+def build_howto_text(sub_url: str, lang: str = DEFAULT_LANG) -> str:
+    """Compose the localized "How to connect" guide for a subscription URL.
+
+    Telegram rejects the clients' custom-scheme deep links
+    (``v2rayng://`` / ``hiddify://`` / ``streisand://``) both as inline-button
+    URLs and as HTML ``<a href>`` links, so we render each one inside a
+    copyable ``<code>`` block (the user taps to copy, then pastes into the
+    client or opens it manually). The deep links themselves come from
+    :func:`app.xui.links.build_import_links`.
+
+    Returns the HTML body (title + intro + one block per client + a manual
+    fallback hint). When ``sub_url`` is empty there is nothing to import, so an
+    empty string is returned and callers skip the message.
+    """
+    if not sub_url:
+        return ""
+    links = build_import_links(sub_url)
+    parts = [
+        t("keys.howto.title", lang),
+        "",
+        t("keys.howto.intro", lang),
+        "",
+        t("keys.howto.happ", lang, link=links["happ"], sub_url=sub_url),
+        "",
+        t("keys.howto.v2rayng", lang, link=links["v2rayng"]),
+        "",
+        t("keys.howto.hiddify", lang, link=links["hiddify"]),
+        "",
+        t("keys.howto.streisand", lang, link=links["streisand"]),
+        "",
+        t("keys.howto.manual", lang),
+    ]
+    return "\n".join(parts)
 
 
 async def deliver_keys(
@@ -34,7 +75,8 @@ async def deliver_keys(
     chat_id: int,
     sub: Subscription,
     *,
-    header: str = "✅ Подписка активна.",
+    header: str | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Send the user their vless URI, a QR PNG, and the subscription URL.
 
@@ -52,6 +94,8 @@ async def deliver_keys(
     degrade gracefully by sending the subscription URL and QR over the
     plain vless URL — the user is still able to connect.
     """
+    if header is None:
+        header = t("keys.header_active", lang)
     sub_url = build_subscription_url(sub.xui_sub_id) if sub.xui_sub_id else ""
 
     vless_uri: str
@@ -75,7 +119,7 @@ async def deliver_keys(
     summary_lines = [
         header,
         "",
-        f"Срок действия: <code>{sub.expires_at}</code> UTC",
+        t("keys.valid_until", lang, expires_at=sub.expires_at),
     ]
     if vless_uri:
         summary_lines.append("")
@@ -91,15 +135,15 @@ async def deliver_keys(
         await bot.send_photo(
             chat_id,
             photo=BufferedInputFile(png_bytes, filename="vpn-qr.png"),
-            caption="📱 Отсканируйте QR-код в клиенте, чтобы добавить подключение.",
+            caption=t("keys.qr_caption", lang),
         )
 
     # Final message: subscription URL (in code-block for copy) + two
     # URL buttons + a "re-send keys / back to menu" keyboard.
     if sub_url:
-        url_text = f"<b>Subscription URL</b>\n<code>{sub_url}</code>"
+        url_text = t("keys.sub_url_title", lang, sub_url=sub_url)
     else:
-        url_text = "<b>Subscription URL</b>\n<i>недоступен</i>"
+        url_text = t("keys.sub_url_unavailable", lang)
 
     # Build the final keyboard. Telegram only accepts ``http(s)://``,
     # ``tg://``, ``mailto:`` and a few other schemes for ``InlineKeyboardButton.url``
@@ -111,7 +155,7 @@ async def deliver_keys(
     url_rows: list[list[InlineKeyboardButton]] = []
     if sub_url:
         url_rows.append(
-            [InlineKeyboardButton(text="🌐 Subscription URL", url=sub_url)]
+            [InlineKeyboardButton(text=t("keys.btn_sub_url", lang), url=sub_url)]
         )
     sub_kb = subscription_kb(sub.id)
     combined = InlineKeyboardMarkup(
@@ -120,5 +164,12 @@ async def deliver_keys(
 
     await bot.send_message(chat_id, url_text, reply_markup=combined)
 
+    # Connection guide: per-client deep-link import URLs as copyable code
+    # blocks (Telegram rejects their custom schemes as buttons/links). Only
+    # sent when we actually have a subscription URL to import.
+    howto_text = build_howto_text(sub_url, lang)
+    if howto_text:
+        await bot.send_message(chat_id, howto_text)
 
-__all__ = ["deliver_keys"]
+
+__all__ = ["build_howto_text", "deliver_keys"]

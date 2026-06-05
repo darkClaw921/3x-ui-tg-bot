@@ -75,6 +75,7 @@ from app.db.engine import get_conn
 from app.db.repos import subscriptions as subs_repo
 from app.db.repos.users import User
 from app.handlers.user._keys import deliver_keys
+from app.i18n import DEFAULT_LANG, t
 from app.keyboards.user import (
     InboundCB,
     PromoActCB,
@@ -127,12 +128,14 @@ def _jsonable_to_options(items: list[dict]) -> list[InboundOption]:
 
 
 @router.callback_query(PromoActCB.filter(F.action == "open"))
-async def cb_open(callback: CallbackQuery, state: FSMContext) -> None:
+async def cb_open(
+    callback: CallbackQuery, state: FSMContext, lang: str = DEFAULT_LANG
+) -> None:
     """Enter :class:`PromoActivate.waiting_code` and prompt for the code."""
     await state.set_state(PromoActivate.waiting_code)
     if callback.message is not None:
         await callback.message.edit_text(
-            "Введите промокод одним сообщением:",
+            t("promo.enter_code", lang),
             reply_markup=cancel_kb(),
         )
     await callback.answer()
@@ -148,6 +151,7 @@ async def msg_code(
     message: Message,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Validate the code, then route to inbound selection for free-days.
 
@@ -165,7 +169,7 @@ async def msg_code(
           and enter :class:`PromoActivate.choosing_inbound`.
     """
     if user is None:
-        await message.answer("Нужно нажать /start, чтобы начать.")
+        await message.answer(t("promo.need_start", lang))
         return
 
     async with get_conn() as conn:
@@ -175,7 +179,11 @@ async def msg_code(
 
     if not result.is_valid or result.promo is None:
         await message.answer(
-            (result.error or "Промокод недействителен.") + " Введите ещё раз:",
+            t(
+                "promo.invalid_retry",
+                lang,
+                error=result.error or t("promo.default_invalid", lang),
+            ),
             reply_markup=cancel_kb(),
         )
         return
@@ -185,10 +193,7 @@ async def msg_code(
         # Discount-type promos need a plan to apply against. Clear the
         # state and route the user to the buy flow.
         await state.clear()
-        await message.answer(
-            "Этот промокод применяется только при покупке тарифа. "
-            "Нажмите «Купить» в меню и примените код там.",
-        )
+        await message.answer(t("promo.only_on_purchase", lang))
         return
 
     # Fetch available inbounds so the user can pick one. The panel may
@@ -205,16 +210,12 @@ async def msg_code(
             exc,
         )
         await state.clear()
-        await message.answer(
-            "Не удалось получить список подключений. Попробуйте позже.",
-        )
+        await message.answer(t("promo.inbounds_unavailable", lang))
         return
 
     if not options:
         await state.clear()
-        await message.answer(
-            "Нет доступных подключений. Попробуйте позже.",
-        )
+        await message.answer(t("promo.no_inbounds", lang))
         return
 
     # If the user already has one or more active subscriptions, surface
@@ -233,7 +234,7 @@ async def msg_code(
         )
         await state.set_state(PromoActivate.choosing_action)
         await message.answer(
-            "У вас есть активные подписки. Выберите действие:",
+            t("promo.has_active_choose", lang),
             reply_markup=promo_action_kb(active, remarks),
         )
         return
@@ -244,7 +245,7 @@ async def msg_code(
     )
     await state.set_state(PromoActivate.choosing_inbound)
     await message.answer(
-        "Выберите подключение для активации промокода:",
+        t("promo.choose_inbound", lang),
         reply_markup=inbound_select_kb(0, options, promo_id=promo.id),
     )
 
@@ -262,6 +263,7 @@ async def _activate_promo_for_sub(
     promo_id: int,
     extend_sub_id: int | None,
     inbound_id: int,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Shared tail used by :func:`cb_pick_action_extend_promo` and the
     single-inbound branch of :func:`cb_pick_action_new_promo`.
@@ -278,7 +280,7 @@ async def _activate_promo_for_sub(
 
         promo = await promos_repo.get(conn, promo_id)
         if promo is None:
-            await callback.answer("Промокод больше недоступен.", show_alert=True)
+            await callback.answer(t("promo.no_longer_available", lang), show_alert=True)
             await state.clear()
             return
         result = await promos_service.validate(
@@ -286,25 +288,19 @@ async def _activate_promo_for_sub(
         )
 
     if not result.is_valid or result.promo is None:
-        await callback.answer(
-            result.error or "Промокод стал недействителен.",
-            show_alert=True,
-        )
+        error = result.error or t("promo.became_invalid", lang)
+        await callback.answer(error, show_alert=True)
         await state.clear()
         if callback.message is not None:
             await callback.message.edit_text(
-                (result.error or "Промокод стал недействителен.")
-                + " Попробуйте другой код.",
+                t("promo.became_invalid_retry", lang, error=error),
             )
         return
 
     promo = result.promo
     if promo.type != "free_days":
         await state.clear()
-        await callback.answer(
-            "Этот промокод нужно применять при покупке тарифа.",
-            show_alert=True,
-        )
+        await callback.answer(t("promo.apply_on_purchase", lang), show_alert=True)
         return
 
     xui = await get_xui_client()
@@ -330,10 +326,7 @@ async def _activate_promo_for_sub(
         )
         await callback.answer()
         if callback.message is not None:
-            await callback.message.edit_text(
-                "Не удалось активировать промокод — попробуйте позже. "
-                "Если проблема повторится, напишите администратору.",
-            )
+            await callback.message.edit_text(t("promo.activation_failed", lang))
         return
 
     async with get_conn() as conn:
@@ -353,20 +346,19 @@ async def _activate_promo_for_sub(
     await state.clear()
     chat_id = callback.message.chat.id if callback.message is not None else None
     if chat_id is None:
-        await callback.answer("Промокод активирован.", show_alert=True)
+        await callback.answer(t("promo.activated_alert", lang), show_alert=True)
         return
     if extend_sub_id is not None:
-        header = (
-            f"✅ Промокод <code>{promo.code}</code> применён к подписке #{sub.id}."
-        )
+        header = t("promo.header_extended", lang, code=promo.code, sub_id=sub.id)
     else:
-        header = f"✅ Промокод <code>{promo.code}</code> активирован."
+        header = t("promo.header_activated", lang, code=promo.code)
     await deliver_keys(
         bot,
         xui,
         chat_id=chat_id,
         sub=sub,
         header=header,
+        lang=lang,
     )
     await callback.answer()
 
@@ -380,6 +372,7 @@ async def cb_pick_action_extend_promo(
     state: FSMContext,
     bot: Bot,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """User picked "🔄 Продлить #N" on the free-days action screen.
 
@@ -393,30 +386,25 @@ async def cb_pick_action_extend_promo(
     been detached from any plan).
     """
     if user is None:
-        await callback.answer("Нужно нажать /start, чтобы начать.", show_alert=True)
+        await callback.answer(t("promo.need_start", lang), show_alert=True)
         return
 
     sub_id = int(callback_data.sub_id or 0)
     if sub_id <= 0:
-        await callback.answer("Подписка не указана.", show_alert=True)
+        await callback.answer(t("promo.no_sub_specified", lang), show_alert=True)
         return
 
     data = await state.get_data()
     promo_id = int(data.get("promo_id") or 0)
     if not promo_id:
-        await callback.answer(
-            "Сессия устарела. Введите промокод заново.",
-            show_alert=True,
-        )
+        await callback.answer(t("promo.session_expired", lang), show_alert=True)
         await state.clear()
         return
 
     async with get_conn() as conn:
         sub = await subs_repo.get(conn, sub_id)
     if sub is None or sub.user_id != user.id or sub.status != "active":
-        await callback.answer(
-            "Подписка недоступна для продления.", show_alert=True
-        )
+        await callback.answer(t("promo.sub_unavailable_extend", lang), show_alert=True)
         return
 
     await _activate_promo_for_sub(
@@ -427,6 +415,7 @@ async def cb_pick_action_extend_promo(
         promo_id=promo_id,
         extend_sub_id=sub.id,
         inbound_id=int(sub.xui_inbound_id),
+        lang=lang,
     )
 
 
@@ -437,6 +426,7 @@ async def cb_pick_action_new_promo(
     callback: CallbackQuery,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """User picked "🆕 Новая подписка" on the free-days action screen.
 
@@ -447,16 +437,13 @@ async def cb_pick_action_new_promo(
     is re-fetched via :func:`app.services.inbounds.list_user_inbounds`.
     """
     if user is None:
-        await callback.answer("Нужно нажать /start, чтобы начать.", show_alert=True)
+        await callback.answer(t("promo.need_start", lang), show_alert=True)
         return
 
     data = await state.get_data()
     promo_id = int(data.get("promo_id") or 0)
     if not promo_id:
-        await callback.answer(
-            "Сессия устарела. Введите промокод заново.",
-            show_alert=True,
-        )
+        await callback.answer(t("promo.session_expired", lang), show_alert=True)
         await state.clear()
         return
 
@@ -479,23 +466,17 @@ async def cb_pick_action_new_promo(
                 promo_id,
                 exc,
             )
-            await callback.answer(
-                "Не удалось получить список подключений. Попробуйте позже.",
-                show_alert=True,
-            )
+            await callback.answer(t("promo.inbounds_unavailable", lang), show_alert=True)
             return
         if not options:
-            await callback.answer(
-                "Нет доступных подключений. Попробуйте позже.",
-                show_alert=True,
-            )
+            await callback.answer(t("promo.no_inbounds", lang), show_alert=True)
             return
         await state.update_data(inbound_options=_options_to_jsonable(options))
 
     await state.set_state(PromoActivate.choosing_inbound)
     if callback.message is not None:
         await callback.message.edit_text(
-            "Выберите подключение для активации промокода:",
+            t("promo.choose_inbound", lang),
             reply_markup=inbound_select_kb(0, options, promo_id=promo_id),
         )
     await callback.answer()
@@ -515,6 +496,7 @@ async def cb_pick_inbound_for_promo(
     state: FSMContext,
     bot: Bot,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Activate the free-days promo on the selected inbound.
 
@@ -543,7 +525,7 @@ async def cb_pick_inbound_for_promo(
       NOT redeemed so the user can retry once the panel is back.
     """
     if user is None:
-        await callback.answer("Нужно нажать /start, чтобы начать.", show_alert=True)
+        await callback.answer(t("promo.need_start", lang), show_alert=True)
         return
 
     data = await state.get_data()
@@ -551,10 +533,7 @@ async def cb_pick_inbound_for_promo(
     inbound_id = int(callback_data.inbound_id or 0)
 
     if not promo_id or not inbound_id:
-        await callback.answer(
-            "Сессия устарела. Введите промокод заново.",
-            show_alert=True,
-        )
+        await callback.answer(t("promo.session_expired", lang), show_alert=True)
         await state.clear()
         return
 
@@ -565,9 +544,7 @@ async def cb_pick_inbound_for_promo(
 
         promo = await promos_repo.get(conn, promo_id)
         if promo is None:
-            await callback.answer(
-                "Промокод больше недоступен.", show_alert=True
-            )
+            await callback.answer(t("promo.no_longer_available", lang), show_alert=True)
             await state.clear()
             return
         result = await promos_service.validate(
@@ -575,17 +552,14 @@ async def cb_pick_inbound_for_promo(
         )
 
     if not result.is_valid or result.promo is None:
-        await callback.answer(
-            result.error or "Промокод стал недействителен.",
-            show_alert=True,
-        )
+        error = result.error or t("promo.became_invalid", lang)
+        await callback.answer(error, show_alert=True)
         # Keep the user in the inbound-selection step? No — the promo
         # is dead so there's nothing to activate. Clear the state.
         await state.clear()
         if callback.message is not None:
             await callback.message.edit_text(
-                (result.error or "Промокод стал недействителен.")
-                + " Попробуйте другой код.",
+                t("promo.became_invalid_retry", lang, error=error),
             )
         return
 
@@ -594,10 +568,7 @@ async def cb_pick_inbound_for_promo(
         # Defence-in-depth — the type couldn't change normally, but
         # never trust callback data alone.
         await state.clear()
-        await callback.answer(
-            "Этот промокод нужно применять при покупке тарифа.",
-            show_alert=True,
-        )
+        await callback.answer(t("promo.apply_on_purchase", lang), show_alert=True)
         return
 
     # Verify the inbound is one we actually offered. The options
@@ -606,10 +577,7 @@ async def cb_pick_inbound_for_promo(
     raw_options = data.get("inbound_options") or []
     offered_ids = {int(it.get("id", 0)) for it in raw_options if isinstance(it, dict)}
     if offered_ids and inbound_id not in offered_ids:
-        await callback.answer(
-            "Подключение недоступно. Выберите из списка.",
-            show_alert=True,
-        )
+        await callback.answer(t("promo.inbound_unavailable_pick", lang), show_alert=True)
         return
 
     # xui-first via the service. If the panel call fails the promo is
@@ -635,10 +603,7 @@ async def cb_pick_inbound_for_promo(
         )
         await callback.answer()
         if callback.message is not None:
-            await callback.message.edit_text(
-                "Не удалось активировать промокод — попробуйте позже. "
-                "Если проблема повторится, напишите администратору.",
-            )
+            await callback.message.edit_text(t("promo.activation_failed", lang))
         return
 
     # Redeem the promo (atomic). If another transaction won the race,
@@ -662,14 +627,15 @@ async def cb_pick_inbound_for_promo(
     await state.clear()
     chat_id = callback.message.chat.id if callback.message is not None else None
     if chat_id is None:
-        await callback.answer("Промокод активирован.", show_alert=True)
+        await callback.answer(t("promo.activated_alert", lang), show_alert=True)
         return
     await deliver_keys(
         bot,
         xui,
         chat_id=chat_id,
         sub=sub,
-        header=f"✅ Промокод <code>{promo.code}</code> активирован.",
+        header=t("promo.header_activated", lang, code=promo.code),
+        lang=lang,
     )
     await callback.answer()
 
@@ -680,6 +646,7 @@ async def cb_pick_inbound_for_promo(
 async def cb_back_inbound_for_promo(
     callback: CallbackQuery,
     state: FSMContext,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Return from the inbound-selection step back to code entry.
 
@@ -690,7 +657,7 @@ async def cb_back_inbound_for_promo(
     await state.update_data(promo_id=0, inbound_options=None)
     if callback.message is not None:
         await callback.message.edit_text(
-            "Введите промокод одним сообщением:",
+            t("promo.enter_code", lang),
             reply_markup=cancel_kb(),
         )
     await callback.answer()

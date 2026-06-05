@@ -1320,3 +1320,504 @@ async def test_on_successful_payment_new_calls_service_with_extend_sub_id_none(
     create_or_extend.assert_awaited()
     kwargs = create_or_extend.call_args.kwargs
     assert kwargs["extend_sub_id"] is None
+
+
+# ---------------------------------------------------------------------- #
+# Wallet — top-up via successful_payment (kind="topup")
+# ---------------------------------------------------------------------- #
+
+
+async def test_successful_payment_topup_credits_wallet_once(
+    file_db, make_user, mock_bot
+):
+    """A kind='topup' successful_payment credits the wallet exactly once,
+    even when Telegram redelivers the same update (charge_id dedup)."""
+    from app.db.engine import get_conn
+    from app.db.repos import payments as payments_repo
+    from app.db.repos import wallet as wallet_repo
+    from app.services import billing
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+
+    payload = billing.build_topup_payload(150)
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="topup-charge-1",
+        total_amount=150,
+        invoice_payload=payload,
+    )
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+
+    async with get_conn() as conn:
+        assert await wallet_repo.balance(conn, user.id) == 150
+        pay = await payments_repo.get_by_charge_id(conn, "topup-charge-1")
+    assert pay is not None
+    assert pay.stars_amount == 150
+    assert pay.plan_id is None  # a top-up has no plan
+    msg.answer.assert_awaited()  # success confirmation
+
+    # Telegram redelivers the SAME successful_payment → idempotent no-op.
+    msg.answer.reset_mock()
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+    async with get_conn() as conn:
+        assert await wallet_repo.balance(conn, user.id) == 150  # still 150
+        rows = await wallet_repo.list_for_user(conn, user.id)
+    assert len(rows) == 1  # credited exactly once
+    # The replay short-circuits before any confirmation is sent again.
+    msg.answer.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------- #
+# Wallet — pay from balance (cb_pay_from_balance)
+# ---------------------------------------------------------------------- #
+
+
+async def test_cb_pay_from_balance_provisions_and_debits_once(
+    file_db, make_user, make_plan, make_subscription, mock_bot, monkeypatch
+):
+    """Paying from balance debits the wallet once, records a synthetic
+    ``wallet:<txn_id>`` payment, and delivers keys — and a redelivery of the
+    same callback tap is fully deduped (no second debit / payment)."""
+    from app.db.engine import get_conn
+    from app.db.repos import payments as payments_repo
+    from app.db.repos import wallet as wallet_repo
+    from app.keyboards.user import BuyCB
+    from app.services import wallet as wallet_service
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, price_stars=50, inbound_ids=[1])
+        real_sub = await make_subscription(conn, user_id=user.id, plan_id=plan.id)
+        await wallet_service.credit(conn, user.id, 100, type="topup", ref="topup:seed")
+
+    monkeypatch.setattr(
+        buy_module, "get_xui_client", AsyncMock(return_value=AsyncMock())
+    )
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+    monkeypatch.setattr(
+        buy_module.subs_service,
+        "create_or_extend",
+        AsyncMock(return_value=real_sub),
+    )
+
+    cb = MagicMock()
+    cb.id = "cbq-pay-1"
+    cb.message = MagicMock()
+    cb.message.chat = MagicMock(id=1)
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+
+    data = BuyCB(action="balance", plan_id=plan.id, promo_id=0, inbound_id=1, sub_id=0)
+    await buy_module.cb_pay_from_balance(cb, data, state, mock_bot, user=user)
+
+    async with get_conn() as conn:
+        assert await wallet_repo.balance(conn, user.id) == 50  # 100 - 50
+        pays = await payments_repo.list_for_user(conn, user.id)
+    assert len(pays) == 1
+    assert pays[0].telegram_charge_id.startswith("wallet:")
+    assert pays[0].stars_amount == 50
+    buy_module.deliver_keys.assert_awaited()
+
+    # Redelivery of the SAME callback tap (same callback.id) → spend ref dup →
+    # rejected: no second debit, no second payment.
+    buy_module.deliver_keys.reset_mock()
+    await buy_module.cb_pay_from_balance(cb, data, state, mock_bot, user=user)
+    async with get_conn() as conn:
+        assert await wallet_repo.balance(conn, user.id) == 50
+        pays2 = await payments_repo.list_for_user(conn, user.id)
+    assert len(pays2) == 1
+    buy_module.deliver_keys.assert_not_awaited()
+
+
+async def test_cb_pay_from_balance_insufficient_balance_rejected(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """When the wallet cannot cover the price the tap is rejected with an alert
+    and nothing is provisioned or debited."""
+    from app.db.engine import get_conn
+    from app.db.repos import payments as payments_repo
+    from app.db.repos import wallet as wallet_repo
+    from app.keyboards.user import BuyCB
+    from app.services import wallet as wallet_service
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, price_stars=200, inbound_ids=[1])
+        await wallet_service.credit(conn, user.id, 50, type="topup", ref="topup:seed")
+
+    create_or_extend = AsyncMock()
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=AsyncMock()))
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+    monkeypatch.setattr(buy_module.subs_service, "create_or_extend", create_or_extend)
+
+    cb = MagicMock()
+    cb.id = "cbq-poor-1"
+    cb.message = MagicMock()
+    cb.message.chat = MagicMock(id=1)
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+
+    data = BuyCB(action="balance", plan_id=plan.id, promo_id=0, inbound_id=1, sub_id=0)
+    await buy_module.cb_pay_from_balance(cb, data, state, mock_bot, user=user)
+
+    # Rejected before provisioning; balance untouched; no payment.
+    create_or_extend.assert_not_awaited()
+    buy_module.deliver_keys.assert_not_awaited()
+    cb.answer.assert_awaited()
+    assert cb.answer.call_args.kwargs.get("show_alert") is True
+    async with get_conn() as conn:
+        assert await wallet_repo.balance(conn, user.id) == 50
+        assert await payments_repo.list_for_user(conn, user.id) == []
+
+
+async def test_cb_pay_from_balance_xui_failure_refunds(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """If 3x-ui provisioning fails the wallet spend is refunded (no net debit)
+    and no payment is recorded."""
+    from app.db.engine import get_conn
+    from app.db.repos import payments as payments_repo
+    from app.db.repos import wallet as wallet_repo
+    from app.keyboards.user import BuyCB
+    from app.services import wallet as wallet_service
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, price_stars=50, inbound_ids=[1])
+        await wallet_service.credit(conn, user.id, 100, type="topup", ref="topup:seed")
+
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=AsyncMock()))
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+    monkeypatch.setattr(
+        buy_module.subs_service,
+        "create_or_extend",
+        AsyncMock(side_effect=XuiError("panel down")),
+    )
+
+    cb = MagicMock()
+    cb.id = "cbq-fail-1"
+    cb.message = MagicMock()
+    cb.message.chat = MagicMock(id=1)
+    cb.message.answer = AsyncMock()
+    cb.answer = AsyncMock()
+    state = _state()
+
+    data = BuyCB(action="balance", plan_id=plan.id, promo_id=0, inbound_id=1, sub_id=0)
+    await buy_module.cb_pay_from_balance(cb, data, state, mock_bot, user=user)
+
+    async with get_conn() as conn:
+        # Spend (-50) then refund (+50) → net balance back to 100.
+        assert await wallet_repo.balance(conn, user.id) == 100
+        assert await payments_repo.list_for_user(conn, user.id) == []
+    buy_module.deliver_keys.assert_not_awaited()
+    cb.message.answer.assert_awaited()  # pay_failed message
+
+
+# --------------------------------------------------------------------------- #
+# Gift purchase
+# --------------------------------------------------------------------------- #
+
+
+async def test_cb_gift_buy_enters_plan_list_with_gift_flag(
+    file_db, make_plan, monkeypatch
+):
+    from app.db.engine import get_conn
+    from app.keyboards.user import GiftCB  # noqa: F401 — documents the trigger
+    from app.states.user import BuyFlow
+
+    async with get_conn() as conn:
+        await make_plan(conn, inbound_ids=[1])
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    state = AsyncMock()
+    await buy_module.cb_gift_buy(cb, state, lang="ru")
+    state.set_state.assert_awaited_with(BuyFlow.choosing_plan)
+    # gift=1 stored in FSM.
+    update_kwargs = state.update_data.await_args.kwargs
+    assert update_kwargs.get("gift") == 1
+    assert update_kwargs.get("sub_id") == 0
+    cb.message.edit_text.assert_awaited()
+
+
+async def test_successful_payment_gift_mints_code_not_subscription(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """A ``kind='gift'`` payment mints a gift code and provisions NO sub."""
+    from app.db.engine import get_conn
+    from app.db.repos import gift_codes as gift_repo
+    from app.db.repos import subscriptions as subs_repo
+    from app.services import billing
+    from app import bot_meta
+
+    async with get_conn() as conn:
+        buyer = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, inbound_ids=[3])
+
+    bot_meta.clear_cache()
+    mock_bot.id = 1
+    mock_bot.get_me = AsyncMock(return_value=MagicMock(username="thebot"))
+
+    payload = billing.build_gift_payload(plan_id=plan.id, inbound_id=3)
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="gift-charge-1",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+    )
+    await buy_module.on_successful_payment(msg, mock_bot, user=buyer)
+
+    async with get_conn() as conn:
+        codes = await gift_repo.list_for_buyer(conn, buyer.id)
+        subs = await subs_repo.list_for_user(conn, buyer.id)
+    # Exactly one active code minted, no subscription for the buyer.
+    assert len(codes) == 1
+    assert codes[0].status == "active"
+    assert codes[0].payment_id is not None
+    assert len(subs) == 0
+    # DM to the buyer carries the code + the gift_ activation link.
+    dm_text = msg.answer.call_args.args[0]
+    assert codes[0].code in dm_text
+    assert "start=gift_" in dm_text
+
+
+async def test_successful_payment_gift_idempotent(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    from app.db.engine import get_conn
+    from app.db.repos import gift_codes as gift_repo
+    from app.services import billing
+    from app import bot_meta
+
+    async with get_conn() as conn:
+        buyer = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, inbound_ids=[3])
+
+    bot_meta.clear_cache()
+    mock_bot.id = 1
+    mock_bot.get_me = AsyncMock(return_value=MagicMock(username="thebot"))
+
+    payload = billing.build_gift_payload(plan_id=plan.id, inbound_id=3)
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="gift-dup",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+    )
+    await buy_module.on_successful_payment(msg, mock_bot, user=buyer)
+    await buy_module.on_successful_payment(msg, mock_bot, user=buyer)
+
+    async with get_conn() as conn:
+        codes = await gift_repo.list_for_buyer(conn, buyer.id)
+    # Replay of the same charge mints no extra code.
+    assert len(codes) == 1
+
+
+# ---------------------------------------------------------------------- #
+# Phase 4 — native recurring Star subscriptions
+# ---------------------------------------------------------------------- #
+
+
+async def test_cb_subscribe_sends_invoice_link(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """cb_subscribe builds a subscription invoice link and shows a URL button."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, days=30, inbound_ids=[1])
+
+    monkeypatch.setattr(settings, "AUTO_RENEW_ENABLED", True)
+    mock_bot.create_invoice_link = AsyncMock(return_value="https://t.me/inv?start=sub")
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    cb_data = BuyCB(action="sub", plan_id=plan.id, inbound_id=1)
+    state = _state({"inbound_id": 1})
+
+    await buy_module.cb_subscribe(cb, cb_data, state, mock_bot, user=user)
+
+    mock_bot.create_invoice_link.assert_awaited()
+    # The created link is surfaced as a URL button.
+    _, kwargs = cb.message.edit_text.call_args
+    markup = kwargs["reply_markup"]
+    assert markup.inline_keyboard[0][0].url == "https://t.me/inv?start=sub"
+
+
+async def test_cb_subscribe_disabled_flag(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """AUTO_RENEW_ENABLED=False rejects the subscription request."""
+    from app.db.engine import get_conn
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, days=30, inbound_ids=[1])
+
+    monkeypatch.setattr(settings, "AUTO_RENEW_ENABLED", False)
+    mock_bot.create_invoice_link = AsyncMock(return_value="x")
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.edit_text = AsyncMock()
+    cb.answer = AsyncMock()
+    cb_data = BuyCB(action="sub", plan_id=plan.id, inbound_id=1)
+
+    await buy_module.cb_subscribe(cb, cb_data, _state({}), mock_bot, user=user)
+    mock_bot.create_invoice_link.assert_not_awaited()
+    cb.answer.assert_awaited()
+
+
+async def test_successful_payment_first_recurring_sets_auto_renew(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """First recurring charge → new sub, auto_renew=1, tg_sub_charge_id persisted."""
+    from app.db.engine import get_conn
+    from app.db.repos import payments as payments_repo
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, days=30, inbound_ids=[1])
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"id": "u", "email": "e"})
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=xui))
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+
+    from app.services import billing
+
+    payload = billing.build_subscription_payload(plan_id=plan.id, inbound_id=1)
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="sub-first",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+        is_recurring=True,
+        is_first_recurring=True,
+        subscription_expiration_date=None,
+    )
+
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+
+    async with get_conn() as conn:
+        subs = await subs_repo.list_for_user(conn, user.id)
+        pay = await payments_repo.get_by_charge_id(conn, "sub-first")
+    assert len(subs) == 1
+    assert subs[0].auto_renew is True
+    assert subs[0].tg_sub_charge_id == "sub-first"
+    assert pay is not None
+
+
+async def test_successful_payment_subsequent_recurring_extends(
+    file_db, make_user, make_plan, make_subscription, mock_bot, monkeypatch
+):
+    """A subsequent recurring charge extends the existing native subscription."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.db.engine import get_conn
+    from app.db.repos import payments as payments_repo
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, days=30, inbound_ids=[1])
+        sub = await make_subscription(
+            conn, user_id=user.id, plan_id=plan.id, xui_inbound_id=1,
+            expires_at=datetime.now(UTC) + timedelta(days=2),
+        )
+        # Mark it as a native Star subscription (has a tg charge id).
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="sub-first")
+
+    xui = AsyncMock()
+    # get_client returns a found client so update_client succeeds.
+    xui.request_json = AsyncMock(return_value={"client": {"email": sub.xui_client_email}})
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=xui))
+    monkeypatch.setattr(buy_module, "update_client", AsyncMock())
+
+    from app.services import billing
+
+    payload = billing.build_subscription_payload(plan_id=plan.id, inbound_id=1)
+    # Telegram's authoritative new expiration (Unix seconds), 30 days out.
+    new_exp_unix = int((datetime.now(UTC) + timedelta(days=32)).timestamp())
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="sub-second",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+        is_recurring=True,
+        is_first_recurring=False,
+        subscription_expiration_date=new_exp_unix,
+    )
+
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+
+    async with get_conn() as conn:
+        fresh = await subs_repo.get(conn, sub.id)
+        pay = await payments_repo.get_by_charge_id(conn, "sub-second")
+        # No second subscription was created — the existing one was extended.
+        all_subs = await subs_repo.list_for_user(conn, user.id)
+    assert len(all_subs) == 1
+    # expires_at advanced to Telegram's authoritative expiration date.
+    assert fresh.expires_at > sub.expires_at
+    assert pay is not None
+    assert pay.subscription_id == sub.id
+    buy_module.update_client.assert_awaited()
+
+
+async def test_successful_payment_recurring_dedup(
+    file_db, make_user, make_plan, mock_bot, monkeypatch
+):
+    """A redelivered recurring charge is deduped by the UNIQUE charge id."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        plan = await make_plan(conn, days=30, inbound_ids=[1])
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"id": "u", "email": "e"})
+    monkeypatch.setattr(buy_module, "get_xui_client", AsyncMock(return_value=xui))
+    monkeypatch.setattr(buy_module, "deliver_keys", AsyncMock())
+
+    from app.services import billing
+
+    payload = billing.build_subscription_payload(plan_id=plan.id, inbound_id=1)
+    msg = MagicMock()
+    msg.chat = MagicMock(id=1)
+    msg.answer = AsyncMock()
+    msg.successful_payment = MagicMock(
+        telegram_payment_charge_id="sub-dup",
+        total_amount=plan.price_stars,
+        invoice_payload=payload,
+        is_recurring=True,
+        is_first_recurring=True,
+        subscription_expiration_date=None,
+    )
+
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+    await buy_module.on_successful_payment(msg, mock_bot, user=user)
+
+    async with get_conn() as conn:
+        subs = await subs_repo.list_for_user(conn, user.id)
+    # Replay must not provision a second subscription.
+    assert len(subs) == 1

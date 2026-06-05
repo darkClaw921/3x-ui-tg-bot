@@ -9,6 +9,9 @@ Submodules:
 * :mod:`app.services.subscriptions` — single source of truth for creating
   and extending a subscription (keeps the DB and the 3x-ui panel
   consistent).
+* :mod:`app.services.wallet` — credit / atomic spend on a user's Stars
+  balance (idempotent by deterministic ``ref``; spend runs under
+  ``BEGIN IMMEDIATE`` to guard against double-spend and replay).
 """
 
 from __future__ import annotations

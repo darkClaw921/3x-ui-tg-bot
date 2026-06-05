@@ -734,3 +734,184 @@ def test_sort_subs_active_then_inactive():
     assert [s.id for s in ordered[:2]] == [a2.id, a1.id]
     # Inactive must come after; both present in any tie order.
     assert {s.id for s in ordered[2:]} == {e3.id, r4.id}
+
+
+# --------------------------------------------------------------------- #
+# Phase 4 — auto-renewal cancel / enable toggle
+# --------------------------------------------------------------------- #
+
+
+async def test_my_sub_renders_cancel_button_for_native_sub(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """An active native Star sub (auto_renew + charge id) shows «⏹ Отменить автопродление»."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        sub = await make_subscription(conn, user_id=user.id)
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="ch-1")
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"up": 1, "down": 2})
+    monkeypatch.setattr(my_sub_mod, "get_xui_client", AsyncMock(return_value=xui))
+
+    cb = _mock_callback()
+    await my_sub_mod.cb_open_my(cb, user=user)
+
+    flat = _flat_buttons(cb.message.edit_text.call_args.kwargs["reply_markup"])
+    assert (
+        "⏹ Отменить автопродление",
+        SubCB(action="cancel_renew", sub_id=sub.id).pack(),
+    ) in flat
+
+
+async def test_my_sub_renders_enable_button_after_cancel(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """A cancelled native sub (auto_renew=0 but charge id present) shows «🔁 Включить»."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=1)
+        sub = await make_subscription(conn, user_id=user.id)
+        # First enable (persists charge id), then cancel (keeps charge id).
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="ch-1")
+        await subs_repo.set_auto_renew(conn, sub.id, False)
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"up": 1, "down": 2})
+    monkeypatch.setattr(my_sub_mod, "get_xui_client", AsyncMock(return_value=xui))
+
+    cb = _mock_callback()
+    await my_sub_mod.cb_open_my(cb, user=user)
+
+    flat = _flat_buttons(cb.message.edit_text.call_args.kwargs["reply_markup"])
+    assert (
+        "🔁 Включить автопродление",
+        SubCB(action="enable_renew", sub_id=sub.id).pack(),
+    ) in flat
+
+
+async def test_cb_cancel_auto_renew_calls_telegram_and_clears_flag(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """Cancelling calls edit_user_star_subscription(is_canceled=True) + clears auto_renew."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=55)
+        sub = await make_subscription(conn, user_id=user.id)
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="ch-99")
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"up": 1, "down": 2})
+    monkeypatch.setattr(my_sub_mod, "get_xui_client", AsyncMock(return_value=xui))
+
+    bot = AsyncMock()
+    bot.edit_user_star_subscription = AsyncMock(return_value=True)
+
+    cb = _mock_callback()
+    cb_data = SubCB(action="cancel_renew", sub_id=sub.id)
+    await my_sub_mod.cb_cancel_auto_renew(cb, cb_data, bot, user=user)
+
+    bot.edit_user_star_subscription.assert_awaited_once()
+    _, kwargs = bot.edit_user_star_subscription.call_args
+    assert kwargs["user_id"] == user.tg_id
+    assert kwargs["telegram_payment_charge_id"] == "ch-99"
+    assert kwargs["is_canceled"] is True
+
+    async with get_conn() as conn:
+        fresh = await subs_repo.get(conn, sub.id)
+    assert fresh.auto_renew is False
+    # Charge id is preserved so the user can re-enable later.
+    assert fresh.tg_sub_charge_id == "ch-99"
+
+
+async def test_cb_enable_auto_renew_calls_telegram_and_sets_flag(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """Re-enabling calls edit_user_star_subscription(is_canceled=False) + sets auto_renew."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=55)
+        sub = await make_subscription(conn, user_id=user.id)
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="ch-99")
+        await subs_repo.set_auto_renew(conn, sub.id, False)
+
+    xui = AsyncMock()
+    xui.request_json = AsyncMock(return_value={"up": 1, "down": 2})
+    monkeypatch.setattr(my_sub_mod, "get_xui_client", AsyncMock(return_value=xui))
+
+    bot = AsyncMock()
+    bot.edit_user_star_subscription = AsyncMock(return_value=True)
+
+    cb = _mock_callback()
+    cb_data = SubCB(action="enable_renew", sub_id=sub.id)
+    await my_sub_mod.cb_enable_auto_renew(cb, cb_data, bot, user=user)
+
+    _, kwargs = bot.edit_user_star_subscription.call_args
+    assert kwargs["is_canceled"] is False
+
+    async with get_conn() as conn:
+        fresh = await subs_repo.get(conn, sub.id)
+    assert fresh.auto_renew is True
+
+
+async def test_cb_cancel_auto_renew_rejects_foreign_sub(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """A subscription owned by another user must not be cancellable."""
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        owner = await make_user(conn, tg_id=1)
+        attacker = await make_user(conn, tg_id=2)
+        sub = await make_subscription(conn, user_id=owner.id)
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="ch-1")
+
+    bot = AsyncMock()
+    bot.edit_user_star_subscription = AsyncMock(return_value=True)
+
+    cb = _mock_callback()
+    cb_data = SubCB(action="cancel_renew", sub_id=sub.id)
+    await my_sub_mod.cb_cancel_auto_renew(cb, cb_data, bot, user=attacker)
+
+    bot.edit_user_star_subscription.assert_not_awaited()
+    cb.answer.assert_awaited()
+
+
+async def test_cb_cancel_auto_renew_telegram_error_keeps_flag(
+    file_db, make_user, make_subscription, monkeypatch
+):
+    """A Telegram API error leaves auto_renew untouched (no local/remote drift)."""
+    from aiogram.exceptions import TelegramAPIError
+
+    from app.db.engine import get_conn
+    from app.db.repos import subscriptions as subs_repo
+
+    async with get_conn() as conn:
+        user = await make_user(conn, tg_id=55)
+        sub = await make_subscription(conn, user_id=user.id)
+        await subs_repo.set_auto_renew(conn, sub.id, True, tg_sub_charge_id="ch-99")
+
+    bot = AsyncMock()
+    bot.edit_user_star_subscription = AsyncMock(
+        side_effect=TelegramAPIError(method=MagicMock(), message="boom")
+    )
+
+    cb = _mock_callback()
+    cb_data = SubCB(action="cancel_renew", sub_id=sub.id)
+    await my_sub_mod.cb_cancel_auto_renew(cb, cb_data, bot, user=user)
+
+    async with get_conn() as conn:
+        fresh = await subs_repo.get(conn, sub.id)
+    # Telegram refused → local flag stays True (still on).
+    assert fresh.auto_renew is True
+    cb.answer.assert_awaited()

@@ -11,4 +11,5 @@ Modules:
 * :mod:`app.db.repos.promos` — promo codes CRUD and atomic redemption.
 * :mod:`app.db.repos.subscriptions` — subscriptions and traffic snapshots.
 * :mod:`app.db.repos.payments` — Stars payment history.
+* :mod:`app.db.repos.wallet` — append-only Stars-balance ledger.
 """

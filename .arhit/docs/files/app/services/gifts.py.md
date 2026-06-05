@@ -1,0 +1,3 @@
+# app/services/gifts.py
+
+Сервис подарочных подписок. make_gift_code(conn, *, plan_id, inbound_id, buyer_id, payment_id) — минт кода GIFT-+8 hex (secrets), retry до 5 раз на UNIQUE-коллизию. redeem_gift(conn, xui, *, code, redeemer) → (GiftCode, Subscription): claim-first — get_by_code (active?), резолв плана (deleted→GiftRedeemError not_active), try_claim (атомарный active→redeemed под BEGIN IMMEDIATE; None→not_active), create_or_extend(extend_sub_id=None, inbound_id=code.inbound_id, promo=None), link_subscription; компенсация при XuiError — set_status обратно в 'active' + re-raise. Класс GiftRedeemError(reason: not_found|not_active). Repo gift_codes расширен try_claim + link_subscription.

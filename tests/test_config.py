@@ -17,6 +17,7 @@ def _fresh_settings(monkeypatch, **env):
     # Wipe interference env first.
     for k in (
         "ADMIN_IDS",
+        "WALLET_TOPUP_PRESETS",
         "BOT_TOKEN",
         "XUI_BASE_URL",
         "XUI_USERNAME",
@@ -27,6 +28,9 @@ def _fresh_settings(monkeypatch, **env):
         "XUI_VERIFY_SSL",
         "DB_PATH",
         "LOG_LEVEL",
+        "AUTO_RENEW_ENABLED",
+        "TRAFFIC_ALERT_PERCENT",
+        "STAR_SUBSCRIPTION_PLAN_DAYS",
     ):
         monkeypatch.delenv(k, raising=False)
 
@@ -53,6 +57,26 @@ def _fresh_settings(monkeypatch, **env):
 def test_admin_ids_csv(monkeypatch):
     s = _fresh_settings(monkeypatch, ADMIN_IDS="1,2,3")
     assert s.ADMIN_IDS == [1, 2, 3]
+
+
+def test_wallet_topup_presets_default(monkeypatch):
+    s = _fresh_settings(monkeypatch)
+    assert s.WALLET_TOPUP_PRESETS == [50, 100, 250, 500]
+
+
+def test_wallet_topup_presets_csv(monkeypatch):
+    s = _fresh_settings(monkeypatch, WALLET_TOPUP_PRESETS="25, 75 , 300")
+    assert s.WALLET_TOPUP_PRESETS == [25, 75, 300]
+
+
+def test_wallet_topup_presets_empty(monkeypatch):
+    s = _fresh_settings(monkeypatch, WALLET_TOPUP_PRESETS="")
+    assert s.WALLET_TOPUP_PRESETS == []
+
+
+def test_wallet_topup_presets_json_brackets(monkeypatch):
+    s = _fresh_settings(monkeypatch, WALLET_TOPUP_PRESETS="[10,20]")
+    assert s.WALLET_TOPUP_PRESETS == [10, 20]
 
 
 def test_admin_ids_csv_with_spaces(monkeypatch):
@@ -130,3 +154,50 @@ def test_settings_defaults_present(monkeypatch):
 def test_settings_verify_ssl_false(monkeypatch):
     s = _fresh_settings(monkeypatch, XUI_VERIFY_SSL="false")
     assert s.XUI_VERIFY_SSL is False
+
+
+# --------------------------------------------------------------------------- #
+# Retention — auto-renewal / traffic alerts (Phase 4)
+# --------------------------------------------------------------------------- #
+
+
+def test_auto_renew_defaults(monkeypatch):
+    """Phase-4 retention knobs read their documented defaults."""
+    s = _fresh_settings(monkeypatch)
+    assert s.AUTO_RENEW_ENABLED is True
+    assert s.TRAFFIC_ALERT_PERCENT == 80
+    assert s.STAR_SUBSCRIPTION_PLAN_DAYS == 30
+
+
+def test_auto_renew_enabled_false(monkeypatch):
+    s = _fresh_settings(monkeypatch, AUTO_RENEW_ENABLED="false")
+    assert s.AUTO_RENEW_ENABLED is False
+
+
+def test_traffic_alert_percent_override(monkeypatch):
+    s = _fresh_settings(monkeypatch, TRAFFIC_ALERT_PERCENT="90")
+    assert s.TRAFFIC_ALERT_PERCENT == 90
+
+
+def test_traffic_alert_percent_zero_disables(monkeypatch):
+    s = _fresh_settings(monkeypatch, TRAFFIC_ALERT_PERCENT="0")
+    assert s.TRAFFIC_ALERT_PERCENT == 0
+
+
+def test_traffic_alert_percent_out_of_range_rejected(monkeypatch):
+    import pydantic_core
+
+    with pytest.raises(pydantic_core.ValidationError):
+        _fresh_settings(monkeypatch, TRAFFIC_ALERT_PERCENT="150")
+
+
+def test_star_subscription_plan_days_override(monkeypatch):
+    s = _fresh_settings(monkeypatch, STAR_SUBSCRIPTION_PLAN_DAYS="31")
+    assert s.STAR_SUBSCRIPTION_PLAN_DAYS == 31
+
+
+def test_star_subscription_plan_days_must_be_positive(monkeypatch):
+    import pydantic_core
+
+    with pytest.raises(pydantic_core.ValidationError):
+        _fresh_settings(monkeypatch, STAR_SUBSCRIPTION_PLAN_DAYS="0")

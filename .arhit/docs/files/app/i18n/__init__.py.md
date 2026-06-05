@@ -1,0 +1,3 @@
+# app/i18n/__init__.py
+
+Пакет i18n: собственная dependency-free локализация. Публичный API: t(key, lang=None, /, **params) - перевод ключа с безопасным format_map (резолв lang->en->сам key, никогда не падает); pluralize(key, n, lang) - выбор плюральной формы по словарю категорий one/few/many/other; resolve_lang(language_code) - нормализация Telegram language_code (en-US->en) к SUPPORTED, иначе DEFAULT_LANG; константы SUPPORTED_LANGS=(ru,en,uk,fa,zh), DEFAULT_LANG=ru, FALLBACK_LANG=en, LANG_NAMES (флаг+имя). Внутри _SafeDict.__missing__ рендерит пропущенный плейсхолдер как {name}, _safe_format глотает ValueError/IndexError. Причина собственного модуля (не aiogram gettext): тесты дёргают хендлеры напрямую без middleware-контекста.

@@ -68,6 +68,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
@@ -77,6 +78,7 @@ from app.db.repos import subscriptions as subs_repo
 from app.db.repos.subscriptions import Subscription
 from app.db.repos.users import User
 from app.handlers.user._keys import deliver_keys
+from app.i18n import DEFAULT_LANG, pluralize, t
 from app.keyboards.user import BuyCB, SubCB, UserCB
 from app.xui import XuiError, get_xui_client
 from app.xui.clients import get_client_traffics
@@ -155,22 +157,22 @@ def _is_active(sub: Subscription) -> bool:
     return _parse_iso(sub.expires_at) > datetime.now(UTC)
 
 
-def _format_days_line(sub: Subscription) -> str:
+def _format_days_line(sub: Subscription, lang: str = DEFAULT_LANG) -> str:
     """Return the «осталось / истекла» line for a subscription."""
     days = _days_delta(sub.expires_at)
     if days > 0:
-        return f"⏳ Истекает через {days} дн."
+        return t("mysub.days_until", lang, days=days)
     if days == 0:
         # Edge: today is the expiry date.
-        return "⏳ Истекает сегодня"
+        return t("mysub.expires_today", lang)
     # days < 0
     n = abs(days)
     if n == 0:
-        return "⌛ Истекла сегодня"
-    return f"⌛ Истекла {n} дн. назад"
+        return t("mysub.expired_today", lang)
+    return t("mysub.expired_ago", lang, days=n)
 
 
-def _format_status_line(sub: Subscription) -> str:
+def _format_status_line(sub: Subscription, lang: str = DEFAULT_LANG) -> str:
     """Return a translated status line.
 
     Combines the DB ``status`` with a "is currently valid" check so a row
@@ -179,10 +181,10 @@ def _format_status_line(sub: Subscription) -> str:
     to the user, instead of misleading "active".
     """
     if sub.status == "revoked":
-        return "🚫 Статус: отозвана"
+        return t("mysub.status_revoked", lang)
     if sub.status == "expired" or not _is_active(sub):
-        return "❌ Статус: истекла"
-    return "✅ Статус: активна"
+        return t("mysub.status_expired", lang)
+    return t("mysub.status_active", lang)
 
 
 async def _fetch_traffics(
@@ -235,7 +237,11 @@ async def _fetch_traffics(
     return up, down, True
 
 
-def _format_sub_card(sub: Subscription, traffic: tuple[int | None, int | None, bool]) -> str:
+def _format_sub_card(
+    sub: Subscription,
+    traffic: tuple[int | None, int | None, bool],
+    lang: str = DEFAULT_LANG,
+) -> str:
     """Build the HTML card body for a single subscription.
 
     The card has four lines: status, expiry timestamp, days-delta, and a
@@ -246,17 +252,22 @@ def _format_sub_card(sub: Subscription, traffic: tuple[int | None, int | None, b
     """
     up, down, ok = traffic
     lines: list[str] = [
-        f"<b>Подписка #{sub.id}</b>",
-        _format_status_line(sub),
-        f"📅 Истекает: <code>{sub.expires_at}</code> UTC",
-        _format_days_line(sub),
+        t("mysub.card_title", lang, sub_id=sub.id),
+        _format_status_line(sub, lang),
+        t("mysub.card_expires", lang, expires_at=sub.expires_at),
+        _format_days_line(sub, lang),
     ]
     if ok and up is not None and down is not None:
         lines.append(
-            f"📊 Трафик: ↑ {_format_bytes(up)} / ↓ {_format_bytes(down)}",
+            t(
+                "mysub.card_traffic",
+                lang,
+                up=_format_bytes(up),
+                down=_format_bytes(down),
+            ),
         )
     else:
-        lines.append("📊 Трафик: не удалось получить (панель недоступна)")
+        lines.append(t("mysub.card_traffic_unavailable", lang))
     return "\n".join(lines)
 
 
@@ -287,7 +298,9 @@ def _sort_subs(subs: list[Subscription]) -> list[Subscription]:
     return active + inactive
 
 
-def _build_subs_keyboard(visible: list[Subscription]) -> InlineKeyboardBuilder:
+def _build_subs_keyboard(
+    visible: list[Subscription], lang: str = DEFAULT_LANG
+) -> InlineKeyboardBuilder:
     """Build the inline keyboard for the «Моя подписка» screen.
 
     Layout (top → bottom):
@@ -309,21 +322,45 @@ def _build_subs_keyboard(visible: list[Subscription]) -> InlineKeyboardBuilder:
     """
     builder = InlineKeyboardBuilder()
     builder.button(
-        text="🆕 Купить новую подписку",
+        text=t("mysub.btn_buy_new", lang),
         callback_data=BuyCB(action="new"),
     )
     builder.adjust(1)
     for sub in visible:
+        keys_btn = _btn(
+            t("mysub.btn_keys_n", lang, sub_id=sub.id),
+            SubCB(action="keys", sub_id=sub.id),
+        )
         if _is_active(sub):
             builder.row(
-                _btn(f"🔑 Ключи #{sub.id}", SubCB(action="keys", sub_id=sub.id)),
-                _btn(f"🛒 Продлить #{sub.id}", BuyCB(action="extend", sub_id=sub.id)),
+                keys_btn,
+                _btn(
+                    t("mysub.btn_extend_n", lang, sub_id=sub.id),
+                    BuyCB(action="extend", sub_id=sub.id),
+                ),
             )
         else:
-            builder.row(
-                _btn(f"🔑 Ключи #{sub.id}", SubCB(action="keys", sub_id=sub.id)),
-            )
-    builder.row(_btn("◀ В меню", UserCB(area="menu")))
+            builder.row(keys_btn)
+        # Native Star subscriptions (tg_sub_charge_id set) get an auto-renew
+        # toggle: «⏹ Отменить автопродление» when currently on,
+        # «🔁 Включить автопродление» when it was cancelled. Wallet-fallback
+        # subscriptions (no charge id) are managed elsewhere, so no toggle here.
+        if sub.tg_sub_charge_id:
+            if sub.auto_renew:
+                builder.row(
+                    _btn(
+                        t("autorenew.btn_cancel", lang),
+                        SubCB(action="cancel_renew", sub_id=sub.id),
+                    )
+                )
+            else:
+                builder.row(
+                    _btn(
+                        t("autorenew.btn_enable", lang),
+                        SubCB(action="enable_renew", sub_id=sub.id),
+                    )
+                )
+    builder.row(_btn(t("menu.btn_back", lang), UserCB(area="menu")))
     return builder
 
 
@@ -341,11 +378,11 @@ def _btn(text: str, cb):
     return InlineKeyboardButton(text=text, callback_data=cb.pack())
 
 
-def _no_subscription_kb() -> InlineKeyboardBuilder:
+def _no_subscription_kb(lang: str = DEFAULT_LANG) -> InlineKeyboardBuilder:
     """Keyboard shown when the user has no subscription history at all."""
     builder = InlineKeyboardBuilder()
-    builder.button(text="🛒 Купить подписку", callback_data=BuyCB(action="open"))
-    builder.button(text="◀ В меню", callback_data=UserCB(area="menu"))
+    builder.button(text=t("mysub.btn_buy", lang), callback_data=BuyCB(action="open"))
+    builder.button(text=t("menu.btn_back", lang), callback_data=UserCB(area="menu"))
     builder.adjust(1)
     return builder
 
@@ -356,7 +393,9 @@ def _no_subscription_kb() -> InlineKeyboardBuilder:
 
 
 @router.callback_query(UserCB.filter(F.area == "my"))
-async def cb_open_my(callback: CallbackQuery, user: User | None = None) -> None:
+async def cb_open_my(
+    callback: CallbackQuery, user: User | None = None, lang: str = DEFAULT_LANG
+) -> None:
     """Render the "Моя подписка" screen — list of all subscriptions.
 
     Branches:
@@ -372,21 +411,18 @@ async def cb_open_my(callback: CallbackQuery, user: User | None = None) -> None:
        button count never exceeds Telegram's per-message limit.
     """
     if user is None:
-        await callback.answer("Сначала нажмите /start.", show_alert=True)
+        await callback.answer(t("menu.need_start", lang), show_alert=True)
         return
 
     async with get_conn() as conn:
         all_subs = await subs_repo.list_for_user(conn, user.id)
 
     if not all_subs:
-        text = (
-            "У вас пока нет подписки.\n\n"
-            "Нажмите «Купить подписку», чтобы выбрать тариф и оплатить."
-        )
+        text = t("mysub.no_subscription", lang)
         if callback.message is not None:
             await callback.message.edit_text(
                 text,
-                reply_markup=_no_subscription_kb().as_markup(),
+                reply_markup=_no_subscription_kb(lang).as_markup(),
             )
         await callback.answer()
         return
@@ -405,36 +441,33 @@ async def cb_open_my(callback: CallbackQuery, user: User | None = None) -> None:
     blocks: list[str] = []
     for sub in visible:
         traffic = await _fetch_traffics(sub)
-        blocks.append(_format_sub_card(sub, traffic))
+        blocks.append(_format_sub_card(sub, traffic, lang))
     body = "\n\n━━━━━━━━━━━━━━━\n\n".join(blocks)
     if hidden_count:
-        body = (
-            f"{body}\n\n"
-            f"… и ещё {hidden_count} "
-            f"{_pluralize_subs(hidden_count)}"
+        footer = t(
+            "mysub.more_footer",
+            lang,
+            count=hidden_count,
+            plural=_pluralize_subs(hidden_count, lang),
         )
+        body = f"{body}\n\n{footer}"
 
-    kb = _build_subs_keyboard(visible).as_markup()
+    kb = _build_subs_keyboard(visible, lang).as_markup()
     if callback.message is not None:
         await callback.message.edit_text(body, reply_markup=kb)
     await callback.answer()
 
 
-def _pluralize_subs(n: int) -> str:
-    """Return the Russian plural form for «подписка» given ``n``.
+def _pluralize_subs(n: int, lang: str = DEFAULT_LANG) -> str:
+    """Return the plural form for «подписка» given ``n``.
 
-    Russian uses three plural forms: 1 / 2-4 / 5-20. ``n`` is the
-    *displayed* count (always positive in our caller), so the function
-    only needs to cover the three nominal buckets — there is no zero
-    branch.
+    Thin wrapper over :func:`app.i18n.pluralize` (key ``mysub.subs_plural``).
+    Kept as a named helper because the «Моя подписка» footer composes it
+    inline and the pinned tests in
+    :mod:`tests.test_handlers_user_my_subscription` call it directly with the
+    Russian default (1 → «подписка», 2-4 → «подписки», 5-20 → «подписок»).
     """
-    mod10 = n % 10
-    mod100 = n % 100
-    if mod10 == 1 and mod100 != 11:
-        return "подписка"
-    if 2 <= mod10 <= 4 and not (12 <= mod100 <= 14):
-        return "подписки"
-    return "подписок"
+    return pluralize("mysub.subs_plural", n, lang)
 
 
 @router.callback_query(SubCB.filter(F.action == "keys"))
@@ -443,6 +476,7 @@ async def cb_resend_keys(
     callback_data: SubCB,
     bot: Bot,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Re-deliver vless / QR / subscription URL for the given subscription.
 
@@ -459,12 +493,12 @@ async def cb_resend_keys(
     :mod:`app.handlers.user.buy` and :mod:`app.handlers.user.promo`).
     """
     if user is None:
-        await callback.answer("Сначала нажмите /start.", show_alert=True)
+        await callback.answer(t("menu.need_start", lang), show_alert=True)
         return
 
     sub_id = callback_data.sub_id
     if not sub_id:
-        await callback.answer("Подписка не указана.", show_alert=True)
+        await callback.answer(t("mysub.no_sub_specified", lang), show_alert=True)
         return
 
     async with get_conn() as conn:
@@ -473,22 +507,22 @@ async def cb_resend_keys(
     if sub is None or sub.user_id != user.id:
         # Same error message for "not found" and "not yours" — no
         # information leak.
-        await callback.answer("Подписка не найдена.", show_alert=True)
+        await callback.answer(t("mysub.sub_not_found", lang), show_alert=True)
         return
 
     chat_id = callback.message.chat.id if callback.message is not None else None
     if chat_id is None:
-        await callback.answer("Не удалось определить чат.", show_alert=True)
+        await callback.answer(t("mysub.chat_undetermined", lang), show_alert=True)
         return
 
     xui = await get_xui_client()
     header = (
-        "🔑 Ваши ключи доступа."
+        t("mysub.keys_header_active", lang)
         if _is_active(sub)
-        else "🔑 Ключи от истёкшей подписки (для копирования)."
+        else t("mysub.keys_header_expired", lang)
     )
     try:
-        await deliver_keys(bot, xui, chat_id=chat_id, sub=sub, header=header)
+        await deliver_keys(bot, xui, chat_id=chat_id, sub=sub, header=header, lang=lang)
     except XuiError as exc:
         logger.warning(
             "my_sub: deliver_keys failed for sub={} user={}: {}",
@@ -498,10 +532,107 @@ async def cb_resend_keys(
         )
         await bot.send_message(
             chat_id,
-            "Не удалось получить ключи: панель временно недоступна. "
-            "Попробуйте позже.",
+            t("mysub.keys_unavailable", lang),
         )
     await callback.answer()
+
+
+async def _toggle_auto_renew(
+    callback: CallbackQuery,
+    callback_data: SubCB,
+    bot: Bot,
+    user: User | None,
+    lang: str,
+    *,
+    cancel: bool,
+) -> None:
+    """Cancel / re-enable a native Telegram Star subscription's auto-renewal.
+
+    Shared by :func:`cb_cancel_auto_renew` (``cancel=True``) and
+    :func:`cb_enable_auto_renew` (``cancel=False``). Guards:
+
+    * ``user`` must be present and own ``sub_id`` (no foreign-sub control).
+    * The subscription must carry a ``tg_sub_charge_id`` — only native Star
+      subscriptions can be toggled via
+      :meth:`aiogram.Bot.edit_user_star_subscription`.
+
+    Calls ``edit_user_star_subscription(user_id=<tg_id>,
+    telegram_payment_charge_id=<charge>, is_canceled=<cancel>)`` to tell
+    Telegram to stop / resume recurring billing, then mirrors the new state
+    locally via :func:`app.db.repos.subscriptions.set_auto_renew`. A Telegram
+    API error is surfaced to the user (and the local flag is left untouched so
+    the two stay consistent).
+    """
+    if user is None:
+        await callback.answer(t("menu.need_start", lang), show_alert=True)
+        return
+    sub_id = callback_data.sub_id
+    if not sub_id:
+        await callback.answer(t("mysub.no_sub_specified", lang), show_alert=True)
+        return
+
+    async with get_conn() as conn:
+        sub = await subs_repo.get(conn, sub_id)
+    if sub is None or sub.user_id != user.id:
+        await callback.answer(t("mysub.sub_not_found", lang), show_alert=True)
+        return
+    if not sub.tg_sub_charge_id:
+        await callback.answer(t("autorenew.cancel_failed", lang), show_alert=True)
+        return
+
+    try:
+        await bot.edit_user_star_subscription(
+            user_id=user.tg_id,
+            telegram_payment_charge_id=sub.tg_sub_charge_id,
+            is_canceled=cancel,
+        )
+    except TelegramAPIError as exc:
+        logger.warning(
+            "my_sub: edit_user_star_subscription failed sub={} cancel={}: {}",
+            sub.id,
+            cancel,
+            exc,
+        )
+        await callback.answer(t("autorenew.cancel_failed", lang), show_alert=True)
+        return
+
+    async with get_conn() as conn:
+        await subs_repo.set_auto_renew(conn, sub.id, not cancel)
+
+    await callback.answer(
+        t("autorenew.cancelled", lang) if cancel else t("autorenew.enabled", lang),
+        show_alert=True,
+    )
+    # Re-render the screen so the toggle button flips.
+    await cb_open_my(callback, user=user, lang=lang)
+
+
+@router.callback_query(SubCB.filter(F.action == "cancel_renew"))
+async def cb_cancel_auto_renew(
+    callback: CallbackQuery,
+    callback_data: SubCB,
+    bot: Bot,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Cancel a native Star subscription's recurring billing (``is_canceled=True``)."""
+    await _toggle_auto_renew(
+        callback, callback_data, bot, user, lang, cancel=True
+    )
+
+
+@router.callback_query(SubCB.filter(F.action == "enable_renew"))
+async def cb_enable_auto_renew(
+    callback: CallbackQuery,
+    callback_data: SubCB,
+    bot: Bot,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Re-enable a previously-cancelled Star subscription (``is_canceled=False``)."""
+    await _toggle_auto_renew(
+        callback, callback_data, bot, user, lang, cancel=False
+    )
 
 
 __all__ = ["router"]

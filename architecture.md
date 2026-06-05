@@ -27,6 +27,7 @@
     ├── config.py
     ├── logger.py
     ├── scheduler.py
+    ├── bot_meta.py
     ├── db/
     │   ├── __init__.py
     │   ├── engine.py
@@ -37,14 +38,28 @@
     │       ├── plans.py
     │       ├── promos.py
     │       ├── subscriptions.py
-    │       └── payments.py
+    │       ├── payments.py
+    │       ├── wallet.py
+    │       ├── referrals.py
+    │       ├── gift_codes.py
+    │       ├── tickets.py
+    │       ├── audit.py
+    │       └── health.py
     ├── services/
     │   ├── __init__.py
     │   ├── promos.py
     │   ├── billing.py
     │   ├── subscriptions.py
     │   ├── stats.py
-    │   └── broadcast.py
+    │   ├── exports.py
+    │   ├── broadcast.py
+    │   ├── wallet.py
+    │   ├── referrals.py
+    │   ├── gifts.py
+    │   ├── tickets.py
+    │   ├── audit.py
+    │   ├── inbounds.py
+    │   └── health.py
     ├── handlers/
     │   ├── __init__.py
     │   ├── start.py
@@ -55,7 +70,9 @@
     │   │   ├── promos.py
     │   │   ├── users.py
     │   │   ├── stats.py
-    │   │   └── broadcast.py
+    │   │   ├── broadcast.py
+    │   │   ├── tickets.py
+    │   │   └── audit.py
     │   └── user/
     │       ├── __init__.py
     │       ├── _keys.py
@@ -63,7 +80,24 @@
     │       ├── my_subscription.py
     │       ├── help.py
     │       ├── buy.py
-    │       └── promo.py
+    │       ├── promo.py
+    │       ├── trial.py
+    │       ├── referral.py
+    │       ├── gift.py
+    │       ├── wallet.py
+    │       ├── support.py
+    │       └── language.py
+    ├── i18n/
+    │   ├── __init__.py
+    │   ├── catalog.py
+    │   ├── plural.py
+    │   └── locales/
+    │       ├── __init__.py
+    │       ├── ru.py
+    │       ├── en.py
+    │       ├── uk.py
+    │       ├── fa.py
+    │       └── zh.py
     ├── keyboards/
     │   ├── __init__.py
     │   ├── admin.py
@@ -71,6 +105,7 @@
     ├── middlewares/
     │   ├── __init__.py
     │   ├── admin_only.py
+    │   ├── blocked.py
     │   └── user_ctx.py
     ├── states/
     │   ├── __init__.py
@@ -333,8 +368,9 @@ troubleshooting (зависший installer, неактивный сервис x
      default=DefaultBotProperties(parse_mode=ParseMode.HTML))` и
      `Dispatcher(storage=MemoryStorage())`.
   4. `register_routers(dp)`.
-  5. `setup_scheduler(bot).start()` — три cron-job-а
-     (`expire_check`, `reminders`, `traffic_snapshots`).
+  5. `setup_scheduler(bot).start()` — пять cron-job-ов
+     (`expire_check`, `reminders`, `traffic_snapshots`, `auto_renew`,
+     `health_check`).
   6. `await dp.start_polling(bot)`.
   7. В `finally`: `scheduler.shutdown(wait=False)`, `await close_xui_client()`,
      `await bot.session.close()`. Все три обёрнуты в try/except,
@@ -347,15 +383,31 @@ troubleshooting (зависший installer, неактивный сервис x
 
 - Класс `Settings(BaseSettings)` объявляет поля:
   `BOT_TOKEN: str`, `ADMIN_IDS: Annotated[list[int], NoDecode]`,
+  `WALLET_TOPUP_PRESETS: Annotated[list[int], NoDecode]` (default
+  `[50, 100, 250, 500]` — суммы Stars для кнопок пополнения на экране Кошелёк),
   `DB_PATH: str = "./data/bot.db"`, `XUI_BASE_URL`, `XUI_USERNAME`,
   `XUI_PASSWORD`, `XUI_INBOUND_ID: int`, `XUI_SERVER_HOST`,
-  `XUI_SUB_BASE_URL`, `XUI_VERIFY_SSL: bool = True`, `LOG_LEVEL: str = "INFO"`.
+  `XUI_SUB_BASE_URL`, `XUI_VERIFY_SSL: bool = True`,
+  `TRIAL_DAYS: int = 0` (длина пробного периода в днях; 0 = trial выкл),
+  `TRIAL_TRAFFIC_GB: int = 0` (лимит трафика trial в ГБ; 0 = безлимит),
+  `REFERRAL_BONUS_STARS: int = 0` (Stars-бонус приглашающему; 0 = выкл),
+  `AUTO_RENEW_ENABLED: bool = True` (мастер-флаг автопродления: нативные Star
+  Subscriptions + wallet-fallback),
+  `TRAFFIC_ALERT_PERCENT: int = 80` (порог трафик-алерта в % квоты тарифа,
+  0..100; 0 = выкл),
+  `STAR_SUBSCRIPTION_PLAN_DAYS: int = 30` (длина тарифа в днях, дающая право на
+  нативную Star-подписку — совпадает с `billing.SUBSCRIPTION_PERIOD_SECONDS`),
+  `SUPPORT_CHAT_ID: int = 0` (опциональный чат для ретрансляции тикетов
+  поддержки; 0 = только DM админам из `ADMIN_IDS`),
+  `DEFAULT_LANGUAGE: str = "ru"` (резервный UI-язык новых юзеров),
+  `LOG_LEVEL: str = "INFO"`.
 - `model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8",
   case_sensitive=True, extra="ignore")`.
-- `@field_validator("ADMIN_IDS", mode="before") _parse_admin_ids` —
-  принимает CSV-строку `"1,2,3"`, пустую строку, JSON-массив или список.
-  Аннотация `NoDecode` отключает попытку pydantic-settings распарсить
-  значение через `json.loads` до запуска валидатора.
+- `@field_validator("ADMIN_IDS", "WALLET_TOPUP_PRESETS", mode="before")
+  _parse_csv_ints` — общий валидатор для обоих CSV-полей: принимает CSV-строку
+  `"1,2,3"`, пустую строку, JSON-массив или список → `list[int]`. Аннотация
+  `NoDecode` отключает попытку pydantic-settings распарсить значение через
+  `json.loads` до запуска валидатора.
 - Экспортирует синглтон `settings = Settings()`.
 
 ### [app/logger.py](./app/logger.py)
@@ -387,7 +439,14 @@ troubleshooting (зависший installer, неактивный сервис x
 `engine.init_db()` через `executescript`.
 
 Таблицы:
-- `users` (id PK, tg_id UNIQUE, username, first_name, is_admin, created_at).
+- `users` (id PK, tg_id UNIQUE, username, first_name, is_admin,
+  `lang TEXT NOT NULL DEFAULT 'ru'`, `is_blocked INTEGER NOT NULL DEFAULT 0`,
+  created_at). Колонка `lang` хранит выбранный язык интерфейса (один из
+  `app.i18n.SUPPORTED_LANGS`); добавлена идемпотентной миграцией `ALTER TABLE
+  users ADD COLUMN lang TEXT NOT NULL DEFAULT 'ru'`. Колонка `is_blocked`
+  помечает забаненного админом юзера (1); проверяется `BlockedUserMiddleware`
+  до любого хендлера; добавлена миграцией `ALTER TABLE users ADD COLUMN
+  is_blocked INTEGER NOT NULL DEFAULT 0` в `_apply_migrations`.
 - `plans` (id PK, title, days, price_stars, traffic_gb, is_active, created_at) — тарифы;
   `CHECK days > 0`, `CHECK price_stars >= 0`, `CHECK traffic_gb >= 0`.
   `traffic_gb` — лимит трафика тарифа в ГБ (0 = без лимита), пробрасывается в
@@ -407,7 +466,18 @@ troubleshooting (зависший installer, неактивный сервис x
   xui_inbound_id, xui_client_uuid, xui_client_email, xui_sub_id (для
   public sub URL), expires_at, created_at,
   plan_id FK plans.id ON DELETE SET NULL,
-  status CHECK IN ('active','expired','revoked')).
+  status CHECK IN ('active','expired','revoked'),
+  `is_trial INTEGER NOT NULL DEFAULT 0`,
+  `auto_renew INTEGER NOT NULL DEFAULT 0`, `tg_sub_charge_id TEXT NULL`).
+  Колонка `is_trial` помечает пробную подписку (1) vs обычную/платную (0);
+  добавлена идемпотентной миграцией `ALTER TABLE subscriptions ADD COLUMN
+  is_trial INTEGER NOT NULL DEFAULT 0`. Правило «один trial на юзера»
+  обеспечивается partial-unique индексом `idx_subscriptions_one_trial
+  UNIQUE(user_id) WHERE is_trial=1`. Колонки `auto_renew` / `tg_sub_charge_id`
+  (миграции `ALTER TABLE ADD COLUMN`) обслуживают автопродление: `auto_renew=1`
+  включает автопродление, `tg_sub_charge_id` хранит `telegram_payment_charge_id`
+  нативной Telegram Star-подписки (нужен для `bot.edit_user_star_subscription`)
+  и отличает нативную подписку (non-NULL) от wallet-fallback (NULL).
 - `promo_redemptions` (id PK, promo_id FK ON DELETE CASCADE, user_id FK ON DELETE CASCADE,
   subscription_id FK ON DELETE SET NULL, redeemed_at).
 - `payments` (id PK, user_id FK ON DELETE CASCADE, subscription_id FK ON DELETE SET NULL,
@@ -415,15 +485,69 @@ troubleshooting (зависший installer, неактивный сервис x
   promo_id FK ON DELETE SET NULL, status CHECK IN ('paid','refunded'), created_at).
 - `traffic_snapshots` (id PK, subscription_id FK ON DELETE CASCADE, up, down, taken_at).
 - `subscription_notifications` (id PK, subscription_id FK ON DELETE CASCADE,
-  kind CHECK IN ('3d','1d','0d','expired'), sent_at,
-  UNIQUE(subscription_id, kind)) — ledger дедупликации для scheduler-job-ов
-  напоминаний и финального уведомления об истечении.
+  kind TEXT (free-text), sent_at, UNIQUE(subscription_id, kind)) — ledger
+  дедупликации для scheduler-job-ов напоминаний, финального уведомления об
+  истечении и трафик-алерта (`'traffic80'`). Допустимые значения kind
+  валидируются в коде (`subscriptions.NOTIFICATION_KINDS`:
+  `'3d'/'1d'/'0d'/'expired'/'traffic80'`), а не CHECK-constraint'ом — legacy
+  CHECK снимается терпимой data-preserving миграцией
+  `engine._relax_subscription_notifications_kind` (без destructive rebuild), что
+  позволяет добавлять новые kind без пересборки таблицы на существующих БД.
+- `wallet_transactions` (id PK, user_id FK users.id ON DELETE CASCADE,
+  type CHECK IN ('topup','spend','refund','referral_bonus','admin_grant','payment'),
+  amount (знаковый int — кредиты +, списания −), ref TEXT NULL, created_at) —
+  append-only ledger баланса в Stars. Баланс не хранится столбцом, всегда
+  пересчитывается как `COALESCE(SUM(amount),0)`. Идемпотентность — partial-unique
+  индекс `idx_wallet_ref UNIQUE(ref) WHERE ref IS NOT NULL` (глобальная защита от
+  replay/double-credit/double-spend по детерминированному `ref`).
+- `referrals` (id PK, referrer_id FK users.id ON DELETE CASCADE,
+  referred_id FK users.id ON DELETE CASCADE UNIQUE,
+  status CHECK IN ('pending','rewarded') DEFAULT 'pending', created_at,
+  rewarded_at NULL) — реферальный ledger: одна строка на приглашённого
+  (`referred_id` UNIQUE). Бонус приглашающему выплачивается ровно один раз —
+  атомарный `UPDATE WHERE status='pending'` (`referrals.try_mark_rewarded`).
+- `gift_codes` (id PK, code UNIQUE, plan_id FK plans.id ON DELETE SET NULL,
+  inbound_id, buyer_id FK users.id ON DELETE CASCADE,
+  payment_id FK payments.id ON DELETE SET NULL,
+  status CHECK IN ('active','redeemed','refunded') DEFAULT 'active',
+  redeemed_by FK users.id ON DELETE SET NULL,
+  subscription_id FK subscriptions.id ON DELETE SET NULL, created_at,
+  redeemed_at NULL) — подарочные коды: покупатель оплачивает, получатель
+  активирует. Жизненный цикл `active→redeemed/refunded`; атомарный claim под
+  `BEGIN IMMEDIATE` (`gift_codes.try_claim`/`try_redeem`).
+- `tickets` (id PK, user_id FK users.id ON DELETE CASCADE,
+  status CHECK IN ('open','answered','closed') DEFAULT 'open', created_at,
+  updated_at) — тикет поддержки (двусторонний чат через бота). Статус идёт
+  `open` (юзер написал, ждёт админа) → `answered` (админ ответил, ждёт юзера)
+  → `closed` (терминальный). `updated_at` бампится на каждое сообщение/смену
+  статуса для сортировки списка открытых по активности.
+- `ticket_messages` (id PK, ticket_id FK tickets.id ON DELETE CASCADE,
+  sender CHECK IN ('user','admin'), text, tg_message_id NULL, created_at) —
+  append-only транскрипт тикета.
+- `audit_log` (id PK, admin_id FK users.id ON DELETE SET NULL, action,
+  target_type NULL, target_id NULL, details TEXT NULL (JSON), created_at) —
+  append-only лог привилегированных админ-действий (plan/promo CRUD, user
+  revoke/toggle_admin/grant_sub/block, broadcast, ticket reply/close,
+  `stats.export`). `action` — короткий dotted-глагол (`'plan.create'`,
+  `'user.block'`).
+- `health_status` (id PK, component TEXT UNIQUE DEFAULT 'xui', status CHECK IN
+  ('up','down'), last_error TEXT NULL, changed_at) — последнее известное
+  состояние доступности 3x-ui панели (одна логическая строка на компонент).
+  `changed_at` сдвигается только при реальной смене состояния. Хранит prev-state
+  между запусками health-check-job-а, чтобы алертить админам только на смену
+  up↔down. Repo [app/db/repos/health.py](./app/db/repos/health.py).
 
 Индексы: `users(tg_id)`, `subscriptions(user_id)`, `subscriptions(user_id,status)`,
-`subscriptions(expires_at)`, `promos(code)`, `promo_redemptions(promo_id)`,
+`subscriptions(expires_at)`, partial-unique `idx_subscriptions_one_trial(user_id)
+WHERE is_trial=1`, `idx_subscriptions_tg_sub_charge(tg_sub_charge_id)`,
+`promos(code)`, `promo_redemptions(promo_id)`,
 `promo_redemptions(user_id)`, `payments(user_id)`, `payments(telegram_charge_id)`,
 `traffic_snapshots(subscription_id, taken_at)`,
-`subscription_notifications(subscription_id)`, `plan_inbounds(plan_id)`.
+`subscription_notifications(subscription_id)`, `plan_inbounds(plan_id)`,
+`wallet_transactions(user_id)`, partial-unique `idx_wallet_ref(ref) WHERE ref IS NOT NULL`,
+`referrals(referrer_id)`, `gift_codes(code)`, `gift_codes(buyer_id)`,
+`tickets(user_id)`, `tickets(status)`, `ticket_messages(ticket_id)`,
+`audit_log(created_at)`, `audit_log(admin_id)`, unique `health_status(component)`.
 
 ### [app/db/engine.py](./app/db/engine.py)
 Async-движок поверх `aiosqlite`.
@@ -434,13 +558,26 @@ Async-движок поверх `aiosqlite`.
 - `async def _apply_migrations(conn)` — два набора миграций плюс backfill:
   1. Идемпотентные `ALTER TABLE` (try/except на "duplicate column"/
      "already exists"). Текущий перечень: добавление
-     `subscriptions.xui_sub_id TEXT NOT NULL DEFAULT ''` и
-     `plans.traffic_gb INTEGER NOT NULL DEFAULT 0`.
+     `subscriptions.xui_sub_id TEXT NOT NULL DEFAULT ''`,
+     `plans.traffic_gb INTEGER NOT NULL DEFAULT 0`,
+     `users.lang TEXT NOT NULL DEFAULT 'ru'`,
+     `subscriptions.is_trial INTEGER NOT NULL DEFAULT 0`,
+     `subscriptions.auto_renew` / `subscriptions.tg_sub_charge_id` и
+     `users.is_blocked INTEGER NOT NULL DEFAULT 0`.
   2. `CREATE TABLE/INDEX IF NOT EXISTS` для таблиц, появившихся после
      первоначальной схемы. Применяются и на свежих БД (no-op, т.к.
      SQL идемпотентен), и при апгрейде существующих. Текущий перечень:
      `subscription_notifications` + индекс `idx_subscription_notifications_sub`,
-     `plan_inbounds` + индекс `idx_plan_inbounds_plan`.
+     `plan_inbounds` + индекс `idx_plan_inbounds_plan`,
+     `wallet_transactions` + индекс `idx_wallet_transactions_user` +
+     partial-unique `idx_wallet_ref(ref) WHERE ref IS NOT NULL`,
+     partial-unique `idx_subscriptions_one_trial(user_id) WHERE is_trial=1`,
+     `referrals` + индекс `idx_referrals_referrer`,
+     `gift_codes` + индексы `idx_gift_codes_code`/`idx_gift_codes_buyer`,
+     `tickets` + индексы `idx_tickets_user`/`idx_tickets_status`,
+     `ticket_messages` + индекс `idx_ticket_messages_ticket`,
+     `audit_log` + индексы `idx_audit_log_created`/`idx_audit_log_admin`,
+     `health_status` (unique-колонка `component`).
   3. Backfill `plan_inbounds` для legacy-планов без записей:
      `INSERT OR IGNORE INTO plan_inbounds (plan_id, inbound_id)
      SELECT id, ? FROM plans WHERE id NOT IN (SELECT plan_id FROM plan_inbounds)`
@@ -468,20 +605,38 @@ Async-движок поверх `aiosqlite`.
 ### [app/db/repos/users.py](./app/db/repos/users.py)
 Репозиторий пользователей.
 
-- Dataclass `User(id, tg_id, username, first_name, is_admin, created_at)`.
-- `User.from_row(row)` — построение из `aiosqlite.Row`.
-- `async def get_by_tg_id(conn, tg_id) -> User | None`.
-- `async def get_by_id(conn, user_id) -> User | None`.
+- Dataclass `User(id, tg_id, username, first_name, is_admin, created_at,
+  lang="ru", is_blocked=False)`. Поля `lang` / `is_blocked` объявлены с
+  дефолтами в конце, чтобы существующие позиционные конструкторы `User(...)`
+  в тестах не ломались. `is_blocked` помечает забаненного админом юзера.
+- `User.from_row(row)` — построение из `aiosqlite.Row`; терпит row без
+  колонок `lang` / `is_blocked` (дефолты `"ru"` / `False`).
+- `async def get_by_tg_id(conn, tg_id) -> User | None` (SELECT включает `lang`).
+- `async def get_by_id(conn, user_id) -> User | None` (SELECT включает `lang`).
 - `async def get_by_username(conn, username) -> User | None` —
   case-insensitive (`COLLATE NOCASE`); удаляет ведущий `@`, пустой
   запрос → `None`. Используется админским поиском по @handle.
-- `async def create(conn, tg_id, username, first_name, is_admin=False) -> User`.
-- `async def get_or_create(conn, tg_id, username, first_name) -> User` —
-  идемпотентен; `is_admin` синхронизируется с `settings.ADMIN_IDS`.
+- `async def create(conn, tg_id, username, first_name, is_admin=False, *,
+  language_code=None) -> User` — `language_code` нормализуется через
+  `resolve_lang` и пишется в колонку `lang`.
+- `async def get_or_create(conn, tg_id, username, first_name, *,
+  language_code=None) -> User` — идемпотентен; `is_admin` синхронизируется с
+  `settings.ADMIN_IDS`; `language_code` влияет только на создание НОВОГО
+  юзера (язык существующего не перетирается).
 - `async def list_all_tg_ids(conn) -> list[int]` — `tg_id` всех
   пользователей, старейшие первыми (`ORDER BY id`); используется
   админской рассылкой (`app.handlers.admin.broadcast`).
 - `async def set_admin(conn, user_id, value: bool)`.
+- `async def set_blocked(conn, user_id, blocked: bool)` — выставляет флаг
+  `is_blocked` (бан/разбан); вызывается из админской карточки юзера.
+- `async def is_blocked(conn, tg_id) -> bool` — узкий lookup по `tg_id`
+  (без полного `User`); используется `BlockedUserMiddleware`. Для неизвестного
+  юзера возвращает `False`.
+- `async def set_lang(conn, user_id, lang)` — сохраняет язык интерфейса
+  (нормализуется через `resolve_lang` защитно); используется роутером
+  выбора языка.
+- `async def get_lang(conn, user_id) -> str` — читает язык; для
+  отсутствующего юзера возвращает `DEFAULT_LANG`.
 
 ### [app/db/repos/plans.py](./app/db/repos/plans.py)
 Репозиторий тарифов.
@@ -538,12 +693,22 @@ Async-движок поверх `aiosqlite`.
 - Литерал `SubscriptionStatus = Literal["active","expired","revoked"]`.
 - Helpers `_to_iso(value)` (datetime/str → ISO-8601 UTC) и `_utcnow_iso()`.
 - Dataclass `Subscription(id, user_id, xui_inbound_id, xui_client_uuid,
-  xui_client_email, xui_sub_id, expires_at, created_at, plan_id, status)`.
+  xui_client_email, xui_sub_id, expires_at, created_at, plan_id, status,
+  is_trial=False, auto_renew=False, tg_sub_charge_id=None)`. `is_trial` —
+  флаг пробной подписки; `auto_renew` — включено ли автопродление;
+  `tg_sub_charge_id` — `telegram_payment_charge_id` нативной Star-подписки
+  (или `None` для wallet-fallback / разовой покупки). Все три — последние поля
+  с дефолтами, чтобы позиционные конструкторы в тестах не ломались; `from_row`
+  читает каждую колонку, если она присутствует в выборке.
 - Dataclass `TrafficSnapshot(id, subscription_id, up, down, taken_at)`.
 - `async def create(conn, user_id, xui_inbound_id, xui_client_uuid,
-  xui_client_email, expires_at, plan_id, xui_sub_id="") -> Subscription`
-  (status='active'; `xui_sub_id` — `subId` из 3x-ui для public
-  subscription URL).
+  xui_client_email, expires_at, plan_id, xui_sub_id="", is_trial=False)
+  -> Subscription` (status='active'; `xui_sub_id` — `subId` из 3x-ui для
+  public subscription URL). При `is_trial=True` insert подчиняется
+  partial-unique индексу `idx_subscriptions_one_trial` — второй trial для
+  того же юзера => `IntegrityError`.
+- `async def has_trial(conn, user_id) -> bool` — есть ли у юзера trial-подписка
+  (race-tolerant SELECT перед `activate_trial`; жёсткая гарантия — индекс).
 - `async def get(conn, sub_id) -> Subscription | None`.
 - `async def get_active_for_user(conn, user_id) -> Subscription | None` —
   последняя с `status='active' AND expires_at>now`.
@@ -559,6 +724,19 @@ Async-движок поверх `aiosqlite`.
   xui-client на конкретном inbound).
 - `async def extend(conn, sub_id, new_expires_at)` — меняет только `expires_at`.
 - `async def set_status(conn, sub_id, status)` — меняет только статус.
+- `async def set_auto_renew(conn, sub_id, value, tg_sub_charge_id=None)` —
+  переключает `auto_renew` и (опционально) пишет `tg_sub_charge_id`. При
+  `tg_sub_charge_id=None` пишется только `auto_renew`, поэтому выключение флага
+  не затирает ранее сохранённый charge id (нужен для повторного включения).
+- `async def list_auto_renew_due(conn, within_hours=24) -> list[Subscription]` —
+  active И `auto_renew=1` И `tg_sub_charge_id IS NULL` (только wallet-fallback,
+  нативные Star-подписки продлевает Telegram) И `expires_at<=now+within_hours`,
+  ORDER BY `expires_at ASC`. Драйвер `scheduler.auto_renew_job`.
+- `async def get_active_auto_renew_for(conn, user_id, plan_id) ->
+  Subscription | None` — активная нативная Star-подписка юзера по плану
+  (`auto_renew=1 AND tg_sub_charge_id IS NOT NULL`), latest-expiring первой.
+  Используется `buy.on_successful_payment` для поиска подписки, которую
+  продлевает очередной recurring-charge.
 - `async def list_expired_active(conn, now=None) -> list[Subscription]` —
   для expire-job-а: active И `expires_at<=now`.
 - `async def list_active(conn) -> list[Subscription]`.
@@ -566,13 +744,16 @@ Async-движок поверх `aiosqlite`.
   active в окне `(now, now+days]`.
 - `async def add_traffic_snapshot(conn, sub_id, up, down) -> TrafficSnapshot`.
 - `async def last_traffic_snapshot(conn, sub_id) -> TrafficSnapshot | None`.
-- Литерал `NotificationKind = Literal["3d","1d","0d","expired"]`.
+- Литерал `NotificationKind = Literal["3d","1d","0d","expired","traffic80"]` +
+  `NOTIFICATION_KINDS: frozenset` — допустимые kind (валидируются в коде, т.к.
+  колонка БД теперь free-text).
 - `async def try_mark_notification_sent(conn, sub_id, kind) -> bool` —
-  атомарный `INSERT OR IGNORE` в `subscription_notifications`. Возвращает
-  `True`, если строка была вставлена (значит можно слать сообщение), и
-  `False`, если запись `(sub_id, kind)` уже существовала. Используется
-  scheduler-job-ами для дедупликации напоминаний (UNIQUE-constraint
-  гарантирует, что каждое kind отправляется ровно один раз).
+  атомарный `INSERT OR IGNORE` в `subscription_notifications`; валидирует
+  `kind` против `NOTIFICATION_KINDS` (иначе `ValueError`). Возвращает `True`,
+  если строка была вставлена (значит можно слать сообщение), и `False`, если
+  запись `(sub_id, kind)` уже существовала. Используется scheduler-job-ами для
+  дедупликации напоминаний и трафик-алерта (UNIQUE-constraint гарантирует, что
+  каждое kind отправляется ровно один раз).
 
 ### [app/db/repos/payments.py](./app/db/repos/payments.py)
 Репозиторий Stars-платежей.
@@ -593,30 +774,157 @@ Async-движок поверх `aiosqlite`.
   `stars_amount` только для `status='paid'` в окне `[start,end]`.
 - `async def set_status(conn, payment_id, status)`.
 
+### [app/db/repos/wallet.py](./app/db/repos/wallet.py)
+Репозиторий append-only ledger баланса в Stars (таблица `wallet_transactions`).
+
+- Литерал `WalletTxnType = Literal["topup","spend","refund","referral_bonus",
+  "admin_grant","payment"]`.
+- Dataclass `WalletTxn(id, user_id, type, amount, ref, created_at)` + `from_row`.
+- `async def balance(conn, user_id) -> int` — `COALESCE(SUM(amount),0)` по строкам
+  пользователя (баланс не хранится столбцом).
+- `async def add(conn, *, user_id, type, amount, ref=None) -> WalletTxn | None` —
+  вставка строки ledger; `None` при дубле non-null `ref` (ловит `IntegrityError`
+  partial-unique `idx_wallet_ref`, без commit при дубле). Коммитит при успехе.
+- `async def get_by_ref(conn, ref) -> WalletTxn | None` — поиск по уникальному
+  non-null `ref` (используется pay-from-balance для восстановления id spend-txn).
+- `async def list_for_user(conn, user_id, limit=20) -> list[WalletTxn]` —
+  `ORDER BY created_at DESC, id DESC LIMIT`.
+
+### [app/db/repos/referrals.py](./app/db/repos/referrals.py)
+Репозиторий реферального ledger (таблица `referrals`).
+
+- Литерал `ReferralStatus = Literal["pending","rewarded"]`.
+- Dataclass `Referral(id, referrer_id, referred_id, status, created_at,
+  rewarded_at)` + `from_row`.
+- `async def create_pending(conn, *, referrer_id, referred_id) -> Referral | None`
+  — `INSERT OR IGNORE` против UNIQUE(referred_id); `None`, если приглашённый
+  уже привязан (привязка ровно один раз — первый `/start` побеждает).
+- `async def get(conn, referral_id) -> Referral | None`.
+- `async def get_by_referred(conn, referred_id) -> Referral | None` — лукап по
+  UNIQUE `referred_id`.
+- `async def try_mark_rewarded(conn, referred_id) -> Referral | None` —
+  атомарный `UPDATE … WHERE referred_id=? AND status='pending'`; возвращает
+  обновлённую строку при выигрыше (`rowcount=1`) или `None` (уже награждён/
+  гонка). Гарантирует выплату бонуса ровно один раз.
+- `async def count_for_referrer(conn, referrer_id) -> int` — число приглашённых
+  (любого статуса) для экрана «Пригласить друга».
+
+### [app/db/repos/gift_codes.py](./app/db/repos/gift_codes.py)
+Репозиторий подарочных кодов (таблица `gift_codes`).
+
+- Литерал `GiftCodeStatus = Literal["active","redeemed","refunded"]`.
+- Dataclass `GiftCode(id, code, plan_id, inbound_id, buyer_id, payment_id,
+  status, redeemed_by, subscription_id, created_at, redeemed_at)` + `from_row`.
+- `async def create(conn, *, code, plan_id, inbound_id, buyer_id,
+  payment_id=None) -> GiftCode` — INSERT `active`; UNIQUE на `code` =>
+  `IntegrityError` (retry в `gifts.make_gift_code`).
+- `async def get(conn, gift_id) -> GiftCode | None`.
+- `async def get_by_code(conn, code) -> GiftCode | None` — case-insensitive
+  (`COLLATE NOCASE`).
+- `async def try_redeem(conn, *, code, redeemed_by, subscription_id) -> bool` —
+  атомарный claim+link под `transaction()` (BEGIN IMMEDIATE), guarded
+  `UPDATE … WHERE status='active'`; `True`/`False`. Используется в тестах /
+  когда подписка уже создана.
+- `async def try_claim(conn, *, code, redeemed_by) -> GiftCode | None` —
+  claim-first: атомарный `active→redeemed` под `transaction()` без
+  `subscription_id` (link позже). `None`, если код отсутствует/уже занят/гонка.
+- `async def link_subscription(conn, gift_id, subscription_id)` — привязка
+  провижиненной подписки к claimed-коду.
+- `async def set_status(conn, gift_id, status)` — компенсация (откат в
+  `active` при XuiError) / refund.
+- `async def list_for_buyer(conn, buyer_id) -> list[GiftCode]`.
+
+### [app/db/repos/tickets.py](./app/db/repos/tickets.py)
+Репозиторий тикетов поддержки (таблицы `tickets` + `ticket_messages`).
+
+- Литералы `TicketStatus = Literal["open","answered","closed"]`,
+  `TicketSender = Literal["user","admin"]`.
+- Dataclass `Ticket(id, user_id, status, created_at, updated_at)` + `from_row`.
+- Dataclass `TicketMessage(id, ticket_id, sender, text, tg_message_id,
+  created_at)` + `from_row`.
+- `async def create_ticket(conn, user_id) -> Ticket` — открывает тикет
+  `'open'`.
+- `async def add_message(conn, ticket_id, sender, text, tg_message_id=None)
+  -> TicketMessage` — добавляет сообщение в транскрипт и бампит
+  `tickets.updated_at` (статус не меняет — это решает сервис).
+- `async def get(conn, ticket_id) -> Ticket | None`.
+- `async def list_open(conn) -> list[Ticket]` — все non-closed тикеты, по
+  `updated_at DESC` (открытые + отвеченные).
+- `async def list_for_user(conn, user_id) -> list[Ticket]` — newest first.
+- `async def get_open_for_user(conn, user_id) -> Ticket | None` — последний
+  non-closed тикет юзера (для follow-up в тот же тикет).
+- `async def set_status(conn, ticket_id, status)` — смена статуса + бамп
+  `updated_at`.
+- `async def list_messages(conn, ticket_id) -> list[TicketMessage]` —
+  транскрипт в хронологическом порядке.
+
+### [app/db/repos/audit.py](./app/db/repos/audit.py)
+Репозиторий аудит-лога админ-действий (таблица `audit_log`).
+
+- Dataclass `AuditEntry(id, admin_id, action, target_type, target_id, details,
+  created_at)` + `from_row`.
+- `async def add(conn, *, admin_id, action, target_type=None, target_id=None,
+  details=None) -> AuditEntry` — append записи; коммитит.
+- `async def get(conn, entry_id) -> AuditEntry | None`.
+- `async def list_recent(conn, *, limit=20, offset=0) -> list[AuditEntry]` —
+  newest first; пагинация для экрана «📜 Аудит».
+- `async def count(conn) -> int` — общее число записей.
+
+### [app/db/repos/health.py](./app/db/repos/health.py)
+Репозиторий статуса доступности 3x-ui панели (таблица `health_status`). Хранит
+prev-state между запусками health-check-job-а, чтобы алертить только на смену.
+
+- Dataclass `HealthRow(id, component, status, last_error, changed_at)` +
+  `from_row`; `HealthState = Literal['up','down']`; константа
+  `DEFAULT_COMPONENT = 'xui'`.
+- `async def get(conn, component='xui') -> HealthRow | None` — текущее состояние
+  (None до первой пробы).
+- `async def record(conn, *, status, last_error=None, component='xui') ->
+  tuple[HealthRow, bool]` — upsert; возвращает `(row, changed)`, где `changed`
+  True только при реальной смене состояния (включая первую пробу). `changed_at`
+  бампится лишь на флипе; в steady-state обновляется только `last_error`.
+
 ## Пакет `app/handlers/`
 
 ### [app/handlers/\_\_init\_\_.py](./app/handlers/__init__.py)
 Агрегатор роутеров и middleware верхнего уровня.
 
 - `def register_routers(dp: Dispatcher) -> None`:
-  1. Регистрирует `UserContextMiddleware` на `dp.update.outer_middleware` —
-     каждый апдейт получает `data['user']` до маршрутизации.
-  2. Подключает `start.router` (первым — `/start` должен срабатывать всегда).
-  3. Подключает `admin_router` (с собственной `AdminOnlyMiddleware` на
+  1. Регистрирует `BlockedUserMiddleware` на `dp.update.outer_middleware`
+     ПЕРВЫМ — апдейт забаненного юзера потребляется до любого хендлера и до
+     `UserContextMiddleware` (админы никогда не блокируются).
+  2. Регистрирует `UserContextMiddleware` на `dp.update.outer_middleware`
+     (после блокировки — aiogram запускает outer-middleware в порядке
+     регистрации) — каждый выживший апдейт получает `data['user']`.
+  3. Подключает `start.router` (первым — `/start` должен срабатывать всегда).
+  4. Подключает `admin_router` (с собственной `AdminOnlyMiddleware` на
      router-level).
-  4. Подключает `user_router` (catch-all для юзерских колбеков и
-     сообщений; FSM-стейты `BuyFlow`/`PromoActivate` живут в нём).
+  5. Подключает `user_router` (catch-all для юзерских колбеков и
+     сообщений; FSM-стейты `BuyFlow`/`PromoActivate`/`SupportFlow` живут в нём).
 
 ### [app/handlers/start.py](./app/handlers/start.py)
 Роутер команды `/start`.
 
 - `router = Router(name="start")`.
-- `async def cmd_start(message: Message, user: User | None = None)` —
-  хэндлер `CommandStart()`. Если `user.is_admin` — отвечает админ-меню
-  (`admin_main_menu()`); иначе показывает `user_main_menu(has_subscription)`
-  с приоритетом «Моя подписка» если `subs_repo.get_active_for_user`
-  вернул запись. `user` приходит из `data`, проброшенного
-  `UserContextMiddleware`.
+- Константы `_REF_PREFIX = "ref_"`, `_GIFT_PREFIX = "gift_"`.
+- `def _parse_deep_link(args: str | None) -> tuple[str, str] | None` —
+  классифицирует deep-link аргумент `/start`: `"ref_123" → ("ref","123")`,
+  `"gift_ABC" → ("gift","ABC")`. `None` для пустого/неизвестного аргумента
+  или пустого значения после префикса.
+- `async def _handle_ref_deep_link(value, user)` — привязка нового юзера к
+  инвайтеру из `ref_<tg_id>` через `referrals_service.register_referral`
+  (best-effort, не ломает `/start`).
+- `async def _handle_gift_deep_link(message, bot, code, user, lang) -> bool` —
+  активация `gift_<code>`: `gifts_service.redeem_gift` → `deliver_keys`
+  получателю + `notify_gift_buyer` (импорт из `handlers.user.gift`); при
+  `GiftRedeemError`/`XuiError` — сообщение об ошибке. `True` = ранний выход
+  (без приветствия поверх доставленных ключей).
+- `async def cmd_start(message, command=None, bot=None, user=None, lang=DEFAULT_LANG)` —
+  хэндлер `CommandStart()`. Парсит deep-link через `_parse_deep_link`:
+  `ref_<id>` → `_handle_ref_deep_link`; `gift_<code>` → `_handle_gift_deep_link`
+  (при успехе — early return). Если `user.is_admin` — админ-меню; иначе
+  `user_main_menu(has_subscription, can_trial=(TRIAL_DAYS>0 AND not
+  has_trial))` с приоритетом «Моя подписка».
 
 ### [app/handlers/admin/\_\_init\_\_.py](./app/handlers/admin/__init__.py)
 Агрегатор админ-роутера.
@@ -625,7 +933,7 @@ Async-движок поверх `aiosqlite`.
   `AdminOnlyMiddleware` на `admin_router.message` и
   `admin_router.callback_query`, включает суб-роутеры
   `menu.router`, `plans.router`, `promos.router`, `users.router`,
-  `stats.router`.
+  `stats.router`, `broadcast.router`, `tickets.router`, `audit.router`.
 - Экспортирует `admin_router`.
 
 ### [app/handlers/admin/menu.py](./app/handlers/admin/menu.py)
@@ -761,12 +1069,17 @@ Async-движок поверх `aiosqlite`.
   - `_format_payment(p)` — однострочный summary платежа
     (stars + charge_id + plan + promo + дата + статус).
   - `_build_card(target) -> (text, active_sub_id, is_admin)` — собирает
-    HTML-карточку: header (имя/tg_id/username/is_admin/created_at) +
+    HTML-карточку: header (имя/tg_id/username/is_admin/блокировка/created_at) +
     подписки (active с трафиком, inactive — компактный список до 5) +
     последние 10 платежей. Обрезает на 4000 символов.
-  - `_render_card_message(message, target, edit=True)` — рендер.
+  - `_render_card_message(message, target, edit=True)` — рендер (передаёт
+    `is_blocked=target.is_blocked` в `user_card_kb`).
   - `_resolve_user_query(query) -> User | None` — цифры → `get_by_tg_id`,
     иначе → `get_by_username` (case-insensitive).
+  - `_admin_id(user) -> int | None` — `users.id` действующего админа для
+    аудит-записей (берётся из инжектированного `data['user']`).
+  - `_resolve_plan_inbound(plan_id) -> int` — первый inbound тарифа (fallback
+    `settings.XUI_INBOUND_ID`) для ручной выдачи.
 - Хендлеры:
   - `cb_open_users` (`AdminCB area=users action=open`) — вход из админ-
     меню, ставит FSM `AdminSearchUser.waiting_query`, просит ввести
@@ -777,10 +1090,18 @@ Async-движок поверх `aiosqlite`.
   - `cb_card` (`UserCB action=card`) — открытие карточки по `users.id`.
   - `cb_revoke` (`UserCB action=revoke, id=sub_id, user_id=users.id`)
     — `services.subscriptions.revoke(xui, sub)`; защита
-    `sub.user_id == target.id`; перерисовка карточки.
+    `sub.user_id == target.id`; аудит `user.revoke_sub`; перерисовка карточки.
   - `cb_toggle_admin` (`UserCB action=toggle_admin, id=users.id`) —
-    flip `is_admin` через `users_repo.set_admin` (учитывается, что
-    `UserContextMiddleware` синхронизирует с `ADMIN_IDS`).
+    flip `is_admin` через `users_repo.set_admin`; аудит `user.toggle_admin`.
+  - `cb_toggle_block` (`UserCB action=toggle_block, id=users.id`) —
+    бан/разбан через `users_repo.set_blocked`; гварды «нельзя забанить себя»
+    и «нельзя забанить админа» (по флагу или `ADMIN_IDS`); аудит
+    `user.block`/`user.unblock`; перерисовка карточки.
+  - `cb_grant_open` → `cb_grant_plan` → `st_grant_days` — ручная выдача
+    подписки (FSM `AdminGrantSub`): выбор тарифа (`GrantCB`), затем срок
+    (число дней или «-» = срок тарифа); провижининг через
+    `subs_service.grant_subscription` (xui-first), `deliver_keys` + уведомление
+    юзеру (best-effort), аудит `user.grant_sub`.
 
 ### [app/handlers/admin/stats.py](./app/handlers/admin/stats.py)
 Админский экран «Статистика». Stateless — период несётся в callback.
@@ -813,6 +1134,12 @@ Async-движок поверх `aiosqlite`.
     периода.
   - `cb_refresh` (`StatsCB action=refresh`) — пересчёт того же периода
     (period передаётся в `callback_data.field`).
+  - `cb_export` (`StatsCB action=export`) — строит 3 CSV-блоба
+    (payments/subscriptions/users) через `app.services.exports`, шлёт каждый
+    как `BufferedInputFile`-документ в чат админа (`bot.send_document`,
+    caption `admin.export.caption_*`, имя `<dataset>-<stamp>.csv`), пишет
+    аудит-запись `stats.export`, отвечает тостом `admin.export.done`.
+    Best-effort: ошибка сборки/отправки → alert `admin.export.failed`.
 
 ### [app/handlers/admin/broadcast.py](./app/handlers/admin/broadcast.py)
 Админская рассылка поста всем пользователям. FSM `BroadcastCreate`
@@ -831,12 +1158,48 @@ Async-движок поверх `aiosqlite`.
     экраном подтверждения `broadcast_confirm_kb`.
   - `cb_send` (state `confirming`, `AdminCB area=broadcast action=send`) —
     мгновенно отвечает на callback, меняет сообщение на «⏳ Рассылка
-    запущена…», вызывает `broadcast_message` и редактирует сообщение в
-    итоговую сводку (получатели/доставлено/заблокировали/ошибки) с
-    `back_to_main_kb`. При отсутствии `post_*` в FSM — alert + сброс.
+    запущена…», вызывает `broadcast_message`, пишет аудит `broadcast.send`
+    (details: total/sent/blocked/failed) и редактирует сообщение в итоговую
+    сводку (получатели/доставлено/заблокировали/ошибки) с `back_to_main_kb`.
+    При отсутствии `post_*` в FSM — alert + сброс.
 - `_plural(n)` — дательное окончание «пользовател-» (ю/ям) для счётчика.
 - Отмена на любом шаге — общий `cancel_fsm` из `menu.py` (кнопка
   «✖ Отмена» переиспользует `AdminCB(area=main, action=cancel)`).
+
+> Аудит-вызовы `audit_service.log_action` встроены также в `plans.py`
+> (`plan.create`/`plan.edit`/`plan.deactivate`) и `promos.py`
+> (`promo.create`/`promo.deactivate`).
+
+### [app/handlers/admin/tickets.py](./app/handlers/admin/tickets.py)
+Админский экран «💬 Тикеты»: список открытых, карточка с транскриптом,
+двусторонний ответ/закрытие. FSM `AdminTicketReply.writing`.
+
+- `router = Router(name="admin_tickets")`. Константа `_MAX_HISTORY = 20`.
+- Helpers: `_safe`, `_status_label(status, lang)`, `_user_short(user)`,
+  `_render_list(message, lang, edit)`, `_build_card(ticket, lang)` (header +
+  последние 20 сообщений транскрипта), `_render_card(message, ticket, lang,
+  edit)`.
+- Хендлеры:
+  - `cb_open` / `cb_list` (`AdminCB area=tickets action=open` / `TicketCB
+    action=list`) — список открытых (`tickets_repo.list_open` + `tickets_list_kb`).
+  - `cb_card` (`TicketCB action=card, id`) — карточка тикета с историей.
+  - `cb_reply` (`TicketCB action=reply, id`) → `st_reply` — ответ админа:
+    `tickets_service.reply_admin` (статус → `answered`), ретрансляция владельцу
+    тикета (`support.reply_received` на его языке, best-effort), аудит
+    `ticket.reply`, перерисовка карточки.
+  - `cb_close` (`TicketCB action=close, id`) — `tickets_service.close_ticket`
+    (статус → `closed`), уведомление владельца, аудит `ticket.close`.
+
+### [app/handlers/admin/audit.py](./app/handlers/admin/audit.py)
+Админский экран «📜 Аудит»: пагинированный просмотр лога админ-действий.
+
+- `router = Router(name="admin_audit")`. Константа `_PAGE_SIZE = 10`.
+- Helpers: `_safe`, `_admin_label(admin_id)` (резолвит имя действующего
+  админа), `_target_suffix(entry)` (` → type#id`), `_details_suffix(entry)`
+  (компактный JSON-блок), `_render(message, page, lang, edit)`.
+- Хендлеры: `cb_open` (`AdminCB area=audit action=open` — первая страница),
+  `cb_page` (`AuditCB action=open, page` — запрошенная страница). Кнопки
+  prev/next показываются только при наличии страницы (через `audit_kb`).
 
 ## Пакет `app/keyboards/`
 
@@ -845,11 +1208,14 @@ Async-движок поверх `aiosqlite`.
 отдельных подмодулях `admin.py` / `user.py`.
 
 ### [app/keyboards/admin.py](./app/keyboards/admin.py)
-Inline-клавиатуры админ-флоу через `InlineKeyboardBuilder`.
+Inline-клавиатуры админ-флоу через `InlineKeyboardBuilder`. Все
+builder-функции принимают keyword `lang=DEFAULT_LANG` и локализуют тексты
+через `i18n.t` (namespace `admin.kb.*`); при `lang="ru"` строки идентичны
+прежним хардкодам.
 
 **CallbackData-фабрики** (prefix без `:` — это разделитель aiogram):
 - `AdminCB(prefix="adm", area, action)` — навигация
-  (`area` ∈ main/plans/promos/users/stats/**broadcast**,
+  (`area` ∈ main/plans/promos/users/stats/**broadcast**/**tickets**/**audit**,
   `action` ∈ open/back/cancel/**send**). `action=send` под
   `area=broadcast` подтверждает рассылку.
 - `PlanCB(prefix="admp", action, id=0, field="")` — list/create/card/
@@ -865,14 +1231,21 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
   выбранное значение (для `expires` это число дней от «сейчас»,
   0 = «бессрочно»).
 - `UserCB(prefix="admu", action, id=0, user_id=0)` — поиск/карточка/мутации
-  в админском «Пользователи»; `action` ∈ search/card/revoke/toggle_admin.
-  Для `revoke` — `id=sub_id`, `user_id=users.id`.
+  в админском «Пользователи»; `action` ∈ search/card/revoke/toggle_admin/
+  **grant_sub**/**toggle_block**. Для `revoke` — `id=sub_id`,
+  `user_id=users.id`; для `grant_sub`/`toggle_block` — `id=users.id`.
+- `GrantCB(prefix="admg", action, plan_id=0)` — выбор тарифа в ручной выдаче
+  (`action=plan`, под `AdminGrantSub.waiting_plan` — не конфликтует с `PlanCB`).
+- `TicketCB(prefix="admt", action, id=0)` — экран тикетов;
+  `action` ∈ list/card/reply/close; `id=tickets.id`.
+- `AuditCB(prefix="adma", action, page=0)` — пагинация аудита (`action=open`,
+  `page` 0-based).
 - `StatsCB(prefix="adms", action, field="")` — экран статистики;
   `action` ∈ open/period/refresh; `field` несёт период (`7d`/`30d`/`all`).
 
 **Функции:**
-- `admin_main_menu()` — 5 кнопок (Тарифы / Промокоды / Пользователи /
-  Статистика / Рассылка).
+- `admin_main_menu()` — 7 кнопок (Тарифы / Промокоды / Пользователи /
+  Статистика / Рассылка / 💬 Тикеты / 📜 Аудит).
 - `back_to_main_kb()` — одна кнопка «В меню».
 - `cancel_kb()` — одна кнопка «✖ Отмена» для FSM-wizard'ов.
 - `broadcast_confirm_kb()` — экран подтверждения рассылки: «✅ Разослать»
@@ -890,7 +1263,8 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
 - `plan_inbounds_select_kb(options, selected)` — multi-select inbounds
   (используется и в `PlanCreate.waiting_inbounds`, и в редактировании).
   Каждый `InboundOption` рендерится строкой `☑/☐ <remark> (port <port>)`
-  (`☑` если `option.id ∈ selected`); тап шлёт
+  (`☑` если `option.id ∈ selected`; пустой remark → fallback `Локация #<id>`);
+  тап шлёт
   `PlanCB(action="toggle_inbound", id=inbound_id)` для переключения
   множества в FSM data. Внизу `✅ Готово` (`PlanCB(action="inbounds_done")`)
   и `✖ Отмена` (`AdminCB(area="main", action="cancel")`).
@@ -922,18 +1296,44 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
     `0` = `expires_at=None`.
 - `promo_card_kb(promo_id, is_active=True)` — Redemptions / Деактивировать
   / Назад.
-- `user_card_kb(user_id, *, active_sub_id=None, is_admin=False)` — кнопки
-  карточки пользователя: «Отозвать активную подписку» (если
-  `active_sub_id`), «Сделать/Снять админа», «Найти другого», «В меню».
+- `user_card_kb(user_id, *, active_sub_id=None, is_admin=False,
+  is_blocked=False)` — кнопки карточки пользователя: «Отозвать активную
+  подписку» (если `active_sub_id`), «🎁 Выдать подписку», «Сделать/Снять
+  админа», «🚫 Заблокировать»/«🟢 Разблокировать» (по `is_blocked`),
+  «Найти другого», «В меню». Кнопки grant/block скрыты при `user_id == 0`
+  (плейсхолдер «не найден»).
+- `grant_plans_kb(plans)` — выбор тарифа для ручной выдачи (`GrantCB`).
+- `tickets_list_kb(tickets)` — список открытых тикетов (`tickets`: пары
+  `(ticket_id, label)`; тап → `TicketCB(action='card')`) + «В меню».
+- `ticket_card_kb(ticket_id, *, is_closed=False)` — «✍ Ответить» / «✅ Закрыть
+  тикет» (скрыты при `is_closed`) + «◀ К списку».
+- `audit_kb(*, page=0, has_prev=False, has_next=False)` — prev/next (при
+  наличии страницы) + «В меню».
 - `stats_kb(active_period="30d")` — переключатель 7д/30д/Всё время
-  (текущий помечен «· text ·»), «🔄 Обновить» (period в payload), «В меню».
+  (текущий помечен «· text ·»), «🔄 Обновить» (period в payload),
+  «📥 Скачать CSV» (`StatsCB(action="export", field="all")`, `admin.export.btn`),
+  «В меню».
 
 callback_data всегда укладывается в Telegram-лимит 64 байта.
 
 ## Пакет `app/middlewares/`
 
 ### [app/middlewares/\_\_init\_\_.py](./app/middlewares/__init__.py)
-Re-export `UserContextMiddleware` и `AdminOnlyMiddleware`.
+Re-export `UserContextMiddleware`, `AdminOnlyMiddleware`, `BlockedUserMiddleware`.
+
+### [app/middlewares/blocked.py](./app/middlewares/blocked.py)
+Outer dispatcher-middleware `BlockedUserMiddleware(BaseMiddleware)`.
+
+- `__call__` — извлекает `from_user` (через `user_ctx._extract_tg_user`), для
+  апдейта без юзера пропускает. **Админы (`settings.ADMIN_IDS`) никогда не
+  блокируются.** Для остальных вызывает `users_repo.is_blocked(conn, tg_id)`
+  (узкий lookup, не зависит от `data['user']`); забаненному — короткий
+  отказ (`blocked.refused`: реплай на Message / alert на CallbackQuery) и
+  апдейт потребляется (`None`). При ошибке БД — fail-open (апдейт проходит).
+- `_refuse(event)` — отправка отказа на message/callback из сырого Update.
+
+Регистрируется ПЕРВЫМ (`dp.update.outer_middleware`), до
+`UserContextMiddleware` — см. `handlers.register_routers`.
 
 ### [app/middlewares/user_ctx.py](./app/middlewares/user_ctx.py)
 Outer dispatcher-middleware `UserContextMiddleware(BaseMiddleware)`.
@@ -944,9 +1344,11 @@ Outer dispatcher-middleware `UserContextMiddleware(BaseMiddleware)`.
   pre_checkout_query / poll_answer / my_chat_member / chat_member /
   chat_join_request). Возвращает `None` если нет.
 - `__call__` — открывает соединение через `get_conn`, вызывает
-  `users_repo.get_or_create(conn, tg_id, username, first_name)` и
-  пишет результат в `data['user']`. На ошибках БД логирует и ставит
-  `data['user'] = None` — апдейт продолжает движение.
+  `users_repo.get_or_create(conn, tg_id, username, first_name,
+  language_code=tg_user.language_code)` и пишет результат в `data['user']`,
+  а язык юзера — в `data['lang']` (хендлеры передают его в `i18n.t`). На
+  отсутствии `from_user` или ошибке БД: `data['user'] = None`,
+  `data['lang'] = DEFAULT_LANG` — апдейт продолжает движение.
 
 Регистрируется как `dp.update.outer_middleware(UserContextMiddleware())`.
 
@@ -991,6 +1393,12 @@ FSM-стейты админ-флоу (aiogram `StatesGroup`).
   `waiting_post` (админ присылает сообщение; его `chat_id`/`message_id`
   кладутся в FSM data) → `confirming` (подтверждение копирует пост всем
   через `app.services.broadcast.broadcast_message`).
+- `AdminTicketReply(writing)` — единичный стейт ответа админа на тикет
+  (`ticket_id` в FSM data); сообщение → `tickets_service.reply_admin` +
+  ретрансляция владельцу.
+- `AdminGrantSub(waiting_plan, waiting_days)` — wizard ручной выдачи
+  подписки: выбор тарифа (`GrantCB`) → срок (число дней или «-» = срок
+  тарифа); `user_id`/`plan_id`/`inbound_id` в FSM data.
 
 ## Пакет `app/xui/`
 
@@ -1099,6 +1507,13 @@ Async REST-клиент панели 3x-ui плюс билдеры vless-ссы�
 
 - `build_subscription_url(sub_id) -> str` — джойнит
   `settings.XUI_SUB_BASE_URL` с `sub_id`, нормализуя слеши.
+- `build_import_links(sub_url) -> dict[str,str]` — deep-link-схемы импорта
+  подписки в клиенты: `happ://import/<encoded>`,
+  `v2rayng://install-config?url=<percent-encoded>`,
+  `hiddify://import/<encoded>`, `streisand://import/<encoded>` (ключи
+  `happ`/`v2rayng`/`hiddify`/`streisand`). Для пустого `sub_url` → `{}`. Telegram
+  не принимает кастомные схемы в кнопках/href, поэтому показываются как копируемые
+  `<code>`-блоки в гайде подключения.
 - `_find_client(inbound, client_uuid) -> dict` — поиск клиента в
   `inbound.settings.clients` по uuid.
 - `_stream_params(stream) -> dict[str,str]` — извлекает query-параметры
@@ -1124,44 +1539,82 @@ Async REST-клиент панели 3x-ui плюс билдеры vless-ссы�
 Фоновые задачи бота на `APScheduler` (`AsyncIOScheduler` + `CronTrigger`).
 
 - Литерал `ReminderKind = Literal["3d","1d","0d"]`.
-- Константа-словарь `_REMINDER_TEXTS: dict[ReminderKind, str]` — тексты
-  предупреждений «истекает через 3 дня / завтра / сегодня».
-- Константа `_EXPIRED_TEXT` — финальное сообщение «подписка истекла».
+- Helper `_reminder_text(kind, lang=DEFAULT_LANG)` — локализованный текст
+  напоминания «истекает через 3 дня / завтра / сегодня» (ключ
+  `reminder.<kind>` через `i18n.t`).
+- Helper `_expired_text(lang=DEFAULT_LANG)` — финальное сообщение «подписка
+  истекла» (ключ `reminder.expired`).
 - Helper `_parse_iso(value) -> datetime` — парсит хранящиеся в БД
   ISO-строки (`YYYY-MM-DD HH:MM:SS` или с `+00:00`) в aware-datetime UTC.
 - Helper `_days_left(expires_at, now) -> int` — целое число суток до
   дедлайна (отрицательное при просрочке; floor через `timedelta.days`).
 - Helper `_kind_for_days_left(days_left) -> ReminderKind | None` —
   маппинг: `[3,4)` → `3d`, `[1,2)` → `1d`, `0` → `0d`, иначе `None`.
-- Helper `_safe_send(bot, tg_id, text)` — `bot.send_message` с глушением
-  `TelegramAPIError` (юзер мог заблокировать бота).
+- Helper `_safe_send(bot, tg_id, text, reply_markup: InlineKeyboardMarkup | None = None)` —
+  `bot.send_message` с глушением `TelegramAPIError` (юзер мог заблокировать
+  бота). Опциональный `reply_markup` — inline-клавиатура (кнопка «Продлить»
+  и трафик-алерты Ф4); при `None` поведение существующих вызовов не меняется.
 
 - `async def expire_check_job(bot)` — раз в час: для каждой подписки из
   `subs_repo.list_expired_active(now)` вызывает
   `xui.update_client(enable=False)`, ставит `set_status(sub.id, 'expired')`,
   через `try_mark_notification_sent('expired')` гарантирует однократную
-  отправку финального уведомления юзеру (`_EXPIRED_TEXT`). Все ошибки
-  (xui / БД / Telegram) логируются и не валят цикл.
+  отправку финального уведомления юзеру (`_expired_text(user.lang)`). Все
+  ошибки (xui / БД / Telegram) логируются и не валят цикл.
 - `async def reminders_job(bot)` — раз в сутки: `list_expiring_in(days=3)`,
   для каждой подписки вычисляет `_days_left`, маппит в `kind`, через
   `try_mark_notification_sent(sub_id, kind)` дедуплицирует и шлёт
-  соответствующий `_REMINDER_TEXTS[kind]`.
+  `_reminder_text(kind, user.lang)` (язык из `user.lang`) с прикреплённой
+  `renew_reminder_kb(sub.id)` — кнопкой «🔁 Продлить в 1 тап»
+  (`BuyCB(action='extend', sub_id=...)`), ведущей в существующий extend-флоу.
 - `async def traffic_snapshot_job(bot)` — раз в 6 часов: для каждой
   `subs_repo.list_active(conn)` вызывает `xui.get_client_traffics(email)`,
-  затем `subs_repo.add_traffic_snapshot(sub.id, up, down)`. Пустой ответ
-  (клиент в панели не найден) пропускается. `bot` принимается ради единого
-  callable-signature, не используется.
+  затем `subs_repo.add_traffic_snapshot(sub.id, up, down)`. После записи —
+  `_maybe_alert_traffic(bot, sub, up+down)`: сравнивает накопленный трафик с
+  квотой `plan.traffic_gb × _BYTES_PER_GB` и при пороге
+  `settings.TRAFFIC_ALERT_PERCENT` (80) шлёт одноразовый алерт (`traffic.alert`)
+  с `renew_reminder_kb`, дедуп через `subscription_notifications` kind
+  `'traffic80'`. Безлимитные тарифы (`traffic_gb=0`), отсутствие плана или
+  `percent=0` алерт пропускают. Каждый шаг изолирован try/except.
+- `async def _maybe_alert_traffic(bot, sub, total) -> bool` — helper
+  трафик-алерта (см. выше); возвращает `True`, если алерт отправлен.
+- `async def auto_renew_job(bot)` — раз в сутки в 09:00 UTC (раньше reminders):
+  fallback-автопродление списанием с баланса. Гейтится
+  `settings.AUTO_RENEW_ENABLED`; затем `list_auto_renew_due(within_hours=24)`
+  (только wallet-fallback подписки) и делегирует каждую `_renew_one_from_wallet`
+  под per-sub try/except.
+- `async def _renew_one_from_wallet(bot, sub) -> bool` — продлевает одну
+  подписку: резолвит план+цену (`billing.calc_price`), `wallet.try_spend(ref=
+  f'autorenew:<sub>:<expires_at>')` (replay-safe), при нехватке баланса — DM;
+  на успех — `create_or_extend(extend_sub_id=sub.id)` (xui-first, рефанд на
+  `XuiError`), синтетический payment `wallet:autorenew:<txn_id>`, DM
+  `autorenew.renewed_dm`.
+- `async def _alert_admins(bot, text)` — веерная рассылка health-алерта в DM
+  каждому из `settings.ADMIN_IDS` + (если задан) `settings.SUPPORT_CHAT_ID`;
+  per-recipient через `_safe_send` (best-effort).
+- `async def health_check_job(bot)` — каждые ~30 минут: получает xui-клиент
+  (ошибка получения = `down`), запускает `health_service.check_xui_health`,
+  маппит результат в `'up'`/`'down'`, персистит через
+  `health_repo.record(...)` (возвращает `changed`), обновляет
+  `health_service.set_cached_status` для индикатора локаций и шлёт алерт
+  админам (`health.alert_up`/`health.alert_down`) ТОЛЬКО при `changed=True` —
+  ровно одно уведомление на смену up↔down, без спама. Тело в безопасной
+  обёртке: любая ошибка логируется и не пробрасывается.
 - Helper `_wrap(job, bot, name)` — closure-обёртка, которая ловит
   любые исключения job-а и логирует через loguru (чтобы один упавший
   job не остановил остальные).
 - `def setup_scheduler(bot) -> AsyncIOScheduler` — создаёт scheduler
-  с `timezone='UTC'` и регистрирует три job-а:
+  с `timezone='UTC'` и регистрирует пять job-ов:
   - `expire_check`: `CronTrigger(minute=0)` каждый час; `coalesce=True`,
     `misfire_grace_time=30*60`, `max_instances=1`.
   - `reminders`: `CronTrigger(hour=10, minute=0)` раз в сутки;
     `coalesce=True`, `misfire_grace_time=6*60*60`, `max_instances=1`.
   - `traffic_snapshots`: `CronTrigger(hour='0,6,12,18', minute=5)`;
     `coalesce=True`, `misfire_grace_time=60*60`, `max_instances=1`.
+  - `auto_renew`: `CronTrigger(hour=9, minute=0)` раз в сутки;
+    `coalesce=True`, `misfire_grace_time=6*60*60`, `max_instances=1`.
+  - `health_check`: `CronTrigger(minute='0,30')` каждые 30 минут;
+    `coalesce=True`, `misfire_grace_time=10*60`, `max_instances=1`.
   Не запускает scheduler — старт делает caller (`app/main.py`).
 
 ## Каталог `scripts/`
@@ -1214,26 +1667,45 @@ Standalone smoke-тест 3x-ui REST-клиента.
 ### [app/services/billing.py](./app/services/billing.py)
 Расчёт цены и подготовка Stars-invoice.
 
-- Константы `_STARS_MIN = 1` (TG требует amount>=1), `_PAYLOAD_BYTE_LIMIT = 128`.
+- Константы `_STARS_MIN = 1` (TG требует amount>=1), `_PAYLOAD_BYTE_LIMIT = 128`,
+  `SUBSCRIPTION_PERIOD_SECONDS = 2_592_000` (30 дней — единственное
+  допустимое значение `subscription_period` для нативных Star-подписок).
+- Тип `InvoiceKind = Literal["buy", "topup", "gift", "sub"]` —
+  дискриминатор вида invoice (ключ `"k"` в payload).
 - Dataclass `InvoicePrice(stars, raw_discount, extra_days)`.
+- Dataclass `InvoiceContext(plan_id, promo_id, inbound_id, sub_id,
+  kind="buy", gift=0, topup=0)` (`frozen`, `slots`) — структурированный
+  декод payload. **Итерируется** как legacy 4-tuple
+  `(plan_id, promo_id, inbound_id, sub_id)` через `__iter__`, чтобы старые
+  распаковки продолжали работать. `kind` — точка ветвления хендлеров
+  оплаты (`buy`/`topup`/`gift`/`sub`).
 - `def calc_price(plan, promo) -> InvoicePrice` — обёртка над
   `promos.compute_discount` + `max(_STARS_MIN, final_price)`.
+- `def _encode_payload(obj) -> str` — общий сериализатор payload (компактный
+  JSON + guard на `_PAYLOAD_BYTE_LIMIT`); используется всеми билдерами.
 - `def build_invoice_payload(plan_id, promo_id, inbound_id, *, sub_id: int = 0) -> str` —
-  компактный JSON `{"p":..., "r": ... | null, "i": ..., "s": ...}` с
-  короткими ключами (<128 байт даже для крупных id); raise `ValueError`
-  если payload не вмещается. Ключ `"s"` (sub_id-to-extend) **опускается
-  целиком** при `sub_id == 0` (свежая покупка), чтобы не раздувать
-  payload в hot-path-е «новая подписка»; legacy-payloads без `"s"`
-  парсятся как `sub_id=0`.
-- `def parse_invoice_payload(payload) -> tuple[int, int | None, int, int]` —
-  обратная функция, возвращает 4-tuple
-  `(plan_id, promo_id, inbound_id, sub_id)`. Принимает как новые ключи
-  (`p`/`r`/`i`/`s`), так и legacy (`plan_id`/`promo_id` без `i`/`s`);
-  при отсутствии `i` — fallback на `settings.XUI_INBOUND_ID` с
-  WARNING-логом; при отсутствии `s` — `sub_id=0`. `ValueError` на
-  малформность; `promo_id=0` нормализуется в `None`. `sub_id=0`
-  означает «новая подписка» для handler-а; `sub_id>0` означает
-  «продлить именно эту подписку».
+  payload `kind="buy"`: компактный JSON `{"p":..., "r": ... | null, "i": ..., "s": ...}`
+  с короткими ключами (<128 байт даже для крупных id); **без** ключа `"k"`
+  (legacy без `"k"` декодится как `buy`). Ключ `"s"` (sub_id-to-extend)
+  **опускается целиком** при `sub_id == 0` (свежая покупка); legacy-payloads
+  без `"s"` парсятся как `sub_id=0`.
+- `def build_topup_payload(stars) -> str` — payload пополнения кошелька
+  `{"k":"topup","t":stars}` (Ф2); проверяет `stars >= _STARS_MIN`.
+- `def build_gift_payload(plan_id, inbound_id, promo_id=None) -> str` —
+  payload покупки подарка `{"k":"gift","g":1,"p":...,"r":...|null,"i":...}` (Ф3).
+- `def build_subscription_payload(plan_id, inbound_id, *, sub_id=0) -> str` —
+  payload нативной Star-подписки `{"k":"sub","p":...,"i":...,"s":...?}` без
+  promo-ключа (Ф4); `"s"` опускается при `sub_id=0`.
+- `def parse_invoice_payload(payload) -> InvoiceContext` —
+  обратная функция, возвращает `InvoiceContext` (итерируется как legacy
+  4-tuple). Дискриминатор `"k"`: отсутствует → `kind="buy"` (вся
+  legacy-совместимость); `topup` → плата за кошелёк (несёт `"t"`, без
+  plan/inbound); `gift` → подарок (`g=1`); `sub` → нативная Star-подписка.
+  Принимает как новые ключи (`p`/`r`/`i`/`s`), так и legacy
+  (`plan_id`/`promo_id` без `i`/`s`); при отсутствии `i` — fallback на
+  `settings.XUI_INBOUND_ID` с WARNING-логом; при отсутствии `s` — `sub_id=0`.
+  `ValueError` на малформность и неизвестный `kind`; `promo_id=0`
+  нормализуется в `None`.
 - Helpers `_invoice_title(plan)` (формат `VPN · <title>`),
   `_invoice_description(plan, price, promo, *, sub_id=0)` — упоминает
   бонусные дни и тип скидки; при `sub_id > 0` заголовок описания
@@ -1247,6 +1719,40 @@ Standalone smoke-тест 3x-ui REST-клиента.
   новая, >0 = extend конкретной подписки). Оба значения
   прокидываются в payload, чтобы пост-оплатный provisioning знал
   целевой inbound и (опционально) подписку-получатель.
+- `async def create_subscription_invoice_link(bot, plan, *, inbound_id, sub_id=0) -> str` —
+  нативная recurring Star-подписка через
+  `bot.create_invoice_link(currency="XTR", provider_token="",
+  subscription_period=SUBSCRIPTION_PERIOD_SECONDS=2592000,
+  payload=build_subscription_payload(...))`. `subscription_period` есть
+  ТОЛЬКО у `create_invoice_link`, не у `send_invoice`. Промо к recurring
+  не применяются. Используется в Ф4.
+- `async def send_gift_invoice(bot, chat_id, plan, promo, *, inbound_id) -> Message` —
+  Stars-invoice на покупку подарочного кода. Та же цена что `send_invoice`
+  (промо применяется), но payload через `build_gift_payload` (`kind="gift"`,
+  `gift=1`) — `on_successful_payment` минтит код вместо подписки покупателю.
+  Всегда новая подписка получателю (без `sub_id`/extend).
+- `async def send_topup_invoice(bot, chat_id, stars, *, lang=DEFAULT_LANG) -> Message` —
+  Stars-invoice пополнения кошелька. Payload через `build_topup_payload`
+  (`kind="topup"`), без plan/inbound. `stars=max(_STARS_MIN, stars)`,
+  `LabeledPrice=stars`, `currency="XTR"`. Тексты title/label/description
+  локализованы через `t()` (namespace `wallet.invoice_*`). Кредит баланса
+  происходит позже в `on_successful_payment` при подтверждении оплаты.
+
+### [app/services/wallet.py](./app/services/wallet.py)
+Сервис баланса в Stars поверх `app.db.repos.wallet` — идемпотентность по `ref`.
+
+- `async def credit(conn, user_id, amount, *, type, ref=None) -> bool` —
+  начисление `+amount` (через `wallet_repo.add`). `False` при дубле `ref`
+  (повторный top-up/реферал-бонус не начисляет дважды), `ValueError` при
+  `amount <= 0`.
+- `async def try_spend(conn, user_id, amount, *, ref) -> bool` — атомарное
+  списание под `app.db.engine.transaction` (`BEGIN IMMEDIATE`): пересчёт
+  баланса + raw `INSERT 'spend'` с `amount=-amount` в одной транзакции (не
+  использует `wallet_repo.add`, чтобы не коммитить рано и не разрывать границу
+  транзакции). `False` при нехватке баланса (overdraw) ИЛИ дубле `ref` (replay —
+  `IntegrityError` ловится снаружи `transaction`). `BEGIN IMMEDIATE` сериализует
+  писателей → защита от double-spend; детерминированный `ref` → защита от replay.
+  `ref` обязателен; `ValueError` при `amount <= 0`.
 
 ### [app/services/inbounds.py](./app/services/inbounds.py)
 Кэшированный список доступных 3x-ui inbound-ов для user/admin флоу.
@@ -1313,6 +1819,16 @@ Standalone smoke-тест 3x-ui REST-клиента.
   Guard: если строка active, но `expires_at < now`, новая экспирация
   отсчитывается от `now`, а не от истёкшей точки.
   `total_gb` применяется ТОЛЬКО при свежем provisioning.
+- `class TrialAlreadyUsedError(Exception)` — поднимается `activate_trial`,
+  когда у юзера уже есть trial (handler маппит в локализованное сообщение).
+- `async def activate_trial(conn, xui, user, *, inbound_id, days, traffic_gb) -> Subscription` —
+  провижинит пробную подписку (один trial на юзера). Переиспользует
+  `_provision` (xui-first) с `plan_id=None`, `is_trial=True`. Защита в два
+  слоя: (1) дешёвый pre-check `subs_repo.has_trial` → `TrialAlreadyUsedError`
+  до обращения к панели (без orphan-клиента); (2) backstop — `IntegrityError`
+  от partial-unique `idx_subscriptions_one_trial` при гонке → тот же
+  `TrialAlreadyUsedError`. `_provision` принимает доп. kwarg `is_trial=False`
+  и прокидывает его в `subs_repo.create`.
 - `async def revoke(xui, sub) -> None` — `update_client(enable=False)`
   (best-effort, ловит исключения и логирует) + `subs_repo.set_status(sub.id, "revoked")`.
 
@@ -1349,6 +1865,29 @@ Standalone smoke-тест 3x-ui REST-клиента.
 - `async def payments_count_period(conn, date_from, date_to) -> int` —
   `COUNT(*)` по `payments` со `status='paid'` в `[date_from, date_to]`.
 
+### [app/services/exports.py](./app/services/exports.py)
+CSV-экспорт основных таблиц для админ-дашборда (кнопка «📥 Скачать CSV»).
+
+- `async def export_payments_csv(conn) -> bytes`,
+  `export_subscriptions_csv(conn) -> bytes`, `export_users_csv(conn) -> bytes`.
+- Stdlib `csv` + `io.StringIO`, кодировка `utf-8-sig` (BOM — корректная
+  кириллица в Excel). Каждый экспортёр пишет фиксированный заголовок, затем
+  `SELECT ... ORDER BY id`; `NULL` → пустая ячейка. Экспорт подписок НЕ включает
+  `xui_client_uuid` (секрет подключения). Потребитель — `cb_export` в
+  [app/handlers/admin/stats.py](./app/handlers/admin/stats.py).
+
+### [app/services/health.py](./app/services/health.py)
+Проба доступности 3x-ui панели + process-local snapshot для индикатора локаций.
+
+- `async def check_xui_health(xui) -> tuple[bool, str | None]` — лёгкая проба
+  через `list_inbounds`, обёрнутая в `asyncio.wait_for(timeout=10s)`. Ловит
+  `TimeoutError` / `XuiError` / любое исключение → `(False, reason)`; иначе
+  `(True, None)`. Проба никогда не пробрасывает исключение.
+- `def get_cached_status() -> HealthState | None` /
+  `def set_cached_status(status)` — process-local snapshot последнего состояния
+  (`'up'`/`'down'`/`None`). Обновляется scheduler-job-ом после каждой пробы;
+  читается `location_indicator` в клавиатурах для 🟢/🔴/⚪ без обращения к панели.
+
 ### [app/services/broadcast.py](./app/services/broadcast.py)
 Веерная рассылка одного поста всей аудитории (админская «Рассылка»).
 
@@ -1365,14 +1904,81 @@ Standalone smoke-тест 3x-ui REST-клиента.
   получателя. Между отправками — `asyncio.sleep(throttle)` как защита от
   лимита ~30 msg/s (в тестах `throttle=0`).
 
+### [app/services/referrals.py](./app/services/referrals.py)
+Сервис реферальной программы.
+
+- `def parse_ref_arg(arg) -> int | None` — извлекает tg_id инвайтера из
+  `ref_<tg_id>` (None при невалидном/нечисловом/нулевом значении).
+- `async def register_referral(conn, *, referrer_tg_id, referred) -> bool` —
+  привязывает приглашённого к инвайтеру: защита self-referral
+  (`referrer.id == referred.id`), unknown-inviter (нет юзера с таким tg_id),
+  «уже привязан» (повторный `/start` — no-op, первый инвайтер сохраняет
+  кредит). Под капотом `referrals_repo.create_pending` (INSERT OR IGNORE).
+- `async def reward_referrer_after_first_payment(conn, bot, *, referred) -> bool`
+  — после первого платежа приглашённого: skip если `REFERRAL_BONUS_STARS=0`;
+  атомарный `try_mark_rewarded` (None при гонке/уже-награждён → stop);
+  `wallet.credit(referrer_id, bonus, type='referral_bonus',
+  ref=f"referral:{referred_id}")` (вторая идемпотентность по UNIQUE wallet ref)
+  + DM пригласившему (best-effort). Вызывается в `buy.on_successful_payment`
+  (Step 6b, best-effort, не ломает доставку ключей).
+
+### [app/services/gifts.py](./app/services/gifts.py)
+Сервис подарочных подписок.
+
+- `class GiftRedeemError(Exception)` с `reason: "not_found" | "not_active"`.
+- `async def make_gift_code(conn, *, plan_id, inbound_id, buyer_id,
+  payment_id=None) -> GiftCode` — минт кода `GIFT-`+8 hex (`secrets.token_hex`),
+  retry до 5 раз на `IntegrityError` (UNIQUE-коллизия кода).
+- `async def redeem_gift(conn, xui, *, code, redeemer) -> tuple[GiftCode,
+  Subscription]` — claim-first с компенсацией: `get_by_code` (active?), резолв
+  плана (deleted → `GiftRedeemError("not_active")` до claim), `try_claim`
+  (атомарный `active→redeemed`; None → `not_active`),
+  `create_or_extend(extend_sub_id=None, inbound_id=code.inbound_id, promo=None)`
+  (xui-first), `link_subscription`. При `XuiError` — `set_status(...,'active')`
+  (компенсация, код снова redeemable) + re-raise.
+
+### [app/services/tickets.py](./app/services/tickets.py)
+Сервис двустороннего флоу тикетов поддержки. Владеет машиной статусов
+(хендлеры не знают о переходах):
+
+- `async def open_ticket(conn, user, text, *, tg_message_id=None) ->
+  tuple[Ticket, TicketMessage]` — reuse-or-create: переиспользует
+  non-closed тикет юзера или создаёт новый; добавляет сообщение и ставит
+  статус `'open'`.
+- `async def reply_user(conn, ticket_id, text, *, tg_message_id=None) ->
+  TicketMessage` — follow-up юзера в существующий тикет, статус `'open'`.
+- `async def reply_admin(conn, ticket_id, text, *, tg_message_id=None) ->
+  TicketMessage` — ответ админа, статус `'answered'`.
+- `async def close_ticket(conn, ticket_id)` — статус `'closed'` (идемпотентно).
+
+Framework-agnostic (только БД); ретрансляцию в Telegram делают хендлеры.
+
+### [app/services/audit.py](./app/services/audit.py)
+Сервис аудит-трейла админ-действий.
+
+- `async def log_action(conn, admin_id, action, target_type=None,
+  target_id=None, details=None) -> AuditEntry | None` — записывает действие
+  в `audit_log`. **Crash-safe**: любое исключение логируется и проглатывается
+  (возврат `None`), чтобы аудит-фейл никогда не ломал само админ-действие.
+  `details` (mapping) сериализуется в компактный JSON (fallback `str(...)`).
+- `_serialise_details(details) -> str | None` — JSON-сериализация details.
+
+### [app/bot_meta.py](./app/bot_meta.py)
+Кэш идентичности бота для построения deep-link-ов.
+
+- `async def get_bot_username(bot) -> str` — `Bot.get_me()` один раз,
+  мемоизация по `bot.id` (для ссылок `?start=ref_/gift_`); fallback `''`.
+- `def clear_cache()` — сброс кэша (для тестов).
+
 ## Пакет `app/handlers/user/`
 
-Пользовательский флоу: меню, помощь, покупка, активация промокода.
-Без gate-middleware — доступен всем.
+Пользовательский флоу: меню, помощь, покупка, активация промокода, пробный
+период, рефералы, подарки, поддержка. Без gate-middleware — доступен всем.
 
 ### [app/handlers/user/\_\_init\_\_.py](./app/handlers/user/__init__.py)
 Агрегатор `user_router`. Подключает в порядке
-`menu → my_subscription → buy → promo → help`.
+`menu → my_subscription → buy → promo → trial → referral → gift → support →
+wallet → language → help`.
 
 ### [app/handlers/user/menu.py](./app/handlers/user/menu.py)
 Главное меню пользователя.
@@ -1380,8 +1986,10 @@ Standalone smoke-тест 3x-ui REST-клиента.
 - `router = Router(name="user_menu")`.
 - `_has_active_subscription(user_db_id) -> bool` — обёртка над
   `subs_repo.get_active_for_user`.
+- `_can_trial(user_db_id) -> bool` — `TRIAL_DAYS>0 AND not has_trial`
+  (показ кнопки «🎁 Пробный период»).
 - `_send_main_menu(message, user, edit=bool)` — единая точка рендера
-  (`edit_text` или `answer`).
+  (`edit_text` или `answer`); прокидывает `can_trial` в `user_main_menu`.
 - `cmd_menu` (`Command("menu")`) — показать меню в новом сообщении.
 - `cb_menu` (`UserCB area=menu`) — edit обратно в главное меню (универсальная
   «Назад»).
@@ -1425,9 +2033,12 @@ vless/QR/Subscription URL.
     одной строке на каждую видимую подписку с парой кнопок
     «🔑 Ключи #N» (`SubCB(action='keys', sub_id=N)`) и (только для
     активных) «🛒 Продлить #N» (`BuyCB(action='extend', sub_id=N)`);
-    внизу «◀ В меню» (`UserCB(area='menu')`). Кнопка «Продлить»
-    скрывается для неактивных, так как
-    `buy.cb_pick_action_extend` отклоняет non-active подписки.
+    для нативных Star-подписок (`tg_sub_charge_id` задан) — отдельная
+    строка «⏹ Отменить автопродление» (`SubCB(action='cancel_renew')`)
+    при `auto_renew=1` или «🔁 Включить автопродление»
+    (`SubCB(action='enable_renew')`) при отменённом; внизу «◀ В меню»
+    (`UserCB(area='menu')`). Кнопка «Продлить» скрывается для неактивных,
+    так как `buy.cb_pick_action_extend` отклоняет non-active подписки.
   - `_btn(text, cb)` — мелкий хелпер для построения
     `InlineKeyboardButton` из `CallbackData`-фабрики (`cb.pack()`).
   - `_pluralize_subs(n) -> str` — русские формы для слова «подписка»
@@ -1449,6 +2060,15 @@ vless/QR/Subscription URL.
     и not-yours — без утечки информации); header адаптируется к
     статусу (для истёкших — «для копирования»). Любую `XuiError`
     ловит и отвечает «панель временно недоступна».
+  - `cb_cancel_auto_renew` (`SubCB action=cancel_renew`) /
+    `cb_enable_auto_renew` (`SubCB action=enable_renew`) — отмена /
+    повторное включение автопродления нативной Star-подписки через общий
+    `_toggle_auto_renew(cancel: bool)`. Гарантии: ownership + наличие
+    `tg_sub_charge_id`. Вызывает `bot.edit_user_star_subscription(user_id,
+    telegram_payment_charge_id=sub.tg_sub_charge_id, is_canceled=cancel)`,
+    затем зеркалит локально `set_auto_renew(not cancel)` и перерендеривает
+    экран. На `TelegramAPIError` — алерт `autorenew.cancel_failed` без
+    изменения локального флага (нет drift'а локального/удалённого состояния).
 
 ### [app/handlers/user/help.py](./app/handlers/user/help.py)
 Инструкция по подключению.
@@ -1462,14 +2082,20 @@ vless/QR/Subscription URL.
 ### [app/handlers/user/_keys.py](./app/handlers/user/_keys.py)
 Helper для выдачи ключей юзеру. Используется и в `buy.py`, и в `promo.py`.
 
-- `async def deliver_keys(bot, xui, chat_id, sub, *, header) -> None` —
-  отправляет три сообщения: (1) summary с expires_at и vless URI в
-  `<code>`; (2) QR PNG через `bot.send_photo` (`BufferedInputFile` из
-  `make_qr_png`); (3) Subscription URL + клавиатура с URL-кнопкой
-  `Subscription URL` (vless:// не идёт в URL-кнопке — Telegram такие
-  схемы не принимает) + `subscription_kb(sub.id)`. При `XuiError` на
-  `get_inbound` логирует и продолжает без vless URI; QR строится по
-  sub_url.
+- `def build_howto_text(sub_url, lang=DEFAULT_LANG) -> str` — собирает
+  локализованный гайд «📲 Как подключиться» (ключи `keys.howto.*`, RU+EN; первым
+  идёт Happ как кросс-платформенный клиент, у его блока есть fallback на ручное
+  добавление Subscription URL) с per-client deep-link-ссылками импорта
+  (Happ/v2RayNG/Hiddify/Streisand) из `build_import_links` в копируемых
+  `<code>`-блоках + manual-fallback. Для пустого `sub_url` → `''`.
+- `async def deliver_keys(bot, xui, chat_id, sub, *, header, lang) -> None` —
+  отправляет сообщения: (1) summary с expires_at и vless URI в `<code>`;
+  (2) QR PNG через `bot.send_photo` (`BufferedInputFile` из `make_qr_png`);
+  (3) Subscription URL + клавиатура с URL-кнопкой `Subscription URL`
+  (vless:// не идёт в URL-кнопке — Telegram такие схемы не принимает) +
+  `subscription_kb(sub.id)`; (4) при наличии sub_url — сообщение-гайд
+  `build_howto_text` со ссылками импорта. При `XuiError` на `get_inbound`
+  логирует и продолжает без vless URI; QR строится по sub_url.
 
 ### [app/handlers/user/buy.py](./app/handlers/user/buy.py)
 Полный платёжный флоу за Stars с выбором inbound.
@@ -1491,6 +2117,17 @@ Helper для выдачи ключей юзеру. Используется и 
   - `_plan_is_buyable(plan)` / `_promo_is_usable(promo)` — read-only
     проверки для pre_checkout (без one-per-user, т.к. её гарантирует
     `try_redeem`).
+  - `_can_pay_from_balance(user, plan, promo) -> bool` — `True`, если
+    `wallet_repo.balance(user.id) >= billing.calc_price(plan, promo).stars`
+    (`False` при `user=None`). Вызывается во всех рендерах confirm-карточки
+    и определяет показ кнопки «💰 Оплатить с баланса» в `confirm_kb`.
+  - `_credit_topup(message, user, charge_id, total_amount, topup_stars, lang)` —
+    финализация пополнения кошелька (`kind="topup"`). Два слоя идемпотентности:
+    `payments.create` с реальным `telegram_charge_id` (UNIQUE) + `wallet.credit`
+    с `ref=f"topup:{charge_id}"` (partial-unique) → баланс кредитуется ровно один
+    раз даже при повторном `successful_payment`. Кредитует фактически списанный
+    `total_amount` (mismatch с payload логируется WARNING). При успехе шлёт
+    `wallet.topup_success` с новым балансом; при replay молчит.
 - UI-колбеки (state-driven):
   - `cb_open` (`BuyCB action=open`) — entry-point из главного меню.
     Загружает `subs_repo.list_active_for_user(user.id)`. При наличии
@@ -1556,6 +2193,26 @@ Helper для выдачи ключей юзеру. Используется и 
     `choosing_inbound` со свежим `inbound_select_kb`; иначе
     `billing.send_invoice(..., inbound_id=..., sub_id=0)` и
     `state.clear()`.
+  - `cb_subscribe` (`action=sub`) — нативная recurring Star-подписка.
+    Показывается на confirm-карточке кнопкой «🔁 Подписка (автопродление)»
+    (`confirm_kb(offer_subscription=...)`) только для подходящего 30-дневного
+    тарифа при новой не-gift покупке (`_offers_subscription`). Гейтится
+    `AUTO_RENEW_ENABLED`; ре-валидирует план + inbound allow-list, затем
+    `billing.create_subscription_invoice_link(...)` (kind='sub',
+    `subscription_period=2592000`) и редактирует сообщение, показывая
+    `subscription_link_kb(link)` (URL-кнопку оформления).
+  - `cb_pay_from_balance` (`action=balance`) — оплата подписки с баланса
+    кошелька без Telegram-инвойса. Ре-валидация plan/promo/inbound/ownership
+    (как `cb_confirm`); `wallet_service.try_spend(ref=f"buy:{callback.id}")`
+    (callback.id уникален на тап → дедуп редоставки) списывает
+    `calc_price.stars` под `BEGIN IMMEDIATE`; при нехватке — alert
+    `wallet.insufficient`. После списания `wallet_repo.get_by_ref` →
+    `synthetic_charge_id=f"wallet:{txn_id}"`; `subs_service.create_or_extend`;
+    при `XuiError` — компенсирующий `wallet.credit(type="refund",
+    ref=f"refund:{txn_id}")` + `wallet.pay_failed`; иначе синтетический
+    `payments.create(telegram_charge_id="wallet:{txn_id}")` (для stats/
+    total_stars), `promos.apply` (best-effort) и `deliver_keys`
+    (`wallet.paid_from_balance_header`).
 - Stateless-обработчики платежа:
   - `on_pre_checkout` (`pre_checkout_query`) — `parse_invoice_payload`
     возвращает 4-tuple `(plan_id, promo_id, inbound_id, sub_id)`;
@@ -1563,8 +2220,34 @@ Helper для выдачи ключей юзеру. Используется и 
     `inbound_id ∈ get_inbounds(plan_id)`; при `sub_id > 0` проверяется
     ownership + active-status подписки (`inbound_id` не валидируется,
     т.к. extend всегда наследует существующий); answer `ok=True/False`.
+  - `cb_gift_buy` (`GiftCB action=buy`, кнопка «🎁 Подарить подписку») — вход
+    в покупку подарка: `state.clear()`, `gift=1`+`sub_id=0` в FSM, рендер
+    `plans_kb` (всегда new-sub flow; action-экран «продлить/новая» пропущен).
+    Поле `gift` протянуто через FSM и `confirm_kb` во всех new-sub ветках
+    (`cb_pick_plan`/`cb_pick_inbound`/`cb_apply_promo`/`msg_promo_code`); в
+    `cb_confirm` при `gift=1` шлёт `billing.send_gift_invoice` (а не обычный).
+  - `_mint_gift(message, bot, user, charge_id, total_amount, ctx_plan_id,
+    ctx_promo_id, ctx_inbound_id, lang)` — финализация покупки подарка:
+    `payments.create` (UNIQUE charge_id гейтит минт), `make_gift_code(payment_id)`
+    внутри not-duplicate ветки, DM покупателю код + ссылку `?start=gift_<code>`
+    (bot username через `bot_meta.get_bot_username`). Подписка покупателю НЕ
+    провижинится.
+  - `_handle_recurring(message, bot, user, charge_id, total_amount, ctx,
+    is_first, sub_expiration, lang)` — финализация нативной recurring
+    Star-подписки (`kind='sub'`). **Первый charge** (`is_first_recurring`):
+    `create_or_extend(extend_sub_id=None)` + `set_auto_renew(True,
+    tg_sub_charge_id=charge_id)` + payment + `deliver_keys`. **Очередной charge**:
+    `get_active_auto_renew_for(user, plan)`, extend к
+    `subscription_expiration_date` (Unix→UTC) + `update_client(expiryTime=...)` +
+    payment + DM `autorenew.renewed_dm`. Идемпотентность — UNIQUE charge_id.
+    Хелперы `_expiry_ms_from_unix` / `_datetime_from_unix`.
   - `on_successful_payment` (`F.successful_payment`) — идемпотентен по
-    `payments_repo.get_by_charge_id`; парсит 4-tuple payload; логирует
+    `payments_repo.get_by_charge_id`; парсит payload. При `ctx.kind=="topup"`
+    делегирует в `_credit_topup` (пополнение кошелька) и возвращается. При
+    `ctx.kind=="gift"` (или `ctx.gift`) делегирует в `_mint_gift` (минт кода
+    вместо подписки) и возвращается. При `payment.is_recurring is True` или
+    `ctx.kind=="sub"` делегирует в `_handle_recurring` (нативная Star-подписка)
+    и возвращается. Иначе (buy/extend) логирует
     WARNING для legacy-payload без `i` (fallback на
     `settings.XUI_INBOUND_ID`); refetch plan/promo;
     `subs_service.create_or_extend(..., inbound_id=..., extend_sub_id=<sub_id or None>)`
@@ -1573,8 +2256,9 @@ Helper для выдачи ключей юзеру. Используется и 
     больше не подходит для extend — пишет в логи и уведомляет);
     `payments_repo.create` (`IntegrityError` на duplicate
     игнорируется; `subscription_id` ссылается на (новую или
-    extended) подписку); `promos.apply` (best-effort);
-    `deliver_keys` с заголовком, отражающим extend vs new.
+    extended) подписку); `promos.apply` (best-effort); реферальная награда
+    `referrals_service.reward_referrer_after_first_payment` (Step 6b,
+    best-effort); `deliver_keys` с заголовком, отражающим extend vs new.
 
 ### [app/handlers/user/promo.py](./app/handlers/user/promo.py)
 Standalone-активация промокода (без оплаты, для `free_days`) с
@@ -1639,6 +2323,132 @@ Standalone-активация промокода (без оплаты, для `f
   `PromoActivate.choosing_action`, что не конфликтует с `BuyCB
   extend`/`new` под `BuyFlow.choosing_action`.
 
+### [app/handlers/user/wallet.py](./app/handlers/user/wallet.py)
+Роутер экрана «👛 Кошелёк» (`router = Router(name="user_wallet")`),
+зарегистрирован в `user/__init__.py` после `promo`.
+
+- Helpers `_txn_label(txn, lang)` (локализованная метка типа транзакции из
+  `wallet.type_<type>`) и `_render_wallet_text(balance, txns, lang)`
+  (заголовок + строка баланса + история; строка истории —
+  `<sign><abs amount>⭐ · <label>`, знак `+`/`−` по знаку `amount`).
+- `cb_open` (`WalletCB action=open`, кнопка «👛 Кошелёк» из `user_main_menu`) —
+  `wallet_repo.balance` + `list_for_user(limit=20)`, рендер `wallet_screen_kb`
+  (кнопка «➕ Пополнить» только при непустых `WALLET_TOPUP_PRESETS`). При
+  `user=None` — alert.
+- `cb_topup` (`WalletCB action=topup`) — меню пресетов `wallet_topup_kb` либо
+  `wallet.no_presets` при пустом списке.
+- `cb_pick` (`WalletCB action=pick, stars=...`) — `billing.send_topup_invoice`
+  для выбранной суммы (кредит баланса происходит позже в
+  `on_successful_payment`). Все тексты — через `t()` (namespace `wallet.*`).
+
+### [app/handlers/user/trial.py](./app/handlers/user/trial.py)
+Роутер активации пробного периода (`router = Router(name="user_trial")`),
+зарегистрирован в `user/__init__.py` после `promo`.
+
+- Helpers `_options_to_jsonable`, `_trial_enabled_for(user)`
+  (`TRIAL_DAYS>0 AND not has_trial`), `_activate_and_deliver(...)`
+  (`activate_trial(days=TRIAL_DAYS, traffic_gb=TRIAL_TRAFFIC_GB)` → `deliver_keys`;
+  маппинг `TrialAlreadyUsedError` → alert, `XuiError` → apology, clear state).
+- `cb_open` (`TrialCB action=open`, кнопка «🎁 Пробный период» из меню) —
+  re-check гейта; `list_user_inbounds`: 1 inbound → авто-активация, иначе
+  `TrialFlow.choosing_inbound` + `inbound_select_kb`.
+- `cb_pick_inbound` (`InboundCB action=pick` под `TrialFlow.choosing_inbound`)
+  — валидирует offered inbound → активация.
+- `cb_back_inbound` (`InboundCB action=back`) — отмена в главное меню.
+
+### [app/handlers/user/referral.py](./app/handlers/user/referral.py)
+Роутер экрана «👥 Пригласить друга» (`router = Router(name="user_referral")`),
+зарегистрирован после `trial`.
+
+- `_build_ref_link(bot_username, tg_id)` → `https://t.me/<bot>?start=ref_<tg_id>`.
+- `cb_open` (`ReferralCB action=open`) — строит ссылку (username через
+  `bot_meta.get_bot_username`, кэш per `bot.id`), показывает `count_for_referrer`
+  + рекламу бонуса (`referral.screen_body` при `REFERRAL_BONUS_STARS>0`, иначе
+  `referral.screen_body_no_bonus`). Тексты `referral.*`.
+
+### [app/handlers/user/gift.py](./app/handlers/user/gift.py)
+Роутер активации подарка (`router = Router(name="user_gift")`),
+зарегистрирован после `referral`.
+
+- `async def notify_gift_buyer(bot, gift)` — DM покупателю об активации кода
+  (best-effort; shared с deep-link путём в `start.py`).
+- `cb_redeem` (`GiftCB action=redeem`, кнопка «🎁 У меня есть подарок») —
+  вход в `GiftRedeem.waiting_code`, промпт ввода кода.
+- `msg_code` (под `GiftRedeem.waiting_code`) — `redeem_gift(code, redeemer)`:
+  при `GiftRedeemError` маппинг `not_found`/`not_active` в сообщение (остаётся
+  в state), при `XuiError` — apology; при успехе `deliver_keys` получателю +
+  `notify_gift_buyer` + clear state. Тексты `gift.*`. (Активация по deep-link
+  `gift_<code>` — в `start.cmd_start`.)
+
+### [app/handlers/user/support.py](./app/handlers/user/support.py)
+Роутер поддержки (`router = Router(name="user_support")`), зарегистрирован
+после `gift`. FSM `SupportFlow.writing`.
+
+- `_safe`, `_user_label(user)` — компактная подпись юзера для уведомления.
+- `async def notify_admins(bot, *, ticket_id, user, text)` — fan-out нового
+  сообщения тикета: DM каждому `settings.ADMIN_IDS` и (если задан)
+  `settings.SUPPORT_CHAT_ID`; best-effort per-recipient.
+- `cb_open` (`SupportCB action=open`, кнопка «❓ Поддержка») — интро + промпт,
+  вход в `SupportFlow.writing`.
+- `st_message` (под `SupportFlow.writing`) — фиксирует сообщение через
+  `tickets_service.open_ticket` (reuse-or-create + `tg_message_id`),
+  уведомляет админов, подтверждает юзеру, чистит state. Тексты `support.*`.
+  (Ответ админа доставляется юзеру из `handlers.admin.tickets`.)
+
+### [app/handlers/user/language.py](./app/handlers/user/language.py)
+Роутер выбора языка интерфейса (`router = Router(name="user_language")`),
+зарегистрирован в `user/__init__.py` перед `help`.
+
+- `cb_open` (`LangCB action=open`, кнопка «🌐 Язык / Language» из
+  `user_main_menu`) — рисует `language_menu_kb(current)` (текущий язык
+  берётся из `user.lang`) с текстом `lang.choose`.
+- `cb_set` (`LangCB action=set, lang=<code>`) — валидирует код против
+  `SUPPORTED_LANGS` (на неизвестном — alert `lang.unsupported`),
+  сохраняет язык через `users_repo.set_lang`, перерисовывает меню уже на
+  новом языке и отвечает `lang.changed`. Текущий язык каждого апдейта
+  доступен хендлерам через `data['lang']` (middleware), глобальный стейт
+  не нужен.
+
+## Пакет `app/i18n/`
+Собственная dependency-free локализация. Причина не использовать
+aiogram gettext: тесты дёргают хендлеры напрямую без middleware-контекста,
+а чистая функция `t(key, lang, **params)` остаётся тестируемой. Дефолт —
+русский, чтобы legacy-вызовы без `lang` давали прежние RU-строки.
+
+### [app/i18n/\_\_init\_\_.py](./app/i18n/__init__.py)
+Публичный API:
+- `t(key, lang=None, /, **params)` — перевод ключа с безопасным
+  `format_map` (резолв `lang → en → сам key`; никогда не падает,
+  пропущенный плейсхолдер рендерится как `{name}` через `_SafeDict`).
+  Плюральный dict-ключ, запрошенный через `t`, возвращает сам key.
+- `pluralize(key, n, lang=None, /, **params)` — выбор плюральной формы по
+  словарю категорий `one/few/many/other`; в шаблон прокидывается `n`.
+- `resolve_lang(language_code)` — нормализация Telegram-кода (`en-US→en`,
+  `zh-Hans→zh`) к одному из `SUPPORTED_LANGS`, иначе `DEFAULT_LANG`.
+- Константы: `SUPPORTED_LANGS=(ru,en,uk,fa,zh)`, `DEFAULT_LANG="ru"`,
+  `FALLBACK_LANG="en"`, `LANG_NAMES` (флаг + самоназвание языка).
+
+### [app/i18n/catalog.py](./app/i18n/catalog.py)
+Собирает `CATALOG {lang: {key: value}}` из модулей `locales/*`.
+`lookup(key, lang)` реализует политику резолва `lang → en` (FALLBACK),
+возвращает `str | dict | None` (к raw key не падает — этот шаг в `t()`).
+
+### [app/i18n/plural.py](./app/i18n/plural.py)
+Реестр плюральных селекторов. `plural_category(n, lang) → one/few/many/other`.
+RU-селектор зеркалит `_pluralize_subs` из `my_subscription.py` (3 формы
+1 / 2-4 / 5-20); `uk` использует RU-правило; `en` — one/other; остальные —
+`_plural_other` (всегда `other`).
+
+### [app/i18n/locales/](./app/i18n/locales/)
+Каталоги сообщений. `ru.py` — источник истины (строки 1:1 с прежними
+хардкодами; namespace'ы `menu.*`, `help.*`, `keys.*`, `mysub.*`, `buy.*`,
+`promo.*`, `reminder.*`, `wallet.*`, `admin.*`/`admin.kb.*`, `kb.*`, `lang.*`,
+`trial.*`, `referral.*`, `gift.*`, `blocked.*`, `support.*`,
+`admin.tickets.*`, `admin.grant.*`, `admin.ban.*`, `admin.audit.*`).
+`wallet.*` покрывает инвойс пополнения, экран Кошелёк, историю/типы транзакций
+и оплату с баланса. `en.py` — полный fallback (покрывает все ключи RU).
+`uk.py`/`fa.py`/`zh.py` — заглушки (пустые `MESSAGES`), ключи фоллбекаются на `en`.
+
 ## Пакет `app/keyboards/` — пользовательские клавиатуры
 
 ### [app/keyboards/user.py](./app/keyboards/user.py)
@@ -1646,45 +2456,90 @@ Inline-клавиатуры юзерского флоу.
 
 **CallbackData-фабрики:**
 - `UserCB(prefix="u", area)` — area ∈ menu/help/my/cancel.
-- `BuyCB(prefix="ub", action, plan_id=0, promo_id=0, inbound_id=0, sub_id=0)` —
-  action ∈ open/plan/apply_promo/confirm/cancel/extend/new. Поле
-  `inbound_id` пробрасывается через шаги после выбора inbound (`0` =
+- `BuyCB(prefix="ub", action, plan_id=0, promo_id=0, inbound_id=0, sub_id=0,
+  gift=0)` — action ∈ open/plan/apply_promo/confirm/balance/sub/cancel/extend/new.
+  `sub` — оформление нативной recurring Star-подписки (`buy.cb_subscribe`).
+  Поле `inbound_id` пробрасывается через шаги после выбора inbound (`0` =
   шаг был автоматически пропущен из-за единственного inbound в
   allow-list). Поле `sub_id` (>0) несёт id подписки, которую надо
   продлить (extend-ветка action-экрана и кнопка «🛒 Продлить #N» с
-  `my_subscription`); `0` = новая подписка / n/a. Packed payload:
-  `ub:<action>:<plan_id>:<promo_id>:<inbound_id>:<sub_id>`.
+  `my_subscription`); `0` = новая подписка / n/a. Поле `gift` (`1`) помечает
+  покупку подарка (минт кода вместо подписки). Packed payload:
+  `ub:<action>:<plan_id>:<promo_id>:<inbound_id>:<sub_id>:<gift>`.
+- `TrialCB(prefix="ut", action)` — action ∈ open (кнопка «🎁 Пробный период»;
+  выбор inbound переиспользует `InboundCB` под `TrialFlow.choosing_inbound`).
+- `ReferralCB(prefix="ur", action)` — action ∈ open (экран «👥 Пригласить друга»).
+- `GiftCB(prefix="ug", action)` — action ∈ buy (покупка подарка) / redeem
+  (активация «🎁 У меня есть подарок»).
+- `SupportCB(prefix="usup", action)` — action ∈ open (кнопка «❓ Поддержка»;
+  вход в `SupportFlow.writing`).
 - `InboundCB(prefix="inb", action, plan_id=0, promo_id=0, inbound_id=0)` —
   action ∈ pick/back. Используется и в buy-флоу (`plan_id>0`), и в
   free-days promo-флоу (`plan_id=0`, `promo_id>0`); хендлер маршрутизирует
   по тому, какой id ненулевой.
-- `SubCB(prefix="us", action, sub_id=0)` — action ∈ keys/back.
+- `SubCB(prefix="us", action, sub_id=0)` — action ∈
+  keys/back/cancel_renew/enable_renew. `cancel_renew` / `enable_renew` —
+  отмена / включение автопродления нативной Star-подписки
+  (`my_subscription.cb_cancel_auto_renew` / `cb_enable_auto_renew`).
+- `LangCB(prefix="lng", action, lang="")` — action ∈ open/set. `open`
+  открывает меню выбора языка; `set` применяет язык из поля `lang`.
 - `PromoActCB(prefix="up", action, inbound_id=0, sub_id=0)` —
   action ∈ open/extend/new/cancel. Поле `sub_id>0` несёт id подписки,
   которую нужно продлить через free_days промо (выбор на
   `promo_action_kb`); `0` = новая подписка / n/a. Packed payload:
   `up:<action>:<inbound_id>:<sub_id>` (например `up:open:0:0`,
   `up:extend:0:42`).
+- `WalletCB(prefix="uw", action, stars=0)` — action ∈ open/topup/pick.
+  `open` открывает экран Кошелёк, `topup` — меню пресетов, `pick` несёт
+  выбранную сумму `stars` для top-up-инвойса.
 
-**Функции:**
-- `user_main_menu(has_subscription) -> InlineKeyboardMarkup` —
-  «Моя подписка» / «Купить» / «Активировать промокод» / «Помощь».
-  Порядок первых двух меняется по флагу.
-- `back_to_menu_kb()` — одна кнопка «◀ В меню».
-- `cancel_kb()` — одна кнопка «✖ Отмена» (cancel-таргет — `UserCB(area=cancel)`).
-- `plans_kb(plans)` — один пункт на тариф (`title · Nд · M⭐`) + «В меню».
-- `inbound_select_kb(plan_id, options, promo_id=0)` — single-select
+**Функции:** все builder'ы принимают keyword `lang=DEFAULT_LANG` и
+локализуют тексты через `i18n.t` (namespace'ы `menu.*`/`kb.*`); при
+`lang="ru"` строки идентичны прежним хардкодам.
+- `user_main_menu(*, has_subscription, can_trial=False, lang=DEFAULT_LANG) -> InlineKeyboardMarkup` —
+  «Моя подписка» / «Купить» / [«🎁 Пробный период» (`TrialCB(action="open")`,
+  только при `can_trial`)] / «👛 Кошелёк» (`WalletCB(action="open")`) /
+  «Активировать промокод» / «👥 Пригласить друга» (`ReferralCB(action="open")`) /
+  «🎁 Подарить подписку» (`GiftCB(action="buy")`) / «🎁 У меня есть подарок»
+  (`GiftCB(action="redeem")`) / «❓ Поддержка» (`SupportCB(action="open")`) /
+  «Помощь» / «🌐 Язык / Language» (`LangCB(action="open")`). Порядок первых
+  двух меняется по флагу. `can_trial` = `TRIAL_DAYS>0 AND not has_trial`
+  (вычисляется caller-ом).
+- `back_to_menu_kb(lang=DEFAULT_LANG)` — одна кнопка «◀ В меню».
+- `cancel_kb(lang=DEFAULT_LANG)` — одна кнопка «✖ Отмена» (cancel-таргет — `UserCB(area=cancel)`).
+- `plans_kb(plans, lang=DEFAULT_LANG)` — один пункт на тариф (`title · Nд · M⭐`) + «В меню».
+- `location_indicator(lang=DEFAULT_LANG) -> str` — маппит process-local
+  health-snapshot (`health_service.get_cached_status`, обновляется
+  `health_check_job` каждые ~30 мин) в маркер 🟢 (up) / 🔴 (down) / ⚪
+  (None/unknown) через ключи `location.indicator_*`. Синхронный; используется
+  `inbound_select_kb` для префикса каждой локации.
+- `inbound_select_kb(plan_id, options, promo_id=0, lang=DEFAULT_LANG)` — single-select
   inbounds: одна кнопка на `InboundOption` с текстом
-  `<remark> (port <port>)`, callback
-  `InboundCB(action="pick", plan_id, promo_id, inbound_id=option.id)`.
+  `<indicator> <remark> (port <port>)` (индикатор из `location_indicator`,
+  remark с fallback `Локация #<id>` через `kb.inbound_fallback_remark`),
+  callback `InboundCB(action="pick", plan_id, promo_id, inbound_id=option.id)`.
   Внизу «◀ Назад» (`InboundCB(action="back", plan_id, promo_id)`).
-- `confirm_kb(plan_id, promo_id=0, inbound_id=0, sub_id=0)` — «Оплатить»
-  (`BuyCB(action="confirm", plan_id, promo_id, inbound_id, sub_id)`) /
-  «Применить промокод» (скрыта если `promo_id≠0`; пробрасывает
-  `inbound_id` и `sub_id`) / «Отмена». `sub_id>0` означает, что
-  invoice — это продление конкретной подписки (extend-ветка):
-  значение прокидывается в `billing.send_invoice(sub_id=...)`, далее
-  в payload, далее в `subs_service.create_or_extend(extend_sub_id=...)`.
+- `confirm_kb(plan_id, promo_id=0, inbound_id=0, *, sub_id=0,
+  can_pay_from_balance=False, gift=0, offer_subscription=False,
+  lang=DEFAULT_LANG)` — «Оплатить»
+  (`BuyCB(action="confirm", plan_id, promo_id, inbound_id, sub_id, gift)`) /
+  «💰 Оплатить с баланса» (только при `can_pay_from_balance=True` И `not gift`,
+  `BuyCB(action="balance", ...)`) / «🔁 Подписка (автопродление)» (только при
+  `offer_subscription=True` И `not gift` И `sub_id==0`,
+  `BuyCB(action="sub", plan_id, inbound_id)`) / «Применить промокод» (скрыта
+  если `promo_id≠0`; пробрасывает `inbound_id`, `sub_id`, `gift`) / «Отмена».
+  `gift=1` помечает invoice как покупку подарка (мастер тот же, но в
+  `cb_confirm` шлётся `send_gift_invoice`).
+  `sub_id>0` означает, что invoice — это продление конкретной подписки
+  (extend-ветка): значение прокидывается в `billing.send_invoice(sub_id=...)`,
+  далее в payload, далее в `subs_service.create_or_extend(extend_sub_id=...)`.
+- `subscription_link_kb(url, lang=DEFAULT_LANG)` — URL-кнопка
+  «🔁 Подписка (автопродление)» (`url=` на invoice-ссылку
+  `billing.create_subscription_invoice_link`) + «◀ В меню». Используется
+  `buy.cb_subscribe`.
+- `renew_reminder_kb(sub_id, lang=DEFAULT_LANG)` — одиночная кнопка
+  «🔁 Продлить в 1 тап» (`BuyCB(action="extend", sub_id=...)`). Прикрепляется
+  `reminders_job` к напоминаниям и `traffic_snapshot_job` к трафик-алертам.
 - `buy_action_kb(active_subs, inbound_remarks) -> InlineKeyboardMarkup` —
   action-экран buy-флоу, когда у пользователя есть одна или несколько
   активных подписок. По строке на каждую active sub: «🔄 Продлить
@@ -1701,7 +2556,17 @@ Inline-клавиатуры юзерского флоу.
   `inbound_remarks` — `{inbound_id: remark}` мэппинг из кэшированного
   panel-листа; при отсутствии fallback — `#<inbound_id>`. Зеркало
   `buy_action_kb`, но callback-фабрика — `PromoActCB`.
-- `subscription_kb(sub_id)` — «Получить ключ ещё раз» / «◀ В меню».
+- `subscription_kb(sub_id, lang=DEFAULT_LANG)` — «Получить ключ ещё раз» / «◀ В меню».
+- `language_menu_kb(current=DEFAULT_LANG)` — меню выбора языка: по строке
+  на каждый язык из `SUPPORTED_LANGS` (метка из `LANG_NAMES`, текущий с
+  префиксом ✅), callback `LangCB(action="set", lang=<code>)`; внизу
+  «◀ В меню».
+- `wallet_screen_kb(*, has_presets, lang=DEFAULT_LANG)` — экран Кошелёк:
+  кнопка «➕ Пополнить» (`WalletCB(action="topup")`, только при `has_presets`)
+  + «◀ В меню».
+- `wallet_topup_kb(presets, lang=DEFAULT_LANG)` — меню пресетов пополнения:
+  по кнопке на сумму (`WalletCB(action="pick", stars=...)`) + «◀ Назад»
+  (`WalletCB(action="open")`).
 
 callback_data укладывается в 64-байтовый лимит TG.
 
@@ -1738,6 +2603,16 @@ FSM-стейты юзерского флоу.
   `subs_service.activate_free_days(inbound_id=..., extend_sub_id=None)`.
   Discount-промокоды (`percent`/`flat_stars`) на этом шаге отклоняются
   с подсказкой использовать buy flow.
+- `TrialFlow(choosing_inbound)` — активация пробного периода. Нет шага
+  выбора плана (длина/трафик из `TRIAL_DAYS`/`TRIAL_TRAFFIC_GB`) и нет
+  extend-ветки (trial — всегда новая подписка). При единственном inbound шаг
+  пропускается (авто-активация в `cb_open`), иначе — выбор inbound через
+  `inbound_select_kb` под этим стейтом.
+- `GiftRedeem(waiting_code)` — активация подарка по ручному вводу кода
+  (`cb_redeem` → ввод → `redeem_gift`). Deep-link путь (`/start gift_<code>`)
+  минует FSM и активируется прямо в `start.cmd_start`.
+- `SupportFlow(writing)` — единичный стейт написания сообщения в поддержку
+  (`cb_open` → ввод → `tickets_service.open_ticket` + уведомление админов).
 
 ## Связи между модулями
 
@@ -1967,3 +2842,78 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
   `settings.XUI_INBOUND_ID`, идемпотентность (admin set_inbounds
   сохраняется при повторном `init_db`), селективность (только планы без
   записей), graceful no-op при `XUI_INBOUND_ID=0`.
+
+### Сквозные (E2E) тесты
+
+E2E-тесты соединяют НЕСКОЛЬКО хендлеров/job-ов в один пользовательский или
+админский journey и проверяют состояние реальной SQLite между шагами (через
+`get_conn()` + repo-функции). Мокаются только внешние границы — Telegram Bot
+API (`AsyncMock` бот) и клиент 3x-ui (`request_json`); middleware, роутинг,
+services, repos и БД работают по-настоящему. Харнесс — journey-цепочки прямых
+вызовов хендлеров (как остальные тесты проекта), не dispatcher-feed.
+
+- [`tests/test_e2e_purchase.py`](tests/test_e2e_purchase.py) — покупка:
+  полный путь нового юзера (open → pick plan → confirm → pre_checkout →
+  successful_payment → `active`-подписка + `payments` + доставка ключей
+  vless/QR/sub URL/`happ://import/`); идемпотентность повторного
+  `successful_payment` (нет второй подписки/платежа); кошелёк (top-up
+  кредитует один раз + оплата с баланса провижинит и списывает).
+- [`tests/test_e2e_growth.py`](tests/test_e2e_growth.py) — рост: trial
+  (активация создаёт `is_trial`-подписку, повтор отклонён); рефералы (bind
+  по `/start ref_<tg>` + награда инвайтеру ровно раз на первой оплате,
+  self-referral игнор); подарки (оплата минтит код без подписки покупателю,
+  получатель активирует `/start gift_<code>`, повторный redeem заблокирован);
+  нативное автопродление (первый recurring → провижин + `auto_renew` +
+  charge id, последующий → продление, отмена → `edit_user_star_subscription`);
+  wallet-fallback `auto_renew_job` (списание раз + продление, нехватка
+  баланса → уведомление, same-period повтор без двойного списания).
+- [`tests/test_e2e_ops.py`](tests/test_e2e_ops.py) — операции: трафик-алерт
+  (один раз + dedup на следующем снапшоте); напоминание с inline-кнопкой
+  продления; тикеты (юзер открыл → админы уведомлены → админ ответил → статус
+  open→answered + транскрипт в БД); админ grant + ban + audit и блокировка
+  следующего апдейта `BlockedUserMiddleware`; health-check (down/up алерты,
+  стабильное состояние без спама); CSV-экспорт (3 документа, в подписочном CSV
+  нет `xui_client_uuid`); i18n (смена языка на `en` пишет `users.lang='en'`,
+  рендер выдаёт английскую строку).
+
+### Граничные (boundary/edge) тесты
+
+Целенаправленная проверка краевых значений по доменам: off-by-one,
+min/max, пустые/нулевые/отрицательные входы, точные пороги, переполнение
+лимитов, истечение «ровно сейчас», идемпотентность на границе ёмкости.
+
+- [`tests/test_edge_billing_wallet.py`](tests/test_edge_billing_wallet.py) —
+  payload ровно на 128 байт (`<=`) и за границей; legacy без `"k"`→`buy`;
+  `sub_id` 0/1; clamp цены к 1 Star (percent=100, flat≥price); `try_spend`
+  на `==balance` / `+1` / 0 / дубль `ref`; `credit`/`add` дубль `ref` и
+  `ref=None`; `payments` UNIQUE charge_id и инклюзивные границы
+  `total_stars_period`.
+- [`tests/test_edge_promos_subs.py`](tests/test_edge_promos_subs.py) —
+  `compute_discount` по типам (percent 1/100, flat 0/==price/>price,
+  free_days); `validate` (expires==now, max_uses 0/1, used==max граница,
+  NOCASE); `try_redeem`/`apply` на границе ёмкости и конкуренции;
+  подписки (`expires_at==now` в expired vs active, окно `list_expiring_in`);
+  trial partial-unique; рефералы (self/дубль/награда раз, bonus=0); подарки
+  (NOCASE, double-redeem, коллизии `make_gift_code`, откат при XuiError).
+- [`tests/test_edge_config_i18n_links.py`](tests/test_edge_config_i18n_links.py)
+  — `_parse_csv_ints` (пусто/None/пробелы/хвостовая запятая/JSON/не-массив);
+  валидаторы числовых полей (`ge`/`le`/`gt` границы → ValidationError);
+  `resolve_lang` (None/""/`en-US`/верхний регистр/неподдержанный);
+  `t` (отсутствующий ключ→ключ, fallback uk→en, безопасный плейсхолдер);
+  `pluralize` RU/EN формы (0,1,2,5,11,21,100,1000, отрицательные);
+  `build_import_links` (пусто→{}, 4 ключа, спецсимволы); `build_subscription_url`
+  (схлопывание слешей).
+- [`tests/test_edge_scheduler_xui_ops.py`](tests/test_edge_scheduler_xui_ops.py)
+  — `_days_left`/`_kind_for_days_left` (3/2/1/0/expired); `list_auto_renew_due`
+  окно `within_hours` и исключения (auto_renew=0, нативная, не active);
+  `auto_renew_job` баланс `==price` / `price-1` / повтор; трафик-алерт ровно на
+  пороге/±/`traffic_gb=0`/`percent=0`/dedup; xui (ms-конверсия expiry,
+  `totalGB=0`, null-ответ→{}, продление сохраняет квоту, идемпотентный del);
+  exports (CSV-экранирование, нет uuid); health (`check_xui_health` up/down,
+  `record()` переходы changed).
+
+**Заметки i18n (intended, не баги):** `resolve_lang` режет тег по дефису
+(`en_GB`→DEFAULT), а `t()` для неподдержанного `lang` отдаёт `FALLBACK_LANG`
+(`en`), не прогоняя его через `resolve_lang` — в проде `lang` всегда берётся из
+`user.lang`, уже нормализованного при создании, поэтому расхождение не
+проявляется.

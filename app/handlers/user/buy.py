@@ -45,6 +45,7 @@ re-creating a subscription.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import aiosqlite
 from aiogram import Bot, F, Router
@@ -63,23 +64,36 @@ from app.db.repos import plans as plans_repo
 from app.db.repos import promos as promos_repo
 from app.db.repos import subscriptions as subs_repo
 from app.db.repos import users as users_repo
+from app.db.repos import wallet as wallet_repo
 from app.db.repos.plans import Plan
 from app.db.repos.promos import Promo
 from app.db.repos.subscriptions import Subscription
 from app.db.repos.users import User
 from app.handlers.user._keys import deliver_keys
+from app.i18n import DEFAULT_LANG, resolve_lang, t
 from app.keyboards.user import (
     BuyCB,
+    GiftCB,
     InboundCB,
     buy_action_kb,
     confirm_kb,
     inbound_select_kb,
     plans_kb,
+    subscription_link_kb,
 )
-from app.services import billing, promos as promos_service, subscriptions as subs_service
+from app.bot_meta import get_bot_username
+from app.services import (
+    billing,
+    gifts as gifts_service,
+    promos as promos_service,
+    referrals as referrals_service,
+    subscriptions as subs_service,
+    wallet as wallet_service,
+)
 from app.services.inbounds import InboundOption, list_user_inbounds
 from app.states.user import BuyFlow
 from app.xui import XuiError, get_xui_client
+from app.xui.clients import update_client
 
 router = Router(name="user_buy")
 
@@ -94,6 +108,7 @@ def _format_confirm(
     promo: Promo | None,
     inbound_remark: str | None = None,
     extending_sub: Subscription | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> str:
     """Render the confirmation card text (HTML).
 
@@ -110,39 +125,49 @@ def _format_confirm(
     """
     price = billing.calc_price(plan, promo)
     total_days = plan.days + (price.extra_days or 0)
+
+    def _term_line() -> str:
+        if price.extra_days:
+            return t("buy.confirm_term_bonus", lang, days=plan.days, extra=price.extra_days)
+        return t("buy.confirm_term", lang, days=plan.days)
+
     if extending_sub is not None:
-        header = (
-            f"🔄 <b>Продление подписки #{extending_sub.id}</b>"
-            + (f" · {inbound_remark}" if inbound_remark else "")
-        )
+        if inbound_remark:
+            header = t(
+                "buy.confirm_header_extend_remark",
+                lang,
+                sub_id=extending_sub.id,
+                remark=inbound_remark,
+            )
+        else:
+            header = t("buy.confirm_header_extend", lang, sub_id=extending_sub.id)
         new_expiry = _shift_expiry(extending_sub.expires_at, total_days)
         lines = [
             header,
-            f"<b>Тариф:</b> {plan.title}",
-            f"<b>Срок:</b> {plan.days} дн."
-            + (f" + {price.extra_days} бонусных дн." if price.extra_days else ""),
-            f"<b>Действует до:</b> {new_expiry}",
+            t("buy.confirm_plan", lang, title=plan.title),
+            _term_line(),
+            t("buy.confirm_valid_until", lang, date=new_expiry),
         ]
     else:
-        header = "🆕 <b>Новая подписка</b>" + (
-            f" на {inbound_remark}" if inbound_remark else ""
-        )
+        if inbound_remark:
+            header = t("buy.confirm_header_new_on", lang, remark=inbound_remark)
+        else:
+            header = t("buy.confirm_header_new", lang)
         lines = [
             header,
-            f"<b>Тариф:</b> {plan.title}",
-            f"<b>Срок:</b> {plan.days} дн."
-            + (f" + {price.extra_days} бонусных дн." if price.extra_days else ""),
+            t("buy.confirm_plan", lang, title=plan.title),
+            _term_line(),
         ]
     if promo is not None:
-        lines.append(f"<b>Промокод:</b> <code>{promo.code}</code>")
+        lines.append(t("buy.confirm_promo", lang, code=promo.code))
         if promo.type == "percent":
-            lines.append(f"<b>Скидка:</b> −{promo.value}%")
+            lines.append(t("buy.confirm_discount_percent", lang, value=promo.value))
         elif promo.type == "flat_stars":
-            lines.append(f"<b>Скидка:</b> −{promo.value}⭐")
+            lines.append(t("buy.confirm_discount_flat", lang, value=promo.value))
         elif promo.type == "free_days":
-            lines.append(f"<b>Бонус:</b> +{promo.value} дн.")
+            lines.append(t("buy.confirm_bonus_days", lang, value=promo.value))
     lines.append("")
-    lines.append(f"<b>К оплате:</b> {price.stars}⭐")
+    lines.append(t("buy.confirm_total", lang, stars=price.stars))
     return "\n".join(lines)
 
 
@@ -174,9 +199,46 @@ async def _fetch_promo(conn: aiosqlite.Connection, promo_id: int) -> Promo | Non
     return await promos_repo.get(conn, promo_id)
 
 
+async def _can_pay_from_balance(
+    user: User | None, plan: Plan, promo: Promo | None
+) -> bool:
+    """Return ``True`` iff the user's wallet balance covers the final price.
+
+    The final Stars price is computed by :func:`app.services.billing.calc_price`
+    (so any promo discount is reflected), then compared against the user's
+    current ledger balance. Returns ``False`` when ``user`` is ``None`` (no
+    registered account → no wallet) so the "pay from balance" button is hidden
+    for anonymous users.
+    """
+    if user is None:
+        return False
+    price = billing.calc_price(plan, promo)
+    async with get_conn() as conn:
+        balance = await wallet_repo.balance(conn, user.id)
+    return balance >= price.stars
+
+
 def _plan_is_buyable(plan: Plan | None) -> bool:
     """Return ``True`` if a plan exists and is currently active."""
     return plan is not None and plan.is_active
+
+
+def _offers_subscription(plan: Plan, *, sub_id: int, gift: int) -> bool:
+    """Return ``True`` when the confirm card should offer a native Star subscription.
+
+    A native recurring Telegram Star subscription is only offered for a
+    brand-new, non-gift purchase of a plan whose length matches Telegram's
+    fixed 30-day billing period (``settings.STAR_SUBSCRIPTION_PLAN_DAYS``), and
+    only when the feature flag ``settings.AUTO_RENEW_ENABLED`` is on. Extends
+    (``sub_id > 0``) and gifts are excluded — recurring billing always creates a
+    fresh subscription for the buyer.
+    """
+    return (
+        settings.AUTO_RENEW_ENABLED
+        and not gift
+        and int(sub_id) == 0
+        and int(plan.days) == int(settings.STAR_SUBSCRIPTION_PLAN_DAYS)
+    )
 
 
 def _promo_is_usable(promo: Promo | None) -> bool:
@@ -211,6 +273,7 @@ async def cb_open(
     callback: CallbackQuery,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Entry point of the buy flow.
 
@@ -247,7 +310,7 @@ async def cb_open(
         await state.set_state(BuyFlow.choosing_action)
         if callback.message is not None:
             await callback.message.edit_text(
-                "У вас есть активные подписки. Выберите действие:",
+                t("buy.has_active_choose", lang),
                 reply_markup=buy_action_kb(active, remarks),
             )
         await callback.answer()
@@ -259,22 +322,54 @@ async def cb_open(
         plans = await plans_repo.list_active(conn)
     if not plans:
         if callback.message is not None:
-            await callback.message.edit_text(
-                "Сейчас нет доступных тарифов. Загляните позже.",
-            )
+            await callback.message.edit_text(t("buy.no_plans", lang))
         await callback.answer()
         return
     if callback.message is not None:
         await callback.message.edit_text(
-            "Выберите тариф:",
+            t("buy.choose_plan", lang),
             reply_markup=plans_kb(plans),
         )
+    await callback.answer()
+
+
+@router.callback_query(GiftCB.filter(F.action == "buy"))
+async def cb_gift_buy(
+    callback: CallbackQuery,
+    state: FSMContext,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Entry point of the **gift** purchase flow.
+
+    A gift always provisions a brand-new subscription for the *recipient*, so it
+    reuses the regular plan→inbound→confirm wizard with two FSM markers set:
+    ``gift=1`` (mints a code instead of provisioning the buyer) and ``sub_id=0``
+    (never an extend). The action screen (продлить vs новая) is intentionally
+    skipped — there is nothing of the buyer's to extend when gifting.
+    """
+    await state.clear()
+    await state.set_state(BuyFlow.choosing_plan)
+    await state.update_data(gift=1, sub_id=0)
+    async with get_conn() as conn:
+        plans = await plans_repo.list_active(conn)
+    if callback.message is None:
+        await callback.answer()
+        return
+    if not plans:
+        await callback.message.edit_text(t("buy.no_plans", lang))
+        await callback.answer()
+        return
+    await callback.message.edit_text(
+        t("buy.choose_plan", lang),
+        reply_markup=plans_kb(plans),
+    )
     await callback.answer()
 
 
 async def _send_plan_list(
     callback: CallbackQuery,
     state: FSMContext,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Helper: enter :class:`BuyFlow.choosing_plan` and render plans_kb.
 
@@ -287,12 +382,10 @@ async def _send_plan_list(
     if callback.message is None:
         return
     if not plans:
-        await callback.message.edit_text(
-            "Сейчас нет доступных тарифов. Загляните позже.",
-        )
+        await callback.message.edit_text(t("buy.no_plans", lang))
         return
     await callback.message.edit_text(
-        "Выберите тариф:",
+        t("buy.choose_plan", lang),
         reply_markup=plans_kb(plans),
     )
 
@@ -308,6 +401,7 @@ async def cb_pick_action_extend(
     callback_data: BuyCB,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """User picked "🔄 Продлить #N" — pin the sub_id and jump to plans.
 
@@ -323,11 +417,11 @@ async def cb_pick_action_extend(
     FSM untouched.
     """
     if user is None:
-        await callback.answer("Нужно нажать /start.", show_alert=True)
+        await callback.answer(t("buy.need_start", lang), show_alert=True)
         return
     sub_id = int(callback_data.sub_id or 0)
     if sub_id <= 0:
-        await callback.answer("Подписка не указана.", show_alert=True)
+        await callback.answer(t("buy.no_sub_specified", lang), show_alert=True)
         return
 
     async with get_conn() as conn:
@@ -337,9 +431,7 @@ async def cb_pick_action_extend(
         or sub.user_id != user.id
         or sub.status != "active"
     ):
-        await callback.answer(
-            "Подписка недоступна для продления.", show_alert=True
-        )
+        await callback.answer(t("buy.sub_unavailable_extend", lang), show_alert=True)
         return
 
     await state.update_data(
@@ -350,7 +442,7 @@ async def cb_pick_action_extend(
         promo_id=0,
         inbound_options=None,
     )
-    await _send_plan_list(callback, state)
+    await _send_plan_list(callback, state, lang)
     await callback.answer()
 
 
@@ -358,6 +450,7 @@ async def cb_pick_action_extend(
 async def cb_pick_action_new(
     callback: CallbackQuery,
     state: FSMContext,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """User picked "🆕 Новая подписка" — clear FSM and show plans.
 
@@ -367,7 +460,7 @@ async def cb_pick_action_new(
     """
     await state.clear()
     await state.update_data(sub_id=0)
-    await _send_plan_list(callback, state)
+    await _send_plan_list(callback, state, lang)
     await callback.answer()
 
 
@@ -420,6 +513,7 @@ async def cb_pick_plan(
     callback_data: BuyCB,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Store the chosen plan and route to the next step in the wizard.
 
@@ -447,7 +541,7 @@ async def cb_pick_plan(
     async with get_conn() as conn:
         plan = await _fetch_plan(conn, plan_id)
     if not _plan_is_buyable(plan):
-        await callback.answer("Тариф недоступен.", show_alert=True)
+        await callback.answer(t("buy.plan_unavailable", lang), show_alert=True)
         return
     assert plan is not None  # narrowed by _plan_is_buyable
 
@@ -462,6 +556,7 @@ async def cb_pick_plan(
             promo_id = 0
 
     sub_id = int(data.get("sub_id") or 0)
+    gift = int(data.get("gift") or 0)
 
     # ---- Extend branch — bypass inbound selection entirely. ----
     if sub_id > 0:
@@ -475,7 +570,7 @@ async def cb_pick_plan(
                 or extending_sub.status != "active"
             ):
                 await callback.answer(
-                    "Подписка недоступна для продления.", show_alert=True
+                    t("buy.sub_unavailable_extend", lang), show_alert=True
                 )
                 await state.clear()
                 return
@@ -506,18 +601,22 @@ async def cb_pick_plan(
             inbound_options=None,
         )
         await state.set_state(BuyFlow.confirming)
+        can_balance = await _can_pay_from_balance(user, plan, promo)
         if callback.message is not None:
             await callback.message.edit_text(
                 _format_confirm(
                     plan, promo,
                     inbound_remark=remark,
                     extending_sub=extending_sub,
+                    lang=lang,
                 ),
                 reply_markup=confirm_kb(
                     plan.id,
                     promo_id=promo_id,
                     inbound_id=inbound_id,
                     sub_id=sub_id,
+                    can_pay_from_balance=can_balance,
+                    lang=lang,
                 ),
             )
         await callback.answer()
@@ -529,7 +628,7 @@ async def cb_pick_plan(
 
     if not inbound_ids:
         await callback.answer(
-            "У тарифа нет доступных подключений. Обратитесь к администратору.",
+            t("buy.plan_no_inbounds", lang),
             show_alert=True,
         )
         return
@@ -560,13 +659,23 @@ async def cb_pick_plan(
             promo_id=promo_id,
             inbound_id=only_inbound_id,
             sub_id=0,
+            gift=gift,
             inbound_options=None,
         )
         await state.set_state(BuyFlow.confirming)
+        can_balance = await _can_pay_from_balance(user, plan, promo)
         if callback.message is not None:
             await callback.message.edit_text(
-                _format_confirm(plan, promo, inbound_remark=remark, extending_sub=None),
-                reply_markup=confirm_kb(plan.id, promo_id=promo_id, inbound_id=only_inbound_id),
+                _format_confirm(plan, promo, inbound_remark=remark, extending_sub=None, lang=lang),
+                reply_markup=confirm_kb(
+                    plan.id,
+                    promo_id=promo_id,
+                    inbound_id=only_inbound_id,
+                    can_pay_from_balance=can_balance,
+                    gift=gift,
+                    offer_subscription=_offers_subscription(plan, sub_id=0, gift=gift),
+                    lang=lang,
+                ),
             )
         await callback.answer()
         return
@@ -580,7 +689,7 @@ async def cb_pick_plan(
             "cb_pick_plan: failed to list inbounds for plan {}: {}", plan.id, exc
         )
         await callback.answer(
-            "Не удалось получить список подключений. Попробуйте позже.",
+            t("buy.inbounds_unavailable", lang),
             show_alert=True,
         )
         return
@@ -589,7 +698,7 @@ async def cb_pick_plan(
     filtered = [o for o in all_options if o.id in allowed]
     if not filtered:
         await callback.answer(
-            "Нет доступных подключений для этого тарифа.",
+            t("buy.no_inbounds_for_plan", lang),
             show_alert=True,
         )
         return
@@ -604,7 +713,7 @@ async def cb_pick_plan(
     await state.set_state(BuyFlow.choosing_inbound)
     if callback.message is not None:
         await callback.message.edit_text(
-            "Выберите подключение (сервер):",
+            t("buy.choose_inbound", lang),
             reply_markup=inbound_select_kb(plan.id, filtered, promo_id=promo_id),
         )
     await callback.answer()
@@ -623,6 +732,7 @@ async def cb_pick_inbound(
     callback_data: InboundCB,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Persist the chosen inbound and render the confirmation card.
 
@@ -638,13 +748,13 @@ async def cb_pick_inbound(
         plan = await _fetch_plan(conn, plan_id)
         allowed = await plans_repo.get_inbounds(conn, plan_id) if plan is not None else []
     if not _plan_is_buyable(plan):
-        await callback.answer("Тариф недоступен.", show_alert=True)
+        await callback.answer(t("buy.plan_unavailable", lang), show_alert=True)
         await state.clear()
         return
     assert plan is not None
     if inbound_id not in allowed:
         await callback.answer(
-            "Подключение недоступно для этого тарифа.",
+            t("buy.inbound_unavailable_for_plan", lang),
             show_alert=True,
         )
         return
@@ -668,15 +778,28 @@ async def cb_pick_inbound(
     remark = _remark_for(options, inbound_id) if options else f"#{inbound_id}"
 
     sub_id = int(data.get("sub_id") or 0)
+    gift = int(data.get("gift") or 0)
     await state.update_data(
-        plan_id=plan.id, promo_id=promo_id, inbound_id=inbound_id, sub_id=sub_id
+        plan_id=plan.id,
+        promo_id=promo_id,
+        inbound_id=inbound_id,
+        sub_id=sub_id,
+        gift=gift,
     )
     await state.set_state(BuyFlow.confirming)
+    can_balance = await _can_pay_from_balance(user, plan, promo)
     if callback.message is not None:
         await callback.message.edit_text(
-            _format_confirm(plan, promo, inbound_remark=remark, extending_sub=None),
+            _format_confirm(plan, promo, inbound_remark=remark, extending_sub=None, lang=lang),
             reply_markup=confirm_kb(
-                plan.id, promo_id=promo_id, inbound_id=inbound_id, sub_id=sub_id
+                plan.id,
+                promo_id=promo_id,
+                inbound_id=inbound_id,
+                sub_id=sub_id,
+                can_pay_from_balance=can_balance,
+                gift=gift,
+                offer_subscription=_offers_subscription(plan, sub_id=sub_id, gift=gift),
+                lang=lang,
             ),
         )
     await callback.answer()
@@ -688,6 +811,7 @@ async def cb_pick_inbound(
 async def cb_pick_inbound_back(
     callback: CallbackQuery,
     state: FSMContext,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Return from the inbound-selection step back to the plan list."""
     await state.set_state(BuyFlow.choosing_plan)
@@ -696,12 +820,10 @@ async def cb_pick_inbound_back(
         plans = await plans_repo.list_active(conn)
     if callback.message is not None:
         if not plans:
-            await callback.message.edit_text(
-                "Сейчас нет доступных тарифов. Загляните позже.",
-            )
+            await callback.message.edit_text(t("buy.no_plans", lang))
         else:
             await callback.message.edit_text(
-                "Выберите тариф:",
+                t("buy.choose_plan", lang),
                 reply_markup=plans_kb(plans),
             )
     await callback.answer()
@@ -717,6 +839,7 @@ async def cb_apply_promo(
     callback: CallbackQuery,
     callback_data: BuyCB,
     state: FSMContext,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Prompt the user to type a promo code.
 
@@ -728,15 +851,22 @@ async def cb_apply_promo(
     data = await state.get_data()
     inbound_id = int(callback_data.inbound_id or data.get("inbound_id") or 0)
     sub_id = int(callback_data.sub_id or data.get("sub_id") or 0)
+    gift = int(callback_data.gift or data.get("gift") or 0)
     await state.update_data(
-        plan_id=callback_data.plan_id, inbound_id=inbound_id, sub_id=sub_id
+        plan_id=callback_data.plan_id,
+        inbound_id=inbound_id,
+        sub_id=sub_id,
+        gift=gift,
     )
     await state.set_state(BuyFlow.entering_promo)
     if callback.message is not None:
         await callback.message.edit_text(
-            "Введите промокод одним сообщением:",
+            t("buy.enter_promo", lang),
             reply_markup=confirm_kb(
-                callback_data.plan_id, inbound_id=inbound_id, sub_id=sub_id
+                callback_data.plan_id,
+                inbound_id=inbound_id,
+                sub_id=sub_id,
+                gift=gift,
             ),
         )
     await callback.answer()
@@ -747,6 +877,7 @@ async def msg_promo_code(
     message: Message,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Validate the typed code and return to the confirmation card.
 
@@ -756,17 +887,18 @@ async def msg_promo_code(
     can try again.
     """
     if user is None:
-        await message.answer("Нужно нажать /start, чтобы начать.")
+        await message.answer(t("buy.need_start_full", lang))
         return
 
     data = await state.get_data()
     plan_id = int(data.get("plan_id") or 0)
     inbound_id = int(data.get("inbound_id") or 0)
     sub_id = int(data.get("sub_id") or 0)
+    gift = int(data.get("gift") or 0)
     async with get_conn() as conn:
         plan = await _fetch_plan(conn, plan_id)
         if not _plan_is_buyable(plan):
-            await message.answer("Тариф больше недоступен. Вернитесь в меню.")
+            await message.answer(t("buy.plan_gone", lang))
             await state.clear()
             return
         assert plan is not None
@@ -776,13 +908,19 @@ async def msg_promo_code(
 
     if not result.is_valid or result.promo is None:
         await message.answer(
-            (result.error or "Промокод недействителен.") + " Введите ещё раз:",
-            reply_markup=confirm_kb(plan.id, inbound_id=inbound_id, sub_id=sub_id),
+            t(
+                "buy.promo_invalid_retry",
+                lang,
+                error=result.error or t("buy.promo_default_invalid", lang),
+            ),
+            reply_markup=confirm_kb(
+                plan.id, inbound_id=inbound_id, sub_id=sub_id, gift=gift
+            ),
         )
         return
 
     await state.update_data(
-        promo_id=result.promo.id, inbound_id=inbound_id, sub_id=sub_id
+        promo_id=result.promo.id, inbound_id=inbound_id, sub_id=sub_id, gift=gift
     )
     await state.set_state(BuyFlow.confirming)
 
@@ -817,18 +955,23 @@ async def msg_promo_code(
         ):
             extending_sub = None
 
+    can_balance = await _can_pay_from_balance(user, plan, result.promo)
     await message.answer(
-        "✅ Промокод применён.\n\n"
+        t("buy.promo_applied", lang)
         + _format_confirm(
             plan, result.promo,
             inbound_remark=remark,
             extending_sub=extending_sub,
+            lang=lang,
         ),
         reply_markup=confirm_kb(
             plan.id,
             promo_id=result.promo.id,
             inbound_id=inbound_id,
             sub_id=sub_id,
+            can_pay_from_balance=can_balance,
+            gift=gift,
+            lang=lang,
         ),
     )
 
@@ -845,6 +988,7 @@ async def cb_confirm(
     state: FSMContext,
     bot: Bot,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Re-validate, send the Stars invoice, and clear FSM state.
 
@@ -874,7 +1018,8 @@ async def cb_confirm(
     promo_id = callback_data.promo_id or 0
     inbound_id = int(callback_data.inbound_id or 0)
     sub_id = int(callback_data.sub_id or 0)
-    if not inbound_id or not sub_id:
+    gift = int(callback_data.gift or 0)
+    if not inbound_id or not sub_id or not gift:
         # Fallback: the FSM should always have these by this point, but
         # if it doesn't (e.g. a stale keyboard from before the rollout),
         # recover from state data.
@@ -883,6 +1028,8 @@ async def cb_confirm(
             inbound_id = int(data.get("inbound_id") or 0)
         if not sub_id:
             sub_id = int(data.get("sub_id") or 0)
+        if not gift:
+            gift = int(data.get("gift") or 0)
 
     async with get_conn() as conn:
         plan = await _fetch_plan(conn, plan_id)
@@ -892,28 +1039,50 @@ async def cb_confirm(
         )
 
     if not _plan_is_buyable(plan):
-        await callback.answer("Тариф недоступен.", show_alert=True)
+        await callback.answer(t("buy.plan_unavailable", lang), show_alert=True)
         await state.clear()
         return
     assert plan is not None
     if promo_id and not _promo_is_usable(promo):
         await callback.answer(
-            "Промокод стал недействителен, попробуйте ещё раз.",
+            t("buy.promo_became_invalid", lang),
             show_alert=True,
         )
         promo = None
         promo_id = 0
 
+    # ---- Gift branch — buy a giftable code (always a new sub for the
+    # recipient, so sub_id / extend semantics never apply). The inbound
+    # allow-list is re-checked exactly like the new-sub branch. ----
+    if gift:
+        if not inbound_id or inbound_id not in allowed_inbounds:
+            await callback.answer(t("buy.inbound_unavailable_pick", lang), show_alert=True)
+            return
+        chat_id = callback.message.chat.id if callback.message is not None else None
+        if chat_id is None:
+            await callback.answer(t("buy.chat_undetermined", lang), show_alert=True)
+            return
+        await billing.send_gift_invoice(
+            bot,
+            chat_id=chat_id,
+            plan=plan,
+            promo=promo,
+            inbound_id=inbound_id,
+        )
+        await state.clear()
+        await callback.answer()
+        return
+
     # ---- Extend branch — verify ownership, skip allow-list. ----
     if sub_id > 0:
         if user is None:
-            await callback.answer("Нужно нажать /start.", show_alert=True)
+            await callback.answer(t("buy.need_start", lang), show_alert=True)
             return
         async with get_conn() as conn:
             sub = await subs_repo.get(conn, sub_id)
         if sub is None or sub.user_id != user.id or sub.status != "active":
             await callback.answer(
-                "Подписка недоступна для продления.", show_alert=True
+                t("buy.sub_unavailable_extend", lang), show_alert=True
             )
             await state.clear()
             return
@@ -921,7 +1090,7 @@ async def cb_confirm(
             inbound_id = int(sub.xui_inbound_id)
         chat_id = callback.message.chat.id if callback.message is not None else None
         if chat_id is None:
-            await callback.answer("Не удалось определить чат.", show_alert=True)
+            await callback.answer(t("buy.chat_undetermined", lang), show_alert=True)
             return
         await billing.send_invoice(
             bot,
@@ -941,7 +1110,7 @@ async def cb_confirm(
         # Drop the user back to the selection step so they can pick a
         # currently-valid one.
         await callback.answer(
-            "Подключение недоступно для этого тарифа. Выберите другое.",
+            t("buy.inbound_unavailable_pick", lang),
             show_alert=True,
         )
         try:
@@ -960,8 +1129,7 @@ async def cb_confirm(
             await state.clear()
             if callback.message is not None:
                 await callback.message.edit_text(
-                    "У тарифа сейчас нет доступных подключений. "
-                    "Попробуйте позже.",
+                    t("buy.plan_no_inbounds_retry", lang),
                 )
             return
         await state.update_data(
@@ -973,14 +1141,14 @@ async def cb_confirm(
         await state.set_state(BuyFlow.choosing_inbound)
         if callback.message is not None:
             await callback.message.edit_text(
-                "Выберите подключение (сервер):",
+                t("buy.choose_inbound", lang),
                 reply_markup=inbound_select_kb(plan.id, filtered, promo_id=promo_id),
             )
         return
 
     chat_id = callback.message.chat.id if callback.message is not None else None
     if chat_id is None:
-        await callback.answer("Не удалось определить чат.", show_alert=True)
+        await callback.answer(t("buy.chat_undetermined", lang), show_alert=True)
         return
 
     await billing.send_invoice(
@@ -999,6 +1167,263 @@ async def cb_confirm(
 
 
 # ---------------------------------------------------------------------- #
+# Native recurring Star subscription (invoice link)
+# ---------------------------------------------------------------------- #
+
+
+@router.callback_query(BuyCB.filter(F.action == "sub"))
+async def cb_subscribe(
+    callback: CallbackQuery,
+    callback_data: BuyCB,
+    state: FSMContext,
+    bot: Bot,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Offer a native recurring **Telegram Star subscription** via an invoice link.
+
+    Reached from the «🔁 Подписка (автопродление)» button on the confirm card
+    (shown only for an eligible 30-day plan — see :func:`_offers_subscription`).
+    Telegram only supports recurring Star billing through a
+    ``create_invoice_link`` URL (never ``send_invoice``), so this handler builds
+    the link via :func:`app.services.billing.create_subscription_invoice_link`
+    (payload ``kind='sub'``, ``subscription_period=2592000``) and sends it as a
+    URL button the user taps to subscribe.
+
+    Re-validates the plan (defence-in-depth — it may have been deactivated since
+    the card was rendered) and that the inbound is still attached to it (a
+    recurring subscription always provisions a fresh client, so the allow-list
+    check mirrors the new-sub branch of :func:`cb_confirm`).
+    """
+    if not settings.AUTO_RENEW_ENABLED:
+        await callback.answer(t("autorenew.cancel_failed", lang), show_alert=True)
+        return
+
+    plan_id = callback_data.plan_id
+    inbound_id = int(callback_data.inbound_id or 0)
+    if not inbound_id:
+        data = await state.get_data()
+        inbound_id = int(data.get("inbound_id") or 0)
+
+    async with get_conn() as conn:
+        plan = await _fetch_plan(conn, plan_id)
+        allowed_inbounds = (
+            await plans_repo.get_inbounds(conn, plan_id) if plan is not None else []
+        )
+
+    if not _plan_is_buyable(plan):
+        await callback.answer(t("buy.plan_unavailable", lang), show_alert=True)
+        await state.clear()
+        return
+    assert plan is not None
+    if not inbound_id or inbound_id not in allowed_inbounds:
+        await callback.answer(t("buy.inbound_unavailable_pick", lang), show_alert=True)
+        return
+
+    link = await billing.create_subscription_invoice_link(
+        bot,
+        plan,
+        inbound_id=inbound_id,
+        sub_id=0,
+    )
+    await state.clear()
+    if callback.message is not None:
+        await callback.message.edit_text(
+            t("autorenew.subscribe_prompt", lang),
+            reply_markup=subscription_link_kb(link, lang),
+        )
+    await callback.answer()
+
+
+# ---------------------------------------------------------------------- #
+# Pay from wallet balance (no Telegram invoice)
+# ---------------------------------------------------------------------- #
+
+
+@router.callback_query(BuyCB.filter(F.action == "balance"))
+async def cb_pay_from_balance(
+    callback: CallbackQuery,
+    callback_data: BuyCB,
+    state: FSMContext,
+    bot: Bot,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Pay for a plan with the user's wallet balance — no Telegram invoice.
+
+    Flow (mirrors :func:`cb_confirm`'s re-validation, then spends + provisions):
+
+    1. Re-validate plan + promo (defence-in-depth: state may have changed).
+    2. For the extend branch, re-verify ownership of ``sub_id``; for a new
+       subscription, re-check the inbound is still on the plan's allow-list.
+    3. :func:`app.services.wallet.try_spend` debits the final Stars price under
+       ``BEGIN IMMEDIATE``. The ``ref`` is ``buy:<callback.id>`` — Telegram's
+       callback-query id is unique per tap, so a duplicate-delivery of the same
+       tap is rejected (no double-spend) while a genuine second purchase (a new
+       tap) gets a fresh ref. On insufficient balance the button-press is
+       rejected with an alert (the balance may have dropped since render).
+    4. Provision via :func:`app.services.subscriptions.create_or_extend`. If
+       3x-ui provisioning fails we **refund** the wallet (compensating credit
+       with ref ``refund:<txn_id>``) so the user is not charged for a key they
+       never received.
+    5. Record a synthetic ``payments`` row with ``telegram_charge_id =
+       wallet:<txn_id>`` so stats / ``total_stars_period`` count the spend.
+    6. Deliver keys.
+    """
+    if user is None:
+        await callback.answer(t("buy.need_start", lang), show_alert=True)
+        return
+
+    plan_id = callback_data.plan_id
+    promo_id = callback_data.promo_id or 0
+    inbound_id = int(callback_data.inbound_id or 0)
+    sub_id = int(callback_data.sub_id or 0)
+    if not inbound_id or not sub_id:
+        data = await state.get_data()
+        if not inbound_id:
+            inbound_id = int(data.get("inbound_id") or 0)
+        if not sub_id:
+            sub_id = int(data.get("sub_id") or 0)
+
+    async with get_conn() as conn:
+        plan = await _fetch_plan(conn, plan_id)
+        promo = await _fetch_promo(conn, promo_id) if promo_id else None
+        allowed_inbounds = (
+            await plans_repo.get_inbounds(conn, plan_id) if plan is not None else []
+        )
+
+    if not _plan_is_buyable(plan):
+        await callback.answer(t("buy.plan_unavailable", lang), show_alert=True)
+        await state.clear()
+        return
+    assert plan is not None
+    if promo_id and not _promo_is_usable(promo):
+        await callback.answer(t("buy.promo_became_invalid", lang), show_alert=True)
+        promo = None
+        promo_id = 0
+
+    # ---- Extend branch — verify ownership; skip allow-list. ----
+    extend_sub_id: int | None = None
+    if sub_id > 0:
+        async with get_conn() as conn:
+            sub_row = await subs_repo.get(conn, sub_id)
+        if sub_row is None or sub_row.user_id != user.id or sub_row.status != "active":
+            await callback.answer(t("buy.sub_unavailable_extend", lang), show_alert=True)
+            await state.clear()
+            return
+        if not inbound_id:
+            inbound_id = int(sub_row.xui_inbound_id)
+        extend_sub_id = sub_id
+    # ---- New-subscription branch — re-check allow-list. ----
+    elif not inbound_id or inbound_id not in allowed_inbounds:
+        await callback.answer(t("buy.inbound_unavailable_pick", lang), show_alert=True)
+        return
+
+    price = billing.calc_price(plan, promo)
+    chat_id = callback.message.chat.id if callback.message is not None else None
+    if chat_id is None:
+        await callback.answer(t("buy.chat_undetermined", lang), show_alert=True)
+        return
+
+    # Step 3 — atomically debit the wallet. The callback-query id makes the ref
+    # unique per tap so a Telegram redelivery of the same tap is deduped.
+    spend_ref = f"buy:{callback.id}"
+    async with get_conn() as conn:
+        spent = await wallet_service.try_spend(
+            conn, user.id, price.stars, ref=spend_ref
+        )
+    if not spent:
+        await callback.answer(t("wallet.insufficient", lang), show_alert=True)
+        return
+
+    # Recover the debit txn id for the synthetic payment / a potential refund.
+    async with get_conn() as conn:
+        spend_txn = await wallet_repo.get_by_ref(conn, spend_ref)
+    txn_id = spend_txn.id if spend_txn is not None else 0
+    synthetic_charge_id = f"wallet:{txn_id}"
+
+    # Step 4 — provision (xui-first). On failure, refund and bail out.
+    xui = await get_xui_client()
+    sub = None
+    try:
+        async with get_conn() as conn:
+            sub = await subs_service.create_or_extend(
+                conn=conn,
+                xui=xui,
+                user=user,
+                plan=plan,
+                promo=promo,
+                inbound_id=int(inbound_id),
+                extend_sub_id=extend_sub_id,
+            )
+    except XuiError as exc:
+        logger.error(
+            "cb_pay_from_balance: xui provisioning failed for user {} txn {}: {}; "
+            "refunding wallet",
+            user.id,
+            txn_id,
+            exc,
+        )
+        async with get_conn() as conn:
+            await wallet_service.credit(
+                conn,
+                user.id,
+                price.stars,
+                type="refund",
+                ref=f"refund:{txn_id}",
+            )
+        await state.clear()
+        if callback.message is not None:
+            await callback.message.answer(t("wallet.pay_failed", lang))
+        await callback.answer()
+        return
+
+    # Step 5 — synthetic payment row so stats / total_stars count the spend.
+    async with get_conn() as conn:
+        try:
+            await payments_repo.create(
+                conn,
+                user_id=user.id,
+                subscription_id=sub.id if sub is not None else None,
+                telegram_charge_id=synthetic_charge_id,
+                stars_amount=price.stars,
+                plan_id=plan.id,
+                promo_id=promo.id if promo is not None else None,
+            )
+        except aiosqlite.IntegrityError:
+            logger.info(
+                "cb_pay_from_balance: duplicate synthetic payment {} — fine",
+                synthetic_charge_id,
+            )
+
+    # Step 6 — promo redemption (best-effort, like on_successful_payment).
+    if sub is not None and promo is not None:
+        async with get_conn() as conn:
+            ok = await promos_service.apply(
+                conn,
+                promo_id=promo.id,
+                user_id=user.id,
+                subscription_id=sub.id,
+            )
+        if not ok:
+            logger.warning(
+                "cb_pay_from_balance: promo {} apply failed for user {} sub {}",
+                promo.id,
+                user.id,
+                sub.id,
+            )
+
+    await state.clear()
+    if sub is not None:
+        await deliver_keys(
+            bot, xui, chat_id=chat_id, sub=sub,
+            header=t("wallet.paid_from_balance_header", lang),
+            lang=lang,
+        )
+    await callback.answer()
+
+
+# ---------------------------------------------------------------------- #
 # Pre-checkout
 # ---------------------------------------------------------------------- #
 
@@ -1009,18 +1434,30 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
 
     Telegram requires this to be answered within ~10 seconds. We keep
     the checks read-only (no writes!) so a partial failure can't leak a
-    half-applied promo.
+    half-applied promo. Error messages are localized from the buyer's
+    Telegram ``language_code`` (the only signal available before the DB
+    lookup).
     """
+    lang = resolve_lang(
+        query.from_user.language_code if query.from_user is not None else None
+    )
     try:
-        plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(
-            query.invoice_payload
-        )
+        ctx = billing.parse_invoice_payload(query.invoice_payload)
     except ValueError as exc:
         logger.warning("pre_checkout: bad payload {!r}: {}", query.invoice_payload, exc)
         await bot.answer_pre_checkout_query(
-            query.id, ok=False, error_message="Некорректный заказ."
+            query.id, ok=False, error_message=t("buy.precheckout_bad_order", lang)
         )
         return
+
+    # ``ctx.kind`` is the extension point: "buy" is handled below (current
+    # one-off purchase / extend flow). "topup" (Ф2), "gift" (Ф3) and "sub"
+    # (Ф4) will branch here as those phases land. Until then any non-"buy"
+    # kind reaches the buy flow below and is validated as a normal purchase.
+    plan_id = ctx.plan_id
+    promo_id = ctx.promo_id
+    inbound_id = ctx.inbound_id
+    sub_id = ctx.sub_id
 
     async with get_conn() as conn:
         plan = await _fetch_plan(conn, plan_id)
@@ -1031,14 +1468,14 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
 
     if not _plan_is_buyable(plan):
         await bot.answer_pre_checkout_query(
-            query.id, ok=False, error_message="Тариф больше недоступен."
+            query.id, ok=False, error_message=t("buy.precheckout_plan_gone", lang)
         )
         return
     if promo_id and not _promo_is_usable(promo):
         await bot.answer_pre_checkout_query(
             query.id,
             ok=False,
-            error_message="Промокод стал недействителен.",
+            error_message=t("buy.precheckout_promo_invalid", lang),
         )
         return
 
@@ -1049,7 +1486,9 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
         tg_id = query.from_user.id if query.from_user is not None else None
         if tg_id is None:
             await bot.answer_pre_checkout_query(
-                query.id, ok=False, error_message="Не удалось определить пользователя."
+                query.id,
+                ok=False,
+                error_message=t("buy.precheckout_user_undetermined", lang),
             )
             return
         async with get_conn() as conn:
@@ -1069,7 +1508,7 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
             await bot.answer_pre_checkout_query(
                 query.id,
                 ok=False,
-                error_message="Подписка недоступна для продления.",
+                error_message=t("buy.precheckout_sub_unavailable", lang),
             )
             return
         await bot.answer_pre_checkout_query(query.id, ok=True)
@@ -1086,7 +1525,7 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
         await bot.answer_pre_checkout_query(
             query.id,
             ok=False,
-            error_message="Подключение больше недоступно.",
+            error_message=t("buy.precheckout_inbound_gone", lang),
         )
         return
 
@@ -1098,11 +1537,345 @@ async def on_pre_checkout(query: PreCheckoutQuery, bot: Bot) -> None:
 # ---------------------------------------------------------------------- #
 
 
+async def _credit_topup(
+    message: Message,
+    user: User,
+    charge_id: str,
+    total_amount: int,
+    topup_stars: int,
+    lang: str,
+) -> None:
+    """Finalise a wallet top-up (``kind="topup"``) — idempotent.
+
+    Two layers of idempotency keep the balance correct even if Telegram retries
+    the ``successful_payment`` update:
+
+    * ``payments.telegram_charge_id`` is UNIQUE — the payment row is recorded
+      at most once (a duplicate insert raises ``IntegrityError``, swallowed).
+    * ``wallet.credit`` uses the deterministic ref ``topup:<charge_id>`` (the
+      partial-unique ``idx_wallet_ref``) — the balance is credited at most once
+      regardless of how many times this runs.
+
+    We credit the *actual* amount Telegram charged (``total_amount``) rather
+    than the payload's ``topup_stars`` if they disagree, so the balance always
+    matches the money received; a mismatch is logged at WARNING for auditing.
+    """
+    amount = int(total_amount) if total_amount > 0 else int(topup_stars)
+    if topup_stars and total_amount and int(topup_stars) != int(total_amount):
+        logger.warning(
+            "topup: payload amount {} != charged amount {} (charge {}); "
+            "crediting charged amount",
+            topup_stars,
+            total_amount,
+            charge_id,
+        )
+
+    # Record the payment (real telegram_charge_id) for stats / total_stars.
+    async with get_conn() as conn:
+        try:
+            await payments_repo.create(
+                conn,
+                user_id=user.id,
+                subscription_id=None,
+                telegram_charge_id=charge_id,
+                stars_amount=amount,
+                plan_id=None,
+                promo_id=None,
+            )
+        except aiosqlite.IntegrityError:
+            # Duplicate charge — already recorded by an earlier run / racing
+            # worker. The wallet credit below is independently idempotent.
+            logger.info("topup: duplicate payment for charge {} — fine", charge_id)
+
+    # Credit the wallet exactly once (deterministic ref).
+    async with get_conn() as conn:
+        credited = await wallet_service.credit(
+            conn,
+            user.id,
+            amount,
+            type="topup",
+            ref=f"topup:{charge_id}",
+        )
+    if credited:
+        async with get_conn() as conn:
+            new_balance = await wallet_repo.balance(conn, user.id)
+        await message.answer(
+            t("wallet.topup_success", lang, stars=amount, balance=new_balance)
+        )
+    else:
+        # Already credited (replay) — stay quiet to avoid double-confirming.
+        logger.info(
+            "topup: credit for charge {} already applied — skipping confirm",
+            charge_id,
+        )
+
+
+async def _mint_gift(
+    message: Message,
+    bot: Bot,
+    user: User,
+    charge_id: str,
+    total_amount: int,
+    ctx_plan_id: int,
+    ctx_promo_id: int | None,
+    ctx_inbound_id: int,
+    lang: str,
+) -> None:
+    """Finalise a **gift** purchase (``kind="gift"``) — mint a code, not a sub.
+
+    Steps (idempotent — the duplicate ``telegram_charge_id`` is rejected by the
+    payment row's UNIQUE constraint, so the gift is minted at most once):
+
+    1. Record the ``payments`` row (real ``telegram_charge_id``). A duplicate
+       insert means a redelivery already minted the gift — short-circuit.
+    2. Mint a fresh gift code via :func:`app.services.gifts.make_gift_code`,
+       linking it to the payment, the plan and the chosen inbound.
+    3. DM the *buyer* the code and the ``?start=gift_<code>`` activation link to
+       forward to whoever they want to gift.
+
+    The buyer is **not** provisioned a subscription here — the recipient
+    redeems the code later (deep-link / «У меня есть подарок»).
+    """
+    # Step 1 — record the payment first so its UNIQUE charge_id gates the mint.
+    payment_id: int | None = None
+    async with get_conn() as conn:
+        try:
+            payment = await payments_repo.create(
+                conn,
+                user_id=user.id,
+                subscription_id=None,
+                telegram_charge_id=charge_id,
+                stars_amount=total_amount,
+                plan_id=ctx_plan_id or None,
+                promo_id=ctx_promo_id,
+            )
+            payment_id = payment.id
+        except aiosqlite.IntegrityError:
+            # Duplicate charge — the gift was already minted on an earlier run.
+            logger.info("gift: duplicate payment for charge {} — skipping mint", charge_id)
+            return
+
+    # Step 2 — mint the gift code (inside the not-duplicate branch only).
+    async with get_conn() as conn:
+        gift = await gifts_service.make_gift_code(
+            conn,
+            plan_id=ctx_plan_id or None,
+            inbound_id=int(ctx_inbound_id),
+            buyer_id=user.id,
+            payment_id=payment_id,
+        )
+
+    # Step 3 — DM the buyer the code + activation deep-link.
+    bot_username = await get_bot_username(bot)
+    link = f"https://t.me/{bot_username}?start=gift_{gift.code}"
+    await message.answer(
+        t("gift.minted_dm", lang, code=gift.code, link=link)
+    )
+
+
+def _expiry_ms_from_unix(unix_seconds: int) -> int:
+    """Convert a Telegram ``subscription_expiration_date`` (Unix s) to xui ms.
+
+    Telegram's ``SuccessfulPayment.subscription_expiration_date`` is a Unix
+    timestamp in **seconds**; 3x-ui's ``expiryTime`` is in **milliseconds**.
+    """
+    return int(unix_seconds) * 1000
+
+
+def _datetime_from_unix(unix_seconds: int) -> datetime:
+    """Convert a Unix-seconds timestamp to a UTC-aware :class:`datetime`."""
+    return datetime.fromtimestamp(int(unix_seconds), tz=UTC)
+
+
+async def _handle_recurring(
+    message: Message,
+    bot: Bot,
+    user: User,
+    charge_id: str,
+    total_amount: int,
+    ctx: billing.InvoiceContext,
+    is_first: bool,
+    sub_expiration: int | None,
+    lang: str,
+) -> None:
+    """Finalise a native recurring **Star subscription** payment (``kind='sub'``).
+
+    Two cases, distinguished by ``is_first`` (``successful_payment.is_first_recurring``):
+
+    * **First charge** (``is_first``) → provision a brand-new subscription via
+      :func:`app.services.subscriptions.create_or_extend` (``extend_sub_id=None``),
+      flag it ``auto_renew=True`` and persist the recurring
+      ``telegram_payment_charge_id`` (needed later by
+      :meth:`aiogram.Bot.edit_user_star_subscription` to cancel), record the
+      payment, then deliver keys.
+    * **Subsequent charge** (recurring, not first) → locate the user's active
+      native subscription for this plan via
+      :func:`app.db.repos.subscriptions.get_active_auto_renew_for`, push its
+      ``expires_at`` to Telegram's ``subscription_expiration_date`` (Unix→UTC),
+      update the xui client's ``expiryTime`` to match, and record the payment.
+
+    Idempotency: the caller already short-circuited on a duplicate
+    ``telegram_payment_charge_id`` (each recurrence has a unique one), and the
+    payment insert is additionally guarded by the UNIQUE charge-id constraint.
+    """
+    plan_id = ctx.plan_id
+    inbound_id = ctx.inbound_id
+
+    async with get_conn() as conn:
+        plan = await plans_repo.get(conn, plan_id)
+    if plan is None:
+        logger.error(
+            "recurring: plan {} missing for charge {}", plan_id, charge_id
+        )
+        async with get_conn() as conn:
+            try:
+                await payments_repo.create(
+                    conn,
+                    user_id=user.id,
+                    subscription_id=None,
+                    telegram_charge_id=charge_id,
+                    stars_amount=total_amount,
+                    plan_id=None,
+                    promo_id=None,
+                )
+            except aiosqlite.IntegrityError:
+                pass
+        await message.answer(t("buy.payment_plan_deleted", lang))
+        return
+
+    xui = await get_xui_client()
+
+    # ---- First recurring charge — provision a fresh subscription. ----
+    if is_first:
+        sub = None
+        try:
+            async with get_conn() as conn:
+                sub = await subs_service.create_or_extend(
+                    conn=conn,
+                    xui=xui,
+                    user=user,
+                    plan=plan,
+                    promo=None,
+                    inbound_id=int(inbound_id),
+                    extend_sub_id=None,
+                )
+        except XuiError as exc:
+            logger.error(
+                "recurring(first): xui provisioning failed charge {}: {}",
+                charge_id,
+                exc,
+            )
+        if sub is not None:
+            async with get_conn() as conn:
+                await subs_repo.set_auto_renew(
+                    conn, sub.id, True, tg_sub_charge_id=charge_id
+                )
+        async with get_conn() as conn:
+            try:
+                await payments_repo.create(
+                    conn,
+                    user_id=user.id,
+                    subscription_id=sub.id if sub is not None else None,
+                    telegram_charge_id=charge_id,
+                    stars_amount=total_amount,
+                    plan_id=plan.id,
+                    promo_id=None,
+                )
+            except aiosqlite.IntegrityError:
+                logger.info("recurring(first): duplicate payment {} — fine", charge_id)
+        if sub is not None:
+            await deliver_keys(
+                bot, xui, chat_id=message.chat.id, sub=sub,
+                header=t("buy.payment_success_header", lang),
+                lang=lang,
+            )
+        else:
+            await message.answer(t("buy.payment_provision_failed", lang))
+        return
+
+    # ---- Subsequent recurring charge — extend the existing subscription. ----
+    async with get_conn() as conn:
+        sub = await subs_repo.get_active_auto_renew_for(conn, user.id, plan.id)
+    if sub is None:
+        logger.warning(
+            "recurring(subsequent): no active auto_renew sub for user {} plan {} "
+            "(charge {}); recording payment only",
+            user.id,
+            plan.id,
+            charge_id,
+        )
+        async with get_conn() as conn:
+            try:
+                await payments_repo.create(
+                    conn,
+                    user_id=user.id,
+                    subscription_id=None,
+                    telegram_charge_id=charge_id,
+                    stars_amount=total_amount,
+                    plan_id=plan.id,
+                    promo_id=None,
+                )
+            except aiosqlite.IntegrityError:
+                pass
+        return
+
+    # Extend to Telegram's reported expiration date (authoritative for native
+    # subscriptions). Fall back to +plan.days if Telegram omitted the field.
+    if sub_expiration is not None:
+        new_expiry = _datetime_from_unix(sub_expiration)
+    else:
+        from datetime import timedelta
+
+        new_expiry = datetime.now(UTC).replace(microsecond=0) + timedelta(
+            days=int(plan.days)
+        )
+    try:
+        await update_client(
+            xui,
+            email=sub.xui_client_email,
+            expiryTime=_expiry_ms_from_unix(int(new_expiry.timestamp())),
+            enable=True,
+        )
+    except XuiError as exc:
+        logger.error(
+            "recurring(subsequent): xui update_client failed sub {} charge {}: {}",
+            sub.id,
+            charge_id,
+            exc,
+        )
+    async with get_conn() as conn:
+        await subs_repo.extend(conn, sub.id, new_expiry)
+        try:
+            await payments_repo.create(
+                conn,
+                user_id=user.id,
+                subscription_id=sub.id,
+                telegram_charge_id=charge_id,
+                stars_amount=total_amount,
+                plan_id=plan.id,
+                promo_id=None,
+            )
+        except aiosqlite.IntegrityError:
+            logger.info(
+                "recurring(subsequent): duplicate payment {} — fine", charge_id
+            )
+    await message.answer(
+        t(
+            "autorenew.renewed_dm",
+            lang,
+            sub_id=sub.id,
+            stars=total_amount,
+            date=new_expiry.date().isoformat(),
+        )
+    )
+
+
 @router.message(F.successful_payment)
 async def on_successful_payment(
     message: Message,
     bot: Bot,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Finalise a paid Stars invoice.
 
@@ -1141,18 +1914,65 @@ async def on_successful_payment(
 
     # Step 2 — payload.
     try:
-        plan_id, promo_id, inbound_id, sub_id = billing.parse_invoice_payload(
-            payment.invoice_payload
-        )
+        ctx = billing.parse_invoice_payload(payment.invoice_payload)
     except ValueError as exc:
         logger.error(
             "successful_payment: bad payload {!r}: {}", payment.invoice_payload, exc
         )
-        await message.answer(
-            "Платёж получен, но мы не смогли разобрать заказ. "
-            "Свяжитесь с поддержкой — мы вернём средства или активируем подписку вручную."
+        await message.answer(t("buy.payment_unparseable", lang))
+        return
+
+    # ``ctx.kind`` is the routing extension point: "topup" credits the wallet
+    # (handled below), "gift" mints a gift code (Ф3), "sub" provisions a native
+    # recurring Star subscription (Ф4). The current handler implements the
+    # "buy" (one-off purchase / extend) path; gift/sub fall through to it until
+    # their phase lands.
+    if ctx.kind == "topup":
+        await _credit_topup(message, user, charge_id, total_amount, ctx.topup, lang)
+        return
+
+    # Gift purchase — mint a giftable code instead of provisioning the buyer a
+    # subscription. Routed on ``kind="gift"`` (set by ``build_gift_payload``).
+    if ctx.kind == "gift" or ctx.gift:
+        await _mint_gift(
+            message,
+            bot,
+            user,
+            charge_id,
+            total_amount,
+            ctx.plan_id,
+            ctx.promo_id,
+            ctx.inbound_id,
+            lang,
         )
         return
+
+    # Native recurring Star subscription. Telegram flags every recurring charge
+    # with ``is_recurring is True`` (and ``is_first_recurring is True`` on the
+    # bootstrap one); ``is_recurring`` is ``Optional[bool]`` and is ``None`` for
+    # an ordinary one-off purchase. The ``kind="sub"`` payload independently
+    # marks the first charge. We test ``is True`` explicitly (not truthiness) so
+    # a one-off payment whose ``is_recurring`` is ``None`` never enters this
+    # branch. Routing on either signal covers both the first and the
+    # Telegram-issued subsequent charges.
+    if payment.is_recurring is True or ctx.kind == "sub":
+        await _handle_recurring(
+            message,
+            bot,
+            user,
+            charge_id,
+            total_amount,
+            ctx,
+            payment.is_first_recurring is True or payment.is_recurring is not True,
+            payment.subscription_expiration_date,
+            lang,
+        )
+        return
+
+    plan_id = ctx.plan_id
+    promo_id = ctx.promo_id
+    inbound_id = ctx.inbound_id
+    sub_id = ctx.sub_id
 
     # Surface legacy payloads (issued before the inbound-selection
     # rollout) at the handler layer too — parse_invoice_payload already
@@ -1193,9 +2013,7 @@ async def on_successful_payment(
                 )
             except aiosqlite.IntegrityError:
                 pass  # raced with another worker — fine
-        await message.answer(
-            "Платёж получен, но тариф удалён. Напишите администратору — мы решим."
-        )
+        await message.answer(t("buy.payment_plan_deleted", lang))
         return
 
     # Step 4 — provision (xui-first, db-after).
@@ -1269,17 +2087,32 @@ async def on_successful_payment(
                 sub.id,
             )
 
+    # Step 6b — referral reward. Pays the inviter (if any) on the referred
+    # user's first payment. Idempotent: ``try_mark_rewarded`` + the deterministic
+    # wallet ref make the bonus land at most once even though this runs after
+    # every buy payment. Best-effort — a failure here must not break key
+    # delivery (the user already paid).
+    try:
+        async with get_conn() as conn:
+            await referrals_service.reward_referrer_after_first_payment(
+                conn, bot, referred=user
+            )
+    except Exception as exc:  # noqa: BLE001 — reward must never break delivery
+        logger.warning(
+            "successful_payment: referral reward failed for user {}: {}",
+            user.id,
+            exc,
+        )
+
     # Step 7 — keys.
     if sub is not None:
         await deliver_keys(
             bot, xui, chat_id=message.chat.id, sub=sub,
-            header="✅ Оплата прошла. Подписка активна.",
+            header=t("buy.payment_success_header", lang),
+            lang=lang,
         )
     elif xui_failed:
-        await message.answer(
-            "Оплата получена, но не удалось активировать ключ в панели VPN. "
-            "Мы зафиксировали платёж и в ближайшее время администратор активирует подписку вручную."
-        )
+        await message.answer(t("buy.payment_provision_failed", lang))
 
 
 __all__ = ["router"]

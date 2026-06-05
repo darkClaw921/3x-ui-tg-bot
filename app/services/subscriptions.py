@@ -232,6 +232,127 @@ async def activate_free_days(
     )
 
 
+class TrialAlreadyUsedError(Exception):
+    """Raised by :func:`activate_trial` when the user already claimed a trial.
+
+    The handler maps this to a localized "trial уже использован" message. It is
+    raised both from the cheap pre-check (:func:`app.db.repos.subscriptions.has_trial`)
+    and as a backstop when the DB insert hits the partial-unique index
+    ``idx_subscriptions_one_trial`` in a race — so a second concurrent
+    activation can never provision two trials.
+    """
+
+
+async def activate_trial(
+    conn: aiosqlite.Connection,
+    xui: XuiClient,
+    user: User,
+    *,
+    inbound_id: int,
+    days: int,
+    traffic_gb: int,
+) -> Subscription:
+    """Provision a free **trial** subscription for ``user`` (one per user).
+
+    A trial is a fresh, paid-less subscription (``plan_id=None``,
+    ``is_trial=True``) created on the picked ``inbound_id`` for ``days`` days
+    with a ``traffic_gb`` quota. It reuses the common :func:`_provision` path
+    (xui-first, DB-after) so trial clients are provisioned identically to paid
+    ones — the only differences are ``plan_id`` / ``is_trial`` and the absence
+    of a payment.
+
+    The "one trial per user" rule is enforced in two layers:
+
+    1. A cheap pre-check via :func:`app.db.repos.subscriptions.has_trial` — if
+       the user already holds a trial we raise :class:`TrialAlreadyUsedError`
+       *before* touching the panel, so no orphan xui client is created in the
+       common repeat-attempt case.
+    2. A backstop: the DB insert is subject to the partial-unique index
+       ``idx_subscriptions_one_trial``. If two activations race past the
+       pre-check, the second insert raises :class:`aiosqlite.IntegrityError`,
+       which we translate to :class:`TrialAlreadyUsedError`. (The xui client of
+       the loser becomes an orphan the admin can reap — an acceptable, rare
+       edge versus letting two trials through.)
+
+    Raises
+    ------
+    TrialAlreadyUsedError
+        The user already has a trial subscription.
+    app.xui.XuiError
+        Bubble up from the panel call — the caller apologises / retries.
+    """
+    if await subs_repo.has_trial(conn, user.id):
+        raise TrialAlreadyUsedError(user.id)
+    try:
+        return await _provision(
+            conn=conn,
+            xui=xui,
+            user=user,
+            delta_days=max(0, int(days)),
+            plan_id=None,
+            total_gb=max(0, int(traffic_gb)),
+            inbound_id=int(inbound_id),
+            extend_sub_id=None,
+            is_trial=True,
+        )
+    except aiosqlite.IntegrityError as exc:
+        # Lost a race against the partial-unique index — another concurrent
+        # activation already inserted this user's trial row.
+        logger.warning(
+            "activate_trial: race on one-trial index for user {}: {}",
+            user.tg_id,
+            exc,
+        )
+        raise TrialAlreadyUsedError(user.id) from exc
+
+
+async def grant_subscription(
+    conn: aiosqlite.Connection,
+    xui: XuiClient,
+    user: User,
+    *,
+    plan: Plan,
+    inbound_id: int,
+    days: int | None = None,
+) -> Subscription:
+    """Manually grant / extend a subscription for ``user`` (admin tooling).
+
+    Used by the admin «🎁 Выдать подписку» flow. Mirrors the paid
+    :func:`create_or_extend` path — xui-first, DB-after, via the shared
+    :func:`_provision` — but with **no payment** and an explicit ``days``
+    override:
+
+    * ``days is None`` → use ``plan.days`` (the plan's natural term).
+    * ``days`` is an ``int`` → grant exactly that many days, ignoring
+      ``plan.days`` (so an admin can hand out a bespoke duration).
+
+    The plan's ``traffic_gb`` quota is still applied so a granted subscription
+    behaves like a purchased one. ``plan_id`` is recorded on the row so the
+    subscription is attributable to the plan in the user card / stats.
+
+    This always **creates a fresh** subscription (``extend_sub_id=None``); the
+    admin card surfaces the separate «Отозвать» button for cleanup, and granting
+    a brand-new client keeps the flow predictable (no silent extension of an
+    unrelated existing subscription).
+
+    Raises
+    ------
+    app.xui.XuiError
+        Bubble up from the panel call — the caller apologises to the admin.
+    """
+    delta_days = int(plan.days) if days is None else max(0, int(days))
+    return await _provision(
+        conn=conn,
+        xui=xui,
+        user=user,
+        delta_days=delta_days,
+        plan_id=plan.id,
+        total_gb=int(plan.traffic_gb),
+        inbound_id=int(inbound_id),
+        extend_sub_id=None,
+    )
+
+
 async def revoke(xui: XuiClient, sub: Subscription) -> None:
     """Disable a subscription's xui client and mark the DB row revoked.
 
@@ -271,6 +392,7 @@ async def _provision(
     total_gb: int = 0,
     inbound_id: int,
     extend_sub_id: int | None,
+    is_trial: bool = False,
 ) -> Subscription:
     """Create a fresh subscription, or extend a caller-specified one.
 
@@ -385,6 +507,7 @@ async def _provision(
         expires_at=new_expiry,
         plan_id=plan_id,
         xui_sub_id=sub_id,
+        is_trial=is_trial,
     )
     logger.info(
         "sub-create user={} sub={} uuid={} email={} sub_id={} expires={}",
@@ -399,7 +522,10 @@ async def _provision(
 
 
 __all__ = [
+    "TrialAlreadyUsedError",
     "activate_free_days",
+    "activate_trial",
     "create_or_extend",
+    "grant_subscription",
     "revoke",
 ]

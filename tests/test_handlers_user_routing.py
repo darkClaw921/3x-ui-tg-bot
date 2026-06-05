@@ -35,6 +35,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, User as TgUser
 from app.db.repos.plans import Plan
 from app.handlers.user import user_router
 from app.keyboards.user import (
+    BuyCB,
     back_to_menu_kb,
     cancel_kb,
     confirm_kb,
@@ -233,7 +234,7 @@ async def test_user_main_menu_entry_points_are_routed() -> None:
     handler — regression guard for the kind of bug that broke admin
     «Тарифы» / «Промокоды» entry buttons.
     """
-    assert await _has_matching_handler(user_router, "ub:open:0:0:0:0"), (
+    assert await _has_matching_handler(user_router, BuyCB(action="open").pack()), (
         "BuyCB(action='open') is not routed — «🛒 Купить» would be dead"
     )
     assert await _has_matching_handler(user_router, "u:my"), (
@@ -282,23 +283,24 @@ async def test_confirm_kb_threads_inbound_id_through_routing() -> None:
     is non-zero — guards against a future ``F.inbound_id == 0`` filter
     being added by accident.
     """
-    assert await _has_matching_handler(user_router, "ub:confirm:7:0:1:0"), (
-        "BuyCB(action='confirm', inbound_id=1) is not routed"
-    )
-    assert await _has_matching_handler(user_router, "ub:apply_promo:7:0:1:0"), (
-        "BuyCB(action='apply_promo', inbound_id=1) is not routed"
-    )
+    assert await _has_matching_handler(
+        user_router, BuyCB(action="confirm", plan_id=7, inbound_id=1).pack()
+    ), "BuyCB(action='confirm', inbound_id=1) is not routed"
+    assert await _has_matching_handler(
+        user_router, BuyCB(action="apply_promo", plan_id=7, inbound_id=1).pack()
+    ), "BuyCB(action='apply_promo', inbound_id=1) is not routed"
     # Extend confirm: payload carries non-zero sub_id and must still route.
-    assert await _has_matching_handler(user_router, "ub:confirm:7:0:1:42"), (
-        "BuyCB(action='confirm', sub_id=42) is not routed"
-    )
+    assert await _has_matching_handler(
+        user_router,
+        BuyCB(action="confirm", plan_id=7, inbound_id=1, sub_id=42).pack(),
+    ), "BuyCB(action='confirm', sub_id=42) is not routed"
     # Action-screen entry callbacks must route from any state (no state filter).
-    assert await _has_matching_handler(user_router, "ub:extend:0:0:0:42"), (
-        "BuyCB(action='extend', sub_id=42) is not routed — extend entry would be dead"
-    )
-    assert await _has_matching_handler(user_router, "ub:new:0:0:0:0"), (
-        "BuyCB(action='new') is not routed — new-sub entry would be dead"
-    )
+    assert await _has_matching_handler(
+        user_router, BuyCB(action="extend", sub_id=42).pack()
+    ), "BuyCB(action='extend', sub_id=42) is not routed — extend entry would be dead"
+    assert await _has_matching_handler(
+        user_router, BuyCB(action="new").pack()
+    ), "BuyCB(action='new') is not routed — new-sub entry would be dead"
     # Promo-flow action screen — extend/new live under
     # PromoActivate.choosing_action so the route must accept both the
     # callback payload AND the state.

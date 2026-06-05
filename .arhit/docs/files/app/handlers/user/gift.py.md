@@ -1,0 +1,3 @@
+# app/handlers/user/gift.py
+
+Роутер активации подарка. cb_redeem (GiftCB action='redeem'): вход в GiftRedeem.waiting_code, промпт ввода кода. msg_code (GiftRedeem.waiting_code): redeem_gift(code, redeemer) → при GiftRedeemError маппинг not_found/not_active в сообщение (остаётся в waiting_code), при XuiError — apology; при успехе deliver_keys получателю + notify_gift_buyer + clear state. notify_gift_buyer(bot, gift) — DM покупателю (best-effort, shared с deep-link путём в start.py). Состояние GiftRedeem.waiting_code в states/user.py. Deep-link gift_<code> обрабатывается в start.cmd_start (_handle_gift_deep_link).

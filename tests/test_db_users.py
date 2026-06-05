@@ -144,3 +144,34 @@ async def test_list_all_tg_ids_ordered(db_conn):
 
 async def test_list_all_tg_ids_empty(db_conn):
     assert await users_repo.list_all_tg_ids(db_conn) == []
+
+
+async def test_set_blocked_and_is_blocked(db_conn):
+    user = await users_repo.create(db_conn, tg_id=5, username="b", first_name="B")
+    assert user.is_blocked is False
+    assert await users_repo.is_blocked(db_conn, 5) is False
+    await users_repo.set_blocked(db_conn, user.id, True)
+    assert await users_repo.is_blocked(db_conn, 5) is True
+    refreshed = await users_repo.get_by_id(db_conn, user.id)
+    assert refreshed.is_blocked is True
+    await users_repo.set_blocked(db_conn, user.id, False)
+    assert await users_repo.is_blocked(db_conn, 5) is False
+
+
+async def test_is_blocked_unknown_user_false(db_conn):
+    assert await users_repo.is_blocked(db_conn, 99999) is False
+
+
+async def test_get_or_create_preserves_is_blocked_on_admin_sync(db_conn, monkey_settings):
+    """Admin re-sync reconstructs the User but must keep is_blocked."""
+    monkey_settings(ADMIN_IDS=[])
+    user = await users_repo.create(db_conn, tg_id=7, username="x", first_name="X")
+    await users_repo.set_blocked(db_conn, user.id, True)
+    # Now mark them admin in settings → get_or_create flips is_admin and
+    # reconstructs the dataclass; is_blocked must survive.
+    monkey_settings(ADMIN_IDS=[7])
+    refreshed = await users_repo.get_or_create(
+        db_conn, tg_id=7, username="x", first_name="X"
+    )
+    assert refreshed.is_admin is True
+    assert refreshed.is_blocked is True

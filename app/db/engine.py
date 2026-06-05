@@ -54,6 +54,86 @@ async def _configure_connection(conn: aiosqlite.Connection) -> None:
     await conn.execute("PRAGMA journal_mode = WAL;")
 
 
+async def _relax_subscription_notifications_kind(
+    conn: aiosqlite.Connection,
+) -> None:
+    """Drop the legacy ``CHECK (kind IN (...))`` on ``subscription_notifications``.
+
+    Phase 4 adds new notification kinds (e.g. ``'traffic80'``) on top of the
+    historical ``'3d' / '1d' / '0d' / 'expired'`` set. Older databases were
+    created with a ``CHECK`` constraint that hard-codes the old four kinds, and
+    SQLite cannot drop a column constraint via ``ALTER TABLE``. Rather than a
+    destructive rebuild on every boot, this migration is **conditional and
+    data-preserving**:
+
+    * It inspects ``sqlite_master.sql`` for the table. If the DDL no longer
+      contains a ``CHECK`` clause (fresh installs, or already-migrated DBs) it
+      is a **no-op** — so the migration is idempotent.
+    * If a ``CHECK`` is present it rebuilds the table without it inside a single
+      transaction, copying every existing row across, then swaps the new table
+      in. Row ids and the ``UNIQUE (subscription_id, kind)`` dedup semantics are
+      preserved.
+
+    Validation of allowed kinds now lives in code
+    (:func:`app.db.repos.subscriptions.try_mark_notification_sent`), so the
+    column is intentionally free-text at the DB level.
+    """
+    cursor = await conn.execute(
+        "SELECT sql FROM sqlite_master "
+        "WHERE type = 'table' AND name = 'subscription_notifications'"
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        return  # table not created yet — nothing to relax
+    ddl = row["sql"] or ""
+    if "CHECK" not in ddl.upper():
+        return  # already free-text (fresh install or previously migrated)
+
+    logger.info(
+        "migration: relaxing subscription_notifications.kind CHECK constraint "
+        "(data-preserving rebuild)"
+    )
+    # FK enforcement must be off during a table swap or the rename/drop dance
+    # trips the self-referencing FKs. We restore it afterwards.
+    await conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        await conn.execute("BEGIN")
+        await conn.execute(
+            """
+            CREATE TABLE subscription_notifications_new (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                subscription_id INTEGER NOT NULL
+                                    REFERENCES subscriptions(id) ON DELETE CASCADE,
+                kind            TEXT NOT NULL,
+                sent_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (subscription_id, kind)
+            )
+            """
+        )
+        await conn.execute(
+            "INSERT INTO subscription_notifications_new "
+            "(id, subscription_id, kind, sent_at) "
+            "SELECT id, subscription_id, kind, sent_at "
+            "FROM subscription_notifications"
+        )
+        await conn.execute("DROP TABLE subscription_notifications")
+        await conn.execute(
+            "ALTER TABLE subscription_notifications_new "
+            "RENAME TO subscription_notifications"
+        )
+        # The index is dropped together with the old table — recreate it.
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_subscription_notifications_sub "
+            "ON subscription_notifications(subscription_id)"
+        )
+        await conn.commit()
+    except BaseException:
+        await conn.rollback()
+        raise
+    finally:
+        await conn.execute("PRAGMA foreign_keys = ON")
+
+
 async def _apply_migrations(conn: aiosqlite.Connection) -> None:
     """Apply lightweight, idempotent column additions on top of ``schema.sql``.
 
@@ -73,6 +153,38 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
         # existed must be upgraded in-place; existing plans default to 0 (no
         # limit) for backwards-compatible behaviour.
         "ALTER TABLE plans ADD COLUMN traffic_gb INTEGER NOT NULL DEFAULT 0",
+        # Users: ``lang`` stores the user's preferred UI language (one of
+        # ``app.i18n.SUPPORTED_LANGS``). New users get a value resolved from
+        # their Telegram ``language_code`` at registration; existing rows on an
+        # upgraded DB default to ``'ru'`` (the historical single language) so no
+        # backfill is required and the UI stays unchanged for them.
+        "ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT 'ru'",
+        # Subscriptions: ``is_trial`` flags a free trial subscription (1) vs a
+        # regular/paid one (0). Used to enforce the "one trial per user" rule
+        # (see ``idx_subscriptions_one_trial`` below) and to hide the trial
+        # button once a user has already claimed theirs. Existing rows on an
+        # upgraded DB default to 0 (non-trial) so the migration is non-breaking.
+        "ALTER TABLE subscriptions ADD COLUMN is_trial INTEGER NOT NULL DEFAULT 0",
+        # Subscriptions: ``auto_renew`` flags a subscription enrolled in
+        # automatic renewal (1) vs a one-off purchase (0). It drives both
+        # auto-renewal mechanisms — native Telegram Star subscriptions (paired
+        # with a non-NULL ``tg_sub_charge_id`` below) and the wallet fallback
+        # (``tg_sub_charge_id`` stays NULL and the scheduler charges the user's
+        # Stars balance). Existing rows on an upgraded DB default to 0 so the
+        # migration is non-breaking.
+        "ALTER TABLE subscriptions ADD COLUMN auto_renew INTEGER NOT NULL DEFAULT 0",
+        # Subscriptions: ``tg_sub_charge_id`` stores the recurring Telegram Star
+        # subscription's ``telegram_payment_charge_id``. It is required by
+        # ``bot.edit_user_star_subscription`` to cancel / re-enable a native
+        # subscription and distinguishes native Star subscriptions (non-NULL)
+        # from the wallet fallback (NULL) in ``list_auto_renew_due``. Nullable;
+        # existing / non-recurring rows keep NULL.
+        "ALTER TABLE subscriptions ADD COLUMN tg_sub_charge_id TEXT",
+        # Users: ``is_blocked`` (0/1) flags a user banned by an admin. A blocked
+        # user is rejected by ``BlockedUserMiddleware`` before any handler runs.
+        # Existing rows on an upgraded DB default to 0 (not blocked) so the
+        # migration is non-breaking.
+        "ALTER TABLE users ADD COLUMN is_blocked INTEGER NOT NULL DEFAULT 0",
     )
     for stmt in migrations:
         try:
@@ -95,8 +207,7 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 subscription_id INTEGER NOT NULL
                                     REFERENCES subscriptions(id) ON DELETE CASCADE,
-                kind            TEXT NOT NULL
-                                    CHECK (kind IN ('3d', '1d', '0d', 'expired')),
+                kind            TEXT NOT NULL,
                 sent_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (subscription_id, kind)
             )
@@ -126,6 +237,209 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
             "CREATE INDEX IF NOT EXISTS idx_plan_inbounds_plan "
             "ON plan_inbounds(plan_id)",
         ),
+        # ``wallet_transactions`` — append-only Stars-balance ledger. Balance is
+        # never stored; it is always recomputed as ``SUM(amount)`` over this
+        # table. ``amount`` is signed (credits positive, debits negative). See
+        # ``schema.sql`` for the full column-level documentation.
+        (
+            "wallet_transactions",
+            """
+            CREATE TABLE IF NOT EXISTS wallet_transactions (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL
+                                REFERENCES users(id) ON DELETE CASCADE,
+                type        TEXT NOT NULL
+                                CHECK (type IN ('topup', 'spend', 'refund',
+                                                'referral_bonus', 'admin_grant',
+                                                'payment')),
+                amount      INTEGER NOT NULL,
+                ref         TEXT NULL,
+                created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+        ),
+        (
+            "idx_wallet_transactions_user",
+            "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user "
+            "ON wallet_transactions(user_id)",
+        ),
+        # Partial-unique index — global idempotency by deterministic ``ref``.
+        # Only non-NULL refs are constrained, so a duplicate ``ref`` is rejected
+        # by the DB while ref-less rows stay unconstrained.
+        (
+            "idx_wallet_ref",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_ref "
+            "ON wallet_transactions(ref) WHERE ref IS NOT NULL",
+        ),
+        # Partial-unique index — race-proof "one trial per user". Only rows
+        # with ``is_trial=1`` are constrained, so a user can hold at most one
+        # trial subscription while their regular/paid subscriptions stay
+        # unconstrained. Two concurrent ``activate_trial`` calls for the same
+        # user cannot both insert a trial row: the second hits an
+        # IntegrityError (mapped to "trial already used" at the service layer).
+        (
+            "idx_subscriptions_one_trial",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_one_trial "
+            "ON subscriptions(user_id) WHERE is_trial = 1",
+        ),
+        # Index over ``tg_sub_charge_id`` — speeds up the recurring-charge
+        # lookup (``get_active_auto_renew_for``) and the wallet-fallback due
+        # scan (``list_auto_renew_due``, which filters ``tg_sub_charge_id IS
+        # NULL``). Created after the ALTER above adds the column.
+        (
+            "idx_subscriptions_tg_sub_charge",
+            "CREATE INDEX IF NOT EXISTS idx_subscriptions_tg_sub_charge "
+            "ON subscriptions(tg_sub_charge_id)",
+        ),
+        # ``referrals`` — one row per referred user (``referred_id`` UNIQUE),
+        # recording who invited them and whether the referral bonus has been
+        # paid. See ``schema.sql`` for the full column documentation.
+        (
+            "referrals",
+            """
+            CREATE TABLE IF NOT EXISTS referrals (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                referrer_id  INTEGER NOT NULL
+                                 REFERENCES users(id) ON DELETE CASCADE,
+                referred_id  INTEGER NOT NULL UNIQUE
+                                 REFERENCES users(id) ON DELETE CASCADE,
+                status       TEXT NOT NULL DEFAULT 'pending'
+                                 CHECK (status IN ('pending', 'rewarded')),
+                created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                rewarded_at  TIMESTAMP NULL
+            )
+            """,
+        ),
+        (
+            "idx_referrals_referrer",
+            "CREATE INDEX IF NOT EXISTS idx_referrals_referrer "
+            "ON referrals(referrer_id)",
+        ),
+        # ``gift_codes`` — purchasable subscription codes a buyer pays for but
+        # a recipient redeems. See ``schema.sql`` for full column docs.
+        (
+            "gift_codes",
+            """
+            CREATE TABLE IF NOT EXISTS gift_codes (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                code            TEXT NOT NULL UNIQUE,
+                plan_id         INTEGER NULL REFERENCES plans(id) ON DELETE SET NULL,
+                inbound_id      INTEGER NOT NULL,
+                buyer_id        INTEGER NOT NULL
+                                    REFERENCES users(id) ON DELETE CASCADE,
+                payment_id      INTEGER NULL
+                                    REFERENCES payments(id) ON DELETE SET NULL,
+                status          TEXT NOT NULL DEFAULT 'active'
+                                    CHECK (status IN ('active', 'redeemed', 'refunded')),
+                redeemed_by     INTEGER NULL REFERENCES users(id) ON DELETE SET NULL,
+                subscription_id INTEGER NULL
+                                    REFERENCES subscriptions(id) ON DELETE SET NULL,
+                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                redeemed_at     TIMESTAMP NULL
+            )
+            """,
+        ),
+        (
+            "idx_gift_codes_code",
+            "CREATE INDEX IF NOT EXISTS idx_gift_codes_code ON gift_codes(code)",
+        ),
+        (
+            "idx_gift_codes_buyer",
+            "CREATE INDEX IF NOT EXISTS idx_gift_codes_buyer "
+            "ON gift_codes(buyer_id)",
+        ),
+        # ``tickets`` — one row per support conversation. ``status`` walks
+        # 'open' → 'answered' → 'closed'. See ``schema.sql`` for full docs.
+        (
+            "tickets",
+            """
+            CREATE TABLE IF NOT EXISTS tickets (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL
+                                REFERENCES users(id) ON DELETE CASCADE,
+                status      TEXT NOT NULL DEFAULT 'open'
+                                CHECK (status IN ('open', 'answered', 'closed')),
+                created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+        ),
+        (
+            "idx_tickets_user",
+            "CREATE INDEX IF NOT EXISTS idx_tickets_user ON tickets(user_id)",
+        ),
+        (
+            "idx_tickets_status",
+            "CREATE INDEX IF NOT EXISTS idx_tickets_status "
+            "ON tickets(status)",
+        ),
+        # ``ticket_messages`` — append-only transcript of a ticket. ``sender`` is
+        # 'user' or 'admin'. See ``schema.sql`` for full docs.
+        (
+            "ticket_messages",
+            """
+            CREATE TABLE IF NOT EXISTS ticket_messages (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id      INTEGER NOT NULL
+                                   REFERENCES tickets(id) ON DELETE CASCADE,
+                sender         TEXT NOT NULL
+                                   CHECK (sender IN ('user', 'admin')),
+                text           TEXT NOT NULL,
+                tg_message_id  INTEGER NULL,
+                created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+        ),
+        (
+            "idx_ticket_messages_ticket",
+            "CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket "
+            "ON ticket_messages(ticket_id)",
+        ),
+        # ``audit_log`` — append-only trail of privileged admin actions. See
+        # ``schema.sql`` for full column documentation.
+        (
+            "audit_log",
+            """
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_id     INTEGER NULL REFERENCES users(id) ON DELETE SET NULL,
+                action       TEXT NOT NULL,
+                target_type  TEXT NULL,
+                target_id    INTEGER NULL,
+                details      TEXT NULL,
+                created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+        ),
+        (
+            "idx_audit_log_created",
+            "CREATE INDEX IF NOT EXISTS idx_audit_log_created "
+            "ON audit_log(created_at)",
+        ),
+        (
+            "idx_audit_log_admin",
+            "CREATE INDEX IF NOT EXISTS idx_audit_log_admin "
+            "ON audit_log(admin_id)",
+        ),
+        # ``health_status`` — last-known reachability of the 3x-ui panel. A
+        # single logical row holds the current state ('up' | 'down'),
+        # ``last_error`` for the most recent failure reason and ``changed_at``
+        # marking when the state last *flipped* (not every probe). The
+        # health-check job reads/writes this row to decide whether to alert
+        # admins — it only notifies on an up↔down transition, so the previous
+        # state must be persisted across job runs. See ``schema.sql``.
+        (
+            "health_status",
+            """
+            CREATE TABLE IF NOT EXISTS health_status (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                component   TEXT NOT NULL UNIQUE DEFAULT 'xui',
+                status      TEXT NOT NULL CHECK (status IN ('up', 'down')),
+                last_error  TEXT NULL,
+                changed_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+        ),
     )
     for name, stmt in create_table_migrations:
         try:
@@ -133,6 +447,8 @@ async def _apply_migrations(conn: aiosqlite.Connection) -> None:
         except aiosqlite.OperationalError as exc:
             logger.warning("migration {} failed: {}", name, exc)
             raise
+
+    await _relax_subscription_notifications_kind(conn)
 
     # Backfill ``plan_inbounds`` for legacy plans that have no rows yet.
     # On an old DB (created before the multi-inbound feature) every existing

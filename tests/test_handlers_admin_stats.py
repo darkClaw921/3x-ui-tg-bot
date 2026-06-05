@@ -91,3 +91,89 @@ async def test_build_text_truncation(file_db, make_user, make_subscription, monk
     text = await stats_mod._build_text("30d")
     # truncation marker present
     assert "обрезан" in text
+
+
+# --------------------------------------------------------------------------- #
+# Phase 6 — CSV export handler
+# --------------------------------------------------------------------------- #
+
+
+async def test_cb_export_sends_three_documents(file_db, make_user):
+    """The export handler sends one CSV document per dataset + logs an audit row."""
+    from app.db.engine import get_conn
+    from app.db.repos import audit as audit_repo
+
+    async with get_conn() as conn:
+        admin = await make_user(conn, tg_id=1, is_admin=True)
+
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.chat.id = 4242
+    cb.answer = AsyncMock()
+    bot = AsyncMock()
+    bot.send_document = AsyncMock()
+
+    await stats_mod.cb_export(
+        cb,
+        StatsCB(action="export", field="all"),
+        bot,
+        user=admin,
+        lang="ru",
+    )
+
+    # Three documents: payments, subscriptions, users.
+    assert bot.send_document.await_count == 3
+    # All went to the admin's chat as BufferedInputFile with .csv filenames.
+    from aiogram.types import BufferedInputFile
+
+    for call in bot.send_document.await_args_list:
+        assert call.args[0] == 4242
+        doc = call.kwargs["document"]
+        assert isinstance(doc, BufferedInputFile)
+        assert doc.filename.endswith(".csv")
+    cb.answer.assert_awaited()
+
+    # One audit entry recorded.
+    async with get_conn() as conn:
+        entries = await audit_repo.list_recent(conn, limit=10)
+    assert any(e.action == "stats.export" for e in entries)
+
+
+async def test_cb_export_no_message_is_noop(file_db):
+    """A callback without a message answers quietly and sends nothing."""
+    cb = MagicMock()
+    cb.message = None
+    cb.answer = AsyncMock()
+    bot = AsyncMock()
+    bot.send_document = AsyncMock()
+
+    await stats_mod.cb_export(
+        cb, StatsCB(action="export", field="all"), bot, user=None, lang="ru"
+    )
+    bot.send_document.assert_not_awaited()
+    cb.answer.assert_awaited()
+
+
+async def test_cb_export_build_failure_alerts(file_db, monkeypatch):
+    """A build error falls back to a failure alert instead of crashing."""
+    cb = MagicMock()
+    cb.message = MagicMock()
+    cb.message.chat.id = 7
+    cb.answer = AsyncMock()
+    bot = AsyncMock()
+    bot.send_document = AsyncMock()
+
+    from app.services import exports as exports_service
+
+    async def _boom(_conn):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(exports_service, "export_payments_csv", _boom)
+
+    await stats_mod.cb_export(
+        cb, StatsCB(action="export", field="all"), bot, user=None, lang="ru"
+    )
+    bot.send_document.assert_not_awaited()
+    cb.answer.assert_awaited()
+    # show_alert=True path used for the failure toast.
+    assert cb.answer.await_args.kwargs.get("show_alert") is True

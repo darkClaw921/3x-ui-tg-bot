@@ -352,3 +352,248 @@ def test_billing_payload_legacy_without_s_returns_zero():
     assert plan_id == 7
     assert promo_id == 9
     assert sub_id == 0
+
+
+# ---------------------------------------------------------------------- #
+# InvoiceContext — structured payload + kind discriminator
+# ---------------------------------------------------------------------- #
+
+
+def test_parse_returns_invoice_context():
+    """parse_invoice_payload returns an InvoiceContext, not a bare tuple."""
+    ctx = billing.parse_invoice_payload(billing.build_invoice_payload(1, 2, inbound_id=3))
+    assert isinstance(ctx, billing.InvoiceContext)
+    assert ctx.plan_id == 1
+    assert ctx.promo_id == 2
+    assert ctx.inbound_id == 3
+    assert ctx.sub_id == 0
+    assert ctx.kind == "buy"
+    assert ctx.gift == 0
+    assert ctx.topup == 0
+
+
+def test_invoice_context_is_frozen():
+    """InvoiceContext is immutable (frozen dataclass)."""
+    ctx = billing.InvoiceContext(plan_id=1, promo_id=None, inbound_id=2, sub_id=0)
+    with pytest.raises((AttributeError, TypeError)):
+        ctx.plan_id = 99  # type: ignore[misc]
+
+
+def test_invoice_context_unpacks_as_legacy_4_tuple():
+    """Old tuple-unpacking call sites keep working via __iter__."""
+    ctx = billing.parse_invoice_payload(
+        billing.build_invoice_payload(5, 6, inbound_id=7, sub_id=8)
+    )
+    plan_id, promo_id, inbound_id, sub_id = ctx
+    assert (plan_id, promo_id, inbound_id, sub_id) == (5, 6, 7, 8)
+
+
+def test_legacy_payload_decodes_as_kind_buy():
+    """Any payload without a 'k' key is treated as a one-off purchase."""
+    # New short-key payload, no 'k'.
+    ctx = billing.parse_invoice_payload(json.dumps({"p": 1, "r": None, "i": 2}))
+    assert ctx.kind == "buy"
+    # Truly-legacy long-key payload.
+    ctx_legacy = billing.parse_invoice_payload(json.dumps({"plan_id": 7, "promo_id": 9}))
+    assert ctx_legacy.kind == "buy"
+    assert ctx_legacy.plan_id == 7
+    assert ctx_legacy.promo_id == 9
+
+
+def test_parse_bad_kind_raises():
+    """An unrecognised 'k' value is rejected."""
+    with pytest.raises(ValueError):
+        billing.parse_invoice_payload(json.dumps({"k": "bogus", "p": 1, "i": 2}))
+
+
+# --- kind="topup" ----------------------------------------------------- #
+
+
+def test_build_topup_payload_roundtrip():
+    """build_topup_payload → parse round-trips kind/topup; no plan/inbound."""
+    p = billing.build_topup_payload(150)
+    data = json.loads(p)
+    assert data["k"] == "topup"
+    assert data["t"] == 150
+    ctx = billing.parse_invoice_payload(p)
+    assert ctx.kind == "topup"
+    assert ctx.topup == 150
+    assert ctx.plan_id == 0
+    assert ctx.inbound_id == 0
+    assert ctx.promo_id is None
+    assert ctx.sub_id == 0
+
+
+def test_build_topup_payload_rejects_below_minimum():
+    """A top-up below the Stars minimum is rejected."""
+    with pytest.raises(ValueError):
+        billing.build_topup_payload(0)
+
+
+def test_topup_payload_does_not_require_plan_id():
+    """A top-up payload parses even though it carries no plan_id."""
+    ctx = billing.parse_invoice_payload(json.dumps({"k": "topup", "t": 25}))
+    assert ctx.kind == "topup"
+    assert ctx.topup == 25
+
+
+# --- kind="gift" ------------------------------------------------------ #
+
+
+def test_build_gift_payload_roundtrip():
+    """build_gift_payload → parse round-trips kind=gift, gift=1, plan/inbound."""
+    p = billing.build_gift_payload(3, inbound_id=4, promo_id=5)
+    data = json.loads(p)
+    assert data["k"] == "gift"
+    assert data["g"] == 1
+    assert data["p"] == 3
+    assert data["i"] == 4
+    assert data["r"] == 5
+    ctx = billing.parse_invoice_payload(p)
+    assert ctx.kind == "gift"
+    assert ctx.gift == 1
+    assert ctx.plan_id == 3
+    assert ctx.inbound_id == 4
+    assert ctx.promo_id == 5
+
+
+def test_build_gift_payload_no_promo():
+    """gift payload without a promo encodes r=null and parses promo_id=None."""
+    ctx = billing.parse_invoice_payload(billing.build_gift_payload(3, inbound_id=4))
+    assert ctx.kind == "gift"
+    assert ctx.promo_id is None
+
+
+# --- kind="sub" ------------------------------------------------------- #
+
+
+def test_build_subscription_payload_roundtrip():
+    """build_subscription_payload → parse round-trips kind=sub, plan/inbound/sub_id."""
+    p = billing.build_subscription_payload(7, inbound_id=8, sub_id=9)
+    data = json.loads(p)
+    assert data["k"] == "sub"
+    assert data["p"] == 7
+    assert data["i"] == 8
+    assert data["s"] == 9
+    ctx = billing.parse_invoice_payload(p)
+    assert ctx.kind == "sub"
+    assert ctx.plan_id == 7
+    assert ctx.inbound_id == 8
+    assert ctx.sub_id == 9
+
+
+def test_build_subscription_payload_omits_s_when_new():
+    """A new subscription (sub_id=0) omits the 's' key entirely."""
+    p = billing.build_subscription_payload(7, inbound_id=8)
+    assert '"s"' not in p
+    ctx = billing.parse_invoice_payload(p)
+    assert ctx.sub_id == 0
+
+
+# ---------------------------------------------------------------------- #
+# Byte-limit guard applies to every builder
+# ---------------------------------------------------------------------- #
+
+
+def test_topup_payload_byte_limit_guard(monkeypatch):
+    monkeypatch.setattr(billing, "_PAYLOAD_BYTE_LIMIT", 5)
+    with pytest.raises(ValueError):
+        billing.build_topup_payload(123456789)
+
+
+def test_gift_payload_byte_limit_guard(monkeypatch):
+    monkeypatch.setattr(billing, "_PAYLOAD_BYTE_LIMIT", 5)
+    with pytest.raises(ValueError):
+        billing.build_gift_payload(123456, inbound_id=78910, promo_id=11121)
+
+
+def test_subscription_payload_byte_limit_guard(monkeypatch):
+    monkeypatch.setattr(billing, "_PAYLOAD_BYTE_LIMIT", 5)
+    with pytest.raises(ValueError):
+        billing.build_subscription_payload(123456, inbound_id=78910, sub_id=11121)
+
+
+def test_new_kind_payloads_fit_in_128_bytes_for_large_ids():
+    """Realistic large ids keep top-up / gift / sub payloads under the limit."""
+    assert (
+        len(billing.build_topup_payload(9999999).encode("utf-8"))
+        <= billing._PAYLOAD_BYTE_LIMIT
+    )
+    assert (
+        len(
+            billing.build_gift_payload(
+                9876543210, inbound_id=9999, promo_id=1234567890
+            ).encode("utf-8")
+        )
+        <= billing._PAYLOAD_BYTE_LIMIT
+    )
+    assert (
+        len(
+            billing.build_subscription_payload(
+                9876543210, inbound_id=9999, sub_id=1234567890
+            ).encode("utf-8")
+        )
+        <= billing._PAYLOAD_BYTE_LIMIT
+    )
+
+
+# ---------------------------------------------------------------------- #
+# create_subscription_invoice_link — native recurring Star subscription
+# ---------------------------------------------------------------------- #
+
+
+async def test_create_subscription_invoice_link_uses_subscription_period(mock_bot):
+    """The link uses XTR + the exact 30-day subscription_period and a sub payload."""
+    plan = _plan(price=100, plan_id=3)
+    await billing.create_subscription_invoice_link(
+        mock_bot, plan, inbound_id=7, sub_id=0
+    )
+    kwargs = mock_bot.create_invoice_link.call_args.kwargs
+    assert kwargs["currency"] == "XTR"
+    assert kwargs["provider_token"] == ""
+    assert kwargs["subscription_period"] == billing.SUBSCRIPTION_PERIOD_SECONDS
+    assert kwargs["subscription_period"] == 2592000
+    assert kwargs["prices"][0].amount == 100
+    data = json.loads(kwargs["payload"])
+    assert data["k"] == "sub"
+    assert data["p"] == plan.id
+    assert data["i"] == 7
+    # New subscription → no 's' key.
+    assert "s" not in data
+
+
+async def test_create_subscription_invoice_link_embeds_sub_id(mock_bot):
+    """When extending an existing sub, sub_id is threaded into the payload."""
+    plan = _plan(price=50, plan_id=4)
+    await billing.create_subscription_invoice_link(
+        mock_bot, plan, inbound_id=2, sub_id=99
+    )
+    payload = mock_bot.create_invoice_link.call_args.kwargs["payload"]
+    data = json.loads(payload)
+    assert data["k"] == "sub"
+    assert data["s"] == 99
+
+
+# --------------------------------------------------------------------------- #
+# send_topup_invoice — wallet top-up
+# --------------------------------------------------------------------------- #
+
+
+async def test_send_topup_invoice_uses_xtr_and_topup_payload(mock_bot):
+    """send_topup_invoice sends an XTR invoice carrying a kind='topup' payload."""
+    await billing.send_topup_invoice(mock_bot, chat_id=42, stars=200, lang="en")
+    kwargs = mock_bot.send_invoice.call_args.kwargs
+    assert kwargs["currency"] == "XTR"
+    assert kwargs["chat_id"] == 42
+    assert kwargs["provider_token"] == ""
+    assert kwargs["prices"][0].amount == 200
+    data = json.loads(kwargs["payload"])
+    assert data == {"k": "topup", "t": 200}
+
+
+async def test_send_topup_invoice_floors_to_stars_min(mock_bot):
+    """A 0-Stars top-up is floored to the Stars minimum (1)."""
+    await billing.send_topup_invoice(mock_bot, chat_id=1, stars=0, lang="en")
+    kwargs = mock_bot.send_invoice.call_args.kwargs
+    assert kwargs["prices"][0].amount == 1
+    assert json.loads(kwargs["payload"]) == {"k": "topup", "t": 1}

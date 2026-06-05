@@ -1,0 +1,3 @@
+# app/db/repos/gift_codes.py
+
+Репозиторий таблицы gift_codes (подарочные коды). Dataclass GiftCode{id, code, plan_id, inbound_id, buyer_id, payment_id, status active|redeemed|refunded, redeemed_by, subscription_id, created_at, redeemed_at}. Функции: create(code, plan_id, inbound_id, buyer_id, payment_id) — INSERT active, UNIQUE collision => IntegrityError (retry в make_gift_code); get_by_code (COLLATE NOCASE); try_redeem(code, redeemed_by, subscription_id) — под transaction() BEGIN IMMEDIATE, guarded UPDATE WHERE status='active', атомарный claim ровно один раз (bool); set_status — компенсация/refund; list_for_buyer. Жизненный цикл: active→redeemed/refunded.

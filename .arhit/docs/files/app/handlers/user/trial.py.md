@@ -1,0 +1,3 @@
+# app/handlers/user/trial.py
+
+Роутер активации пробного периода. cb_open (TrialCB action='open'): re-check TRIAL_DAYS>0 и not has_trial; list_user_inbounds — если 1 inbound авто-активация, иначе TrialFlow.choosing_inbound + inbound_select_kb. cb_pick_inbound (InboundCB pick под TrialFlow.choosing_inbound): валидирует offered inbound → activate_trial → deliver_keys. cb_back_inbound (InboundCB back): отмена в меню. _activate_and_deliver: activate_trial(days=TRIAL_DAYS, traffic_gb=TRIAL_TRAFFIC_GB), маппинг TrialAlreadyUsedError→alert, XuiError→apology. Состояние TrialFlow.choosing_inbound (states/user.py). Кнопка trial.btn в user_main_menu при can_trial.

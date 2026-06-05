@@ -11,9 +11,9 @@
     "element": "app/config.py",
     "path": "app/config.py",
     "type": "file",
-    "content": "Конфигурация приложения через pydantic-settings. Класс Settings(BaseSettings) объявляет BOT_TOKEN, ADMIN_IDS (Annotated[list[int], NoDecode] для отключения JSON-декодирования), DB_PATH (default './data/bot.db'), XUI_BASE_URL/USERNAME/PASSWORD/INBOUND_ID/SERVER_HOST/SUB_BASE_URL, LOG_LEVEL (default 'INFO'). Читает из .env через SettingsConfigDict(env_file='.env'). field_validator '_parse_admin_ids' (mode='before') парсит CSV-строку '1,2,3' → [1,2,3], принимает пустую строку, JSON-массив, готовый list. Экспортирует синглтон settings = Settings().",
+    "content": "Добавлен WALLET_TOPUP_PRESETS: list[int] (default [50,100,250,500]) — суммы Stars для кнопок пополнения на экране Кошелёк. Валидатор _parse_admin_ids переименован в _parse_csv_ints и навешен на оба поля ADMIN_IDS и WALLET_TOPUP_PRESETS (CSV '50,100' или JSON-массив -> list[int], пусто -> []).",
     "createdAt": "2026-05-16T14:57:48.680Z",
-    "updatedAt": "2026-05-16T14:57:48.680Z"
+    "updatedAt": "2026-06-05T14:15:57.693Z"
   },
   {
     "element": "app/logger.py",
@@ -43,9 +43,9 @@
     "element": "app/db/engine.py",
     "path": "app/db/engine.py",
     "type": "file",
-    "content": "Async-engine SQLite поверх aiosqlite. Содержит:\n\n- _SCHEMA_PATH — путь к app/db/schema.sql.\n- _resolve_db_path() — возвращает Path из settings.DB_PATH.\n- _configure_connection(conn) — применяет PRAGMA foreign_keys=ON, PRAGMA journal_mode=WAL и устанавливает row_factory=aiosqlite.Row. Вызывается на каждом freshly opened connection.\n- _apply_migrations(conn) — лёгкие идемпотентные миграции после executescript(schema.sql):\n  - ALTER TABLE ... ADD COLUMN с обработкой 'duplicate column'/'already exists' (для subscriptions.xui_sub_id и plans.traffic_gb).\n  - CREATE TABLE/INDEX IF NOT EXISTS tuple create_table_migrations — содержит subscription_notifications + idx, plan_inbounds + idx_plan_inbounds_plan (для подъёма уже существующих БД до новой схемы).\n  - Backfill plan_inbounds: INSERT OR IGNORE INTO plan_inbounds (plan_id, inbound_id) SELECT id, ? FROM plans WHERE id NOT IN (SELECT plan_id FROM plan_inbounds) с параметром settings.XUI_INBOUND_ID. Условие WHERE id NOT IN (...) гарантирует идемпотентность на уровне отдельного плана — повторный init_db() не перезатирает админский выбор inbounds. Если XUI_INBOUND_ID не задан — backfill пропускается с warning.\n- init_db() — создаёт parent dir для DB_PATH, читает schema.sql, выполняет executescript + _apply_migrations + commit. Безопасна для повторных вызовов на каждом старте бота.\n- get_conn() async context manager — открывает свежий connection с pragmas. Соединения короткоживущие, по одному на unit of work (нет shared connection между tasks).\n- transaction(conn=None) async context manager — оборачивает BEGIN IMMEDIATE / COMMIT / ROLLBACK блок. BEGIN IMMEDIATE захватывает RESERVED lock сразу (аналог SELECT FOR UPDATE), используется в критических секциях вроде try_redeem на promo_redemptions. Если conn передан — reuse, иначе открывает новый.\n\nЗависимости: app.config.settings (DB_PATH, XUI_INBOUND_ID), aiosqlite, loguru.",
+    "content": "Движок aiosqlite. init_db применяет schema.sql + _apply_migrations (идемпотентные ALTER TABLE ADD COLUMN в try/except: xui_sub_id, traffic_gb, users.lang TEXT NOT NULL DEFAULT 'ru') + create_table_migrations (subscription_notifications, plan_inbounds + backfill). get_conn (asynccontextmanager, PRAGMA fk+WAL), transaction (BEGIN IMMEDIATE).",
     "createdAt": "2026-05-16T15:05:57.498Z",
-    "updatedAt": "2026-05-17T08:00:31.510Z"
+    "updatedAt": "2026-06-05T13:22:14.619Z"
   },
   {
     "element": "app/db/schema.sql",
@@ -59,9 +59,9 @@
     "element": "app/db/repos/users.py",
     "path": "app/db/repos/users.py",
     "type": "file",
-    "content": "Репозиторий пользователей.\n\n- Dataclass User(id, tg_id, username, first_name, is_admin, created_at).\n- User.from_row(row) — построение из aiosqlite.Row.\n- async def get_by_tg_id(conn, tg_id) -> User | None.\n- async def get_by_id(conn, user_id) -> User | None.\n- async def get_by_username(conn, username) -> User | None — case-insensitive (COLLATE NOCASE), убирает ведущий '@'. Возвращает None для пустой строки. Используется admin-флоу 'Пользователи'.\n- async def create(conn, tg_id, username, first_name, is_admin=False) -> User.\n- async def get_or_create(conn, tg_id, username, first_name) -> User — идемпотентен; is_admin синхронизируется с settings.ADMIN_IDS.\n- async def set_admin(conn, user_id, value: bool).",
+    "content": "Repo таблицы users. Dataclass User теперь содержит поле lang (str, дефолт 'ru', объявлено последним чтобы позиционные User(...) в тестах не ломались); from_row терпит row без колонки lang. Функции: get_by_tg_id/get_by_id/get_by_username (SELECT включает lang), create(..., language_code=None) и get_or_create(..., language_code=None) - нормализуют Telegram language_code через resolve_lang при создании НОВОГО юзера (существующим lang не перетирают), list_all_tg_ids, set_admin, set_lang(conn,user_id,lang) - сохраняет язык (resolve_lang защитно), get_lang(conn,user_id) - читает язык (DEFAULT_LANG если юзера нет).",
     "createdAt": "2026-05-16T15:06:15.201Z",
-    "updatedAt": "2026-05-16T15:52:44.547Z"
+    "updatedAt": "2026-06-05T13:22:14.034Z"
   },
   {
     "element": "app/db/repos/plans.py",
@@ -185,9 +185,9 @@
     "element": "app/middlewares/user_ctx.py",
     "path": "app/middlewares/user_ctx.py",
     "type": "file",
-    "content": "Outer dispatcher-middleware UserContextMiddleware. Извлекает from_user из любого типа апдейта (Update.message/callback_query/inline_query/pre_checkout_query/...), вызывает users_repo.get_or_create(conn, tg_id, username, first_name) и кладёт User в data['user']. При ошибках БД логирует и проставляет data['user']=None — апдейт не теряется. Helper _extract_tg_user(event) обходит все update-поля с from_user.",
+    "content": "UserContextMiddleware (outer middleware на dp.update). На каждый апдейт извлекает from_user (_extract_tg_user), вызывает users_repo.get_or_create(..., language_code=tg_user.language_code) и кладёт data['user']=User, data['lang']=user.lang. При отсутствии from_user или ошибке БД: data['user']=None, data['lang']=DEFAULT_LANG. lang доступен хендлерам для прямой передачи в i18n.t.",
     "createdAt": "2026-05-16T15:21:27.010Z",
-    "updatedAt": "2026-05-16T15:21:27.010Z"
+    "updatedAt": "2026-06-05T13:23:25.837Z"
   },
   {
     "element": "app/middlewares/admin_only.py",
@@ -225,9 +225,9 @@
     "element": "app/keyboards/admin.py",
     "path": "app/keyboards/admin.py",
     "type": "file",
-    "content": "Inline-клавиатуры админ-флоу (плюс CallbackData-фабрики).\n\nCallbackData-фабрики:\n- AdminCB(area, action) — навигация верхнего уровня (main/plans/promos/users/stats × open/back/cancel).\n- PlanCB(action, id=0, field='') — CRUD тарифов. action ∈ {list, create, card, edit_menu, edit, deactivate, preset, manual, toggle_inbound, inbounds_done}. Поле id переиспользуется: для toggle_inbound оно хранит inbound_id, для preset — выбранное числовое значение. field ∈ {title, days, price_stars, traffic_gb, inbounds} в режиме edit; {days, price, gb} в режиме preset/manual.\n- UserCB(action, id=0, user_id=0) — действия над user card.\n- StatsCB(action, field='') — статистика.\n- PromoCB(action, id=0, field='') — CRUD промокодов.\n\nКлючевые клавиатуры:\n- admin_main_menu — Тарифы/Промокоды/Пользователи/Статистика.\n- plans_list_kb(plans) — список тарифов с пометкой 🔒 для неактивных.\n- plan_card_kb(plan_id, is_active) — карточка тарифа: Редактировать / Деактивировать / Назад.\n- plan_edit_fields_kb(plan_id) — выбор поля для редактирования: Название / Срок / Цена / Лимит трафика / 🔌 Подключения / Назад. Кнопка «Подключения» отправляет PlanCB(action='edit', id=plan_id, field='inbounds') — хендлер открывает multi-select экран.\n- plan_inbounds_select_kb(options, selected) — multi-select inbounds (Phase 3). Каждый InboundOption отображается строкой '☑/☐ <remark> (port <port>)' (☑ если option.id ∈ selected). callback_data: PlanCB(action='toggle_inbound', id=inbound_id). Внизу '✅ Готово' (PlanCB action='inbounds_done') и '✖ Отмена' (AdminCB area='main', action='cancel').\n- Пресет-клавиатуры мастера: plan_days_presets_kb, plan_price_presets_kb, plan_gb_presets_kb.\n- promos_list_kb / promo_card_kb / promo_type_kb + пресеты promo_value/max_uses/expires.\n- user_card_kb, stats_kb.",
+    "content": "Admin-клавиатуры. CallbackData: AdminCB, PlanCB, UserCB(admu), StatsCB, PromoCB. Все builder'ы принимают keyword lang=DEFAULT_LANG, тексты через i18n.t (admin.kb.*): admin_main_menu, broadcast_confirm_kb, back_to_main_kb, cancel_kb, plans_list_kb, plan_card_kb, plan_edit_fields_kb, plan_inbounds_select_kb, plan_*_presets_kb, promos_list_kb, promo_type_kb, promo_*_presets_kb, promo_card_kb, user_card_kb, stats_kb. Дефолт ru = строки 1:1.",
     "createdAt": "2026-05-16T15:21:53.441Z",
-    "updatedAt": "2026-05-17T08:11:57.883Z"
+    "updatedAt": "2026-06-05T13:51:21.114Z"
   },
   {
     "element": "app/handlers/admin/__init__.py",
@@ -276,13 +276,9 @@
     "element": "app/keyboards/user.py",
     "path": "app/keyboards/user.py",
     "type": "file",
-    "content": "Inline keyboards + CallbackData фабрики для user-facing флоу.\n\n## CallbackData namespaces\n\n- UserCB(prefix='u', area): area ∈ menu/help/my/cancel — top-level навигация.\n- BuyCB(prefix='ub', action, plan_id=0, promo_id=0, inbound_id=0, sub_id=0): buy-flow. action ∈ open/extend/new/plan/apply_promo/confirm/cancel. Поля прокидываются через цепочку шагов. sub_id=0 → новая подписка; sub_id>0 → продлить именно эту (inbound наследуется от существующей, allow-list check пропускается). Packed: ub:<action>:<plan>:<promo>:<inbound>:<sub>.\n- InboundCB(prefix='inb', action, plan_id=0, promo_id=0, inbound_id=0): action ∈ pick/back. Общая фабрика для buy-флоу (plan_id>0) и free_days promo-флоу (plan_id=0, promo_id>0); хендлер маршрутизирует по FSM-стейту.\n- SubCB(prefix='us', action, sub_id=0): action ∈ keys/back. Для 'Моя подписка' карточек.\n- PromoActCB(prefix='up', action, inbound_id=0, sub_id=0): action ∈ open/extend/new/cancel. Поле sub_id>0 несёт id подписки для extend через free_days промо.\n\n## Функции\n\n- user_main_menu(has_subscription): «Моя подписка» / «Купить» / «Активировать промокод» / «Помощь». Порядок первых двух меняется по флагу.\n- back_to_menu_kb(): одна кнопка «◀ В меню».\n- cancel_kb(): одна кнопка «✖ Отмена» (UserCB area=cancel).\n- plans_kb(plans): один пункт на тариф (title · Nд · M⭐) + «В меню».\n- inbound_select_kb(plan_id, options, promo_id=0): single-select inbounds, кнопка на InboundOption с текстом '<remark> (port <port>)', callback InboundCB(action='pick', plan_id, promo_id, inbound_id=option.id). Внизу «◀ Назад».\n- confirm_kb(plan_id, promo_id=0, inbound_id=0, sub_id=0): «Оплатить» (BuyCB confirm + все поля) / «Применить промокод» (скрыта если promo_id≠0; пробрасывает inbound_id и sub_id) / «Отмена». sub_id>0 → invoice — продление конкретной подписки.\n- **buy_action_kb(active_subs, inbound_remarks)** [NEW Phase 2]: action-экран buy-флоу при наличии active подписок. По строке на каждую sub: '🔄 Продлить #<sub_id> · <remark>' (BuyCB action='extend', sub_id=<id>), затем '🆕 Новая подписка' (BuyCB action='new'), затем '◀ Отмена' (UserCB area='cancel'). inbound_remarks — мэппинг {inbound_id: remark} из panel cache; fallback — '#<inbound_id>'.\n- **promo_action_kb(active_subs, inbound_remarks)** [NEW Phase 3]: action-экран free_days промо-флоу. Зеркало buy_action_kb, но callback-фабрика PromoActCB вместо BuyCB.\n- subscription_kb(sub_id): «Получить ключ ещё раз» / «◀ В меню».\n\n## Constraints\n- Все callback_data укладываются в 64-байтовый лимит Telegram (проверено тестами в test_keyboards_user.py).\n- Multi-subscription support: BuyCB и PromoActCB несут sub_id для маршрутизации extend-vs-new решения в hot path.",
+    "content": "Добавлены: WalletCB(prefix='uw', action=open|topup|pick, stars). Кнопка '👛 Кошелёк' (t wallet.btn_open, WalletCB action='open') в user_main_menu. wallet_screen_kb(*,has_presets,lang) — кнопка '➕ Пополнить' (если presets) + '◀ В меню'. wallet_topup_kb(presets,lang) — кнопка на каждый пресет (WalletCB action='pick' stars) + '◀ Назад' (WalletCB action='open'). Экспортированы WalletCB, wallet_screen_kb, wallet_topup_kb.",
     "createdAt": "2026-05-16T15:26:43.626Z",
-    "updatedAt": "2026-05-17T11:04:19.176Z",
-    "aliases": [
-      "buy_action_kb",
-      "promo_action_kb"
-    ]
+    "updatedAt": "2026-06-05T14:15:57.427Z"
   },
   {
     "element": "app/services/promos.py",
@@ -317,12 +313,9 @@
     "element": "app/services/billing.py",
     "path": "app/services/billing.py",
     "type": "file",
-    "content": "Билдер Stars-инвойсов и роутинг состояния платежа через payload.\n\nПубличные:\n- calc_price(plan, promo) -> InvoicePrice — конечная Stars-цена с floor=1 (Telegram-минимум). Дельта дней (для free_days) возвращается в extra_days.\n- build_invoice_payload(plan_id, promo_id, inbound_id, *, sub_id=0) -> str — компактный JSON ('p'/'r'/'i'/'s' single-letter keys), под 128-байтовый лимит Telegram. Ключ 's' опускается при sub_id=0 (обратная совместимость и экономия байт).\n- parse_invoice_payload(payload) -> tuple[int, int|None, int, int] — возвращает (plan_id, promo_id, inbound_id, sub_id). Принимает legacy-payloads (long-keys 'plan_id'/'promo_id', отсутствие 'i'/'s'). Отсутствующий 's' → sub_id=0.\n- send_invoice(bot, chat_id, plan, promo, *, inbound_id, sub_id=0) -> Message — отправляет Stars-инвойс. При sub_id>0 в описании ('Продление подписки #N') и payload.\n\nКонтекст: payload — единственный канал состояния между sendInvoice и successfulPayment (FSM может быть очищен Telegram-ом). sub_id>0 сигналит handler-у, что эту оплату нужно применить как extend конкретной подписки.",
+    "content": "Добавлена async send_topup_invoice(bot,chat_id,stars,*,lang=DEFAULT_LANG)->Message: отправляет Stars-инвойс пополнения кошелька. Payload через build_topup_payload(stars) (kind='topup'), без plan/inbound. stars=max(_STARS_MIN,stars). LabeledPrice=stars, currency='XTR', provider_token=''. Тексты title/label/description локализованы через t() (wallet.invoice_*). Импортированы DEFAULT_LANG,t из app.i18n. Добавлен в __all__.",
     "createdAt": "2026-05-16T15:31:36.001Z",
-    "updatedAt": "2026-05-17T11:04:18.163Z",
-    "aliases": [
-      "sub_id payload"
-    ]
+    "updatedAt": "2026-06-05T14:09:14.493Z"
   },
   {
     "element": "app/handlers/user/__init__.py",
@@ -352,20 +345,17 @@
     "element": "app/handlers/user/buy.py",
     "path": "app/handlers/user/buy.py",
     "type": "file",
-    "content": "Buy-flow handlers: plan selection → optional promo → Stars invoice → pre_checkout → successful_payment. Now supports both 'new subscription' and 'extend existing subscription #N' flows via sub_id threaded through BuyCB/FSM/invoice payload.\n\nUI callbacks (FSM-driven):\n- cb_open (BuyCB.open): show action screen (buy_action_kb with 'Продлить #N' + 'Новая подписка') if user has 1+ active subs, otherwise show plan list directly.\n- cb_pick_action_extend (BuyCB.extend, NO state filter): pin sub_id+inbound_id from existing sub into FSM, jump to choosing_plan. Validates ownership defensively (rejects foreign or non-active sub). Works as standalone entry point from Phase 4 'Моя подписка' card.\n- cb_pick_action_new (BuyCB.new, NO state filter): clear FSM (sub_id=0), jump to choosing_plan.\n- cb_pick_plan (BuyCB.plan): extend branch (sub_id>0 in FSM) always skips inbound selection and goes straight to confirming with extend-aware card; new branch keeps original single/multi-inbound routing.\n- cb_pick_inbound (BuyFlow.choosing_inbound + InboundCB.pick): only reachable in new-sub branch; persists chosen inbound and renders confirm card.\n- cb_pick_inbound_back / cb_apply_promo / msg_promo_code: thread sub_id through FSM.\n- cb_confirm (BuyCB.confirm): extend branch re-verifies ownership, skips plan-inbound allow-list (existing sub may live on a detached inbound), and calls billing.send_invoice(sub_id=N). New branch keeps allow-list check and sends sub_id=0.\n\nPayment callbacks (stateless, invoice payload carries sub_id):\n- on_pre_checkout: parses 4-tuple; for sub_id>0 loads user via users_repo.get_by_tg_id, verifies sub.user_id == buyer.id and status='active', skips allow-list. For sub_id=0 keeps original allow-list check.\n- on_successful_payment: parses 4-tuple, logs 'extend sub N' or 'create new sub', passes extend_sub_id=sub_id (or None) into subs_service.create_or_extend. Idempotency via payments_repo unique constraint on telegram_charge_id.\n\nHelpers:\n- _format_confirm(plan, promo, inbound_remark, extending_sub: Subscription | None): renders '🔄 Продление подписки #N · remark · Действует до DATE' when extending_sub is set, else '🆕 Новая подписка на remark'. Replaces old has_active_sub boolean.\n- _shift_expiry(current_expires_at, plus_days): returns 'YYYY-MM-DD' for the new expiry shown on the extend confirm card.\n- _send_plan_list: shared 'choosing_plan + plans_kb' helper for action-screen exit branches.\n- _has_active_sub: removed (replaced by direct subs_repo.list_active_for_user check in cb_open).\n\nIdempotency: payments.telegram_charge_id UNIQUE — duplicate updates short-circuit before xui calls.",
+    "content": "Добавлены: helper _can_pay_from_balance(user,plan,promo)->bool (balance>=calc_price.stars, False для user=None); хендлер cb_pay_from_balance (BuyCB action='balance') — оплата подписки с баланса без Telegram-инвойса. Ре-валидация plan/promo/inbound/ownership (как cb_confirm). try_spend(ref=f'buy:{callback.id}' — id уникален на тап => дедуп редоставки) списывает calc_price.stars под BEGIN IMMEDIATE; при нехватке -> alert wallet.insufficient. После списания recover txn по get_by_ref -> synthetic_charge_id=f'wallet:{txn_id}'. create_or_extend; при XuiError -> wallet.credit(type='refund', ref=f'refund:{txn_id}') (компенсация) + wallet.pay_failed, return. Иначе payments.create(telegram_charge_id='wallet:{txn_id}', stars=price.stars) для stats/total_stars + promos.apply (best-effort) + deliver_keys(header=wallet.paid_from_balance_header). _can_pay_from_balance вызывается во всех 4 рендерах confirm-карточки (cb_pick_plan extend/single, cb_pick_inbound, msg_promo_code success) и прокидывает can_pay_from_balance+lang в confirm_kb.",
     "createdAt": "2026-05-16T15:36:03.419Z",
-    "updatedAt": "2026-05-17T11:04:18.670Z",
-    "aliases": [
-      "buy action screen"
-    ]
+    "updatedAt": "2026-06-05T14:13:38.847Z"
   },
   {
     "element": "app/handlers/user/_keys.py",
     "path": "app/handlers/user/_keys.py",
     "type": "file",
-    "content": "Хелпер deliver_keys(bot, xui, chat_id, sub, header) — общий код для buy.py и promo.py. Получает inbound через xui.get_inbound, строит vless_uri (build_vless_link) и sub_url (build_subscription_url). Отправляет три сообщения: (1) текстовый summary с expires_at и vless в code-block; (2) QR PNG через bot.send_photo с BufferedInputFile (make_qr_png генерирует bytes); (3) sub URL + клавиатуру с URL-кнопкой 'Subscription URL' (только http(s) схемы допустимы для InlineKeyboardButton.url; vless:// идёт текстом) + subscription_kb (повторная выдача/назад). При XuiError на get_inbound vless_uri оставляется пустым, QR строится по sub_url.",
+    "content": "deliver_keys(bot,xui,chat_id,sub,*,header=None,lang=DEFAULT_LANG): шлёт vless URI+QR+Subscription URL. Тексты локализованы через i18n.t (keys.* namespace), header=None резолвится в keys.header_active. lang прокидывается из хендлеров.",
     "createdAt": "2026-05-16T15:36:08.160Z",
-    "updatedAt": "2026-05-16T15:36:08.160Z"
+    "updatedAt": "2026-06-05T13:43:04.353Z"
   },
   {
     "element": "app/handlers/user/promo.py",
@@ -915,5 +905,557 @@
     "content": "assets/hero.svg — векторный hero-баннер README. Поток Пользователь→Telegram-бот→3x-ui Panel→VPN-доступ с анимированными коннекторами, Telegram Stars и возвратом ключа (vless://·QR·Subscription URL). Самодостаточный SVG: градиенты, glow-фильтры, dot-grid и SMIL-анимации в defs, тёмный фон вшит. README.md в шапке встраивает его через <img src=./assets/hero.svg>.",
     "createdAt": "2026-06-05T11:58:50.032Z",
     "updatedAt": "2026-06-05T11:58:50.032Z"
+  },
+  {
+    "element": "InvoiceContext",
+    "path": "",
+    "type": "unknown",
+    "content": "Frozen+slots dataclass (app/services/billing.py) — структурированный декод invoice payload, единственный канал состояния между отправкой Stars-инвойса и successful_payment. Поля: plan_id, promo_id, inbound_id, sub_id, kind (Literal 'buy'/'topup'/'gift'/'sub', по умолчанию 'buy'), gift (int marker), topup (int Stars). Итерируется как legacy 4-tuple (plan_id, promo_id, inbound_id, sub_id) через __iter__ для обратной совместимости со старыми распаковками. Возвращается из parse_invoice_payload.",
+    "createdAt": "2026-06-05T13:08:30.322Z",
+    "updatedAt": "2026-06-05T13:08:30.322Z"
+  },
+  {
+    "element": "parse_invoice_payload",
+    "path": "app/services/billing.py",
+    "type": "function",
+    "content": "app/services/billing.py — декодирует строку invoice payload в InvoiceContext. Дискриминатор 'k': отсутствует → kind='buy' (вся legacy-совместимость); 'topup' → пополнение кошелька (несёт 't' Stars, plan/inbound=0); 'gift' → подарок (gift=1, ключи p/r/i); 'sub' → нативная Star-подписка. Принимает legacy long-keys plan_id/promo_id и fallback inbound_id на settings.XUI_INBOUND_ID с WARNING-логом. Ключ 's' (sub_id) опционален → 0. Бросает ValueError на битый payload.",
+    "createdAt": "2026-06-05T13:08:42.362Z",
+    "updatedAt": "2026-06-05T13:08:42.362Z"
+  },
+  {
+    "element": "build_topup_payload",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/billing.py — кодирует payload пополнения кошелька {'k':'topup','t':stars}. Проверяет stars>=_STARS_MIN. Используется в Ф2 (wallet).",
+    "createdAt": "2026-06-05T13:08:42.641Z",
+    "updatedAt": "2026-06-05T13:08:42.641Z"
+  },
+  {
+    "element": "build_gift_payload",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/billing.py — кодирует payload покупки подарка {'k':'gift','g':1,'p':plan_id,'r':promo_id|null,'i':inbound_id}. successful_payment минтит gift-код вместо провижининга подписки (Ф3).",
+    "createdAt": "2026-06-05T13:08:42.914Z",
+    "updatedAt": "2026-06-05T13:08:42.914Z"
+  },
+  {
+    "element": "create_subscription_invoice_link",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/billing.py — создаёт нативную recurring Star-подписку через bot.create_invoice_link(subscription_period=SUBSCRIPTION_PERIOD_SECONDS=2592000, currency='XTR', provider_token=''). Telegram биллит каждые 30 дней. subscription_period есть ТОЛЬКО в create_invoice_link, не в send_invoice, значение строго 2592000. Промо не применяются к recurring. Payload через build_subscription_payload {'k':'sub'}. Используется в Ф4.",
+    "createdAt": "2026-06-05T13:08:43.178Z",
+    "updatedAt": "2026-06-05T13:08:43.178Z"
+  },
+  {
+    "element": "build_subscription_payload",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/billing.py — кодирует payload нативной Star-подписки {'k':'sub','p':plan_id,'i':inbound_id,'s':sub_id?}. Без promo-ключа (промо не применяются к recurring). Ф4.",
+    "createdAt": "2026-06-05T13:08:43.441Z",
+    "updatedAt": "2026-06-05T13:08:43.441Z"
+  },
+  {
+    "element": "on_pre_checkout",
+    "path": "",
+    "type": "unknown",
+    "content": "app/handlers/user/buy.py — обработчик pre_checkout_query. Парсит payload в InvoiceContext через billing.parse_invoice_payload, обращается к полям ctx.plan_id/promo_id/inbound_id/sub_id. ctx.kind — точка расширения (buy сейчас; topup/gift/sub в Ф2-4). Re-валидирует план+промо read-only, для extend-флоу (sub_id>0) проверяет владение подпиской, для нового — allow-list inbound.",
+    "createdAt": "2026-06-05T13:09:38.209Z",
+    "updatedAt": "2026-06-05T13:09:38.209Z"
+  },
+  {
+    "element": "on_successful_payment",
+    "path": "",
+    "type": "unknown",
+    "content": "app/handlers/user/buy.py — финализация оплаченного Stars-инвойса (идемпотентно по telegram_payment_charge_id). Парсит payload в InvoiceContext (ctx.kind — точка расширения для Ф2-4), доступ через ctx.plan_id/promo_id/inbound_id/sub_id. Шаги: idempotency → parse → refresh plan/promo → create_or_extend (xui-first) → record payment → redeem promo (best-effort) → deliver keys.",
+    "createdAt": "2026-06-05T13:09:38.471Z",
+    "updatedAt": "2026-06-05T13:09:38.471Z"
+  },
+  {
+    "element": "cmd_start",
+    "path": "",
+    "type": "unknown",
+    "content": "app/handlers/start.py — обработчик /start. Парсит deep-link аргумент (command: CommandObject) через _parse_deep_link ДО приветствия: ref_<tg_id> и gift_<code> (реальная логика рефералов/подарков — Ф3, сейчас классификация+лог как точка расширения). Без аргумента работает как раньше. Админы → admin_main_menu, остальные → user_main_menu (приоритет 'Моя подписка'/'Купить' по наличию активной подписки).",
+    "createdAt": "2026-06-05T13:10:35.839Z",
+    "updatedAt": "2026-06-05T13:10:35.839Z"
+  },
+  {
+    "element": "_parse_deep_link",
+    "path": "",
+    "type": "unknown",
+    "content": "app/handlers/start.py — классифицирует /start deep-link аргумент. Возвращает (kind,value): 'ref_123'→('ref','123'), 'gift_ABC'→('gift','ABC'). None для пустого/неизвестного аргумента или пустого значения после префикса (ref_/gift_). Префиксы _REF_PREFIX='ref_', _GIFT_PREFIX='gift_'.",
+    "createdAt": "2026-06-05T13:10:36.116Z",
+    "updatedAt": "2026-06-05T13:10:36.116Z"
+  },
+  {
+    "element": "_safe_send",
+    "path": "",
+    "type": "unknown",
+    "content": "app/scheduler.py — отправляет сообщение пользователю, проглатывая TelegramAPIError (юзер мог заблокировать бота/удалить чат). Параметры: bot, tg_id, text, reply_markup: InlineKeyboardMarkup|None=None (опциональная inline-клавиатура для кнопки 'Продлить' и алертов Ф4; при None — без клавиатуры, существующие вызовы не меняются). Любая ошибка только логируется.",
+    "createdAt": "2026-06-05T13:11:47.338Z",
+    "updatedAt": "2026-06-05T13:11:47.338Z"
+  },
+  {
+    "element": "test_services_billing",
+    "path": "",
+    "type": "unknown",
+    "content": "tests/test_services_billing.py — тесты app/services/billing: price math, payload (build/parse), send_invoice. Покрытие Ф0: InvoiceContext (frozen, итерация как legacy 4-tuple), legacy-совместимость (payload без 'k' → kind='buy'), новые kind topup/gift/sub (round-trip билдеров), байт-лимит _PAYLOAD_BYTE_LIMIT=128 для всех билдеров, create_subscription_invoice_link (subscription_period=2592000, XTR, provider_token='').",
+    "createdAt": "2026-06-05T13:13:03.647Z",
+    "updatedAt": "2026-06-05T13:13:03.647Z"
+  },
+  {
+    "element": "app/i18n/__init__.py",
+    "path": "app/i18n/__init__.py",
+    "type": "file",
+    "content": "Пакет i18n: собственная dependency-free локализация. Публичный API: t(key, lang=None, /, **params) - перевод ключа с безопасным format_map (резолв lang->en->сам key, никогда не падает); pluralize(key, n, lang) - выбор плюральной формы по словарю категорий one/few/many/other; resolve_lang(language_code) - нормализация Telegram language_code (en-US->en) к SUPPORTED, иначе DEFAULT_LANG; константы SUPPORTED_LANGS=(ru,en,uk,fa,zh), DEFAULT_LANG=ru, FALLBACK_LANG=en, LANG_NAMES (флаг+имя). Внутри _SafeDict.__missing__ рендерит пропущенный плейсхолдер как {name}, _safe_format глотает ValueError/IndexError. Причина собственного модуля (не aiogram gettext): тесты дёргают хендлеры напрямую без middleware-контекста.",
+    "createdAt": "2026-06-05T13:20:08.166Z",
+    "updatedAt": "2026-06-05T13:20:08.166Z"
+  },
+  {
+    "element": "app/i18n/catalog.py",
+    "path": "app/i18n/catalog.py",
+    "type": "file",
+    "content": "catalog.py: собирает CATALOG {lang: {key: value}} из модулей locales/{ru,en,uk,fa,zh}. lookup(key, lang) реализует политику резолва lang->en (FALLBACK), возвращает str | dict (плюральная категория) | None; не падает к raw key (этот шаг в t()).",
+    "createdAt": "2026-06-05T13:20:12.511Z",
+    "updatedAt": "2026-06-05T13:20:12.511Z"
+  },
+  {
+    "element": "app/i18n/plural.py",
+    "path": "app/i18n/plural.py",
+    "type": "file",
+    "content": "plural.py: реестр плюральных селекторов. plural_category(n, lang) -> one/few/many/other. RU-селектор зеркалит _pluralize_subs из my_subscription.py (3 формы 1/2-4/5-20). uk использует RU-правило, en - one/other, остальные _plural_other (always other).",
+    "createdAt": "2026-06-05T13:20:12.784Z",
+    "updatedAt": "2026-06-05T13:20:12.784Z"
+  },
+  {
+    "element": "app/i18n/locales/ru.py",
+    "path": "app/i18n/locales/ru.py",
+    "type": "file",
+    "content": "RU-каталог (источник истины). 117 ключей в namespace'ах menu.*/help.*/keys.*/mysub.*/promo.*/buy.*/reminder.*/admin.*. Строки 1:1 с прежними хардкодами (защита тестов). mysub.subs_plural - dict плюральных форм.",
+    "createdAt": "2026-06-05T13:43:03.833Z",
+    "updatedAt": "2026-06-05T13:43:03.833Z"
+  },
+  {
+    "element": "app/i18n/locales/en.py",
+    "path": "app/i18n/locales/en.py",
+    "type": "file",
+    "content": "EN-каталог (полный fallback). Покрывает все 117 ключей RU (RU подмножество EN, проверяется тестом покрытия). FALLBACK_LANG для uk/fa/zh-заглушек.",
+    "createdAt": "2026-06-05T13:43:04.086Z",
+    "updatedAt": "2026-06-05T13:43:04.086Z"
+  },
+  {
+    "element": "app/handlers/user/language.py",
+    "path": "app/handlers/user/language.py",
+    "type": "file",
+    "content": "Роутер выбора языка (user_language). cb_open (LangCB open) - рисует language_menu_kb с текущим языком. cb_set (LangCB set,lang) - валидирует код против SUPPORTED_LANGS, users_repo.set_lang, перерисовывает меню на новом языке. Зарегистрирован в user/__init__ перед help.",
+    "createdAt": "2026-06-05T13:51:21.393Z",
+    "updatedAt": "2026-06-05T13:51:21.393Z"
+  },
+  {
+    "element": "tests/test_i18n.py",
+    "path": "tests/test_i18n.py",
+    "type": "file",
+    "content": "Тесты i18n: константы (DEFAULT/FALLBACK/SUPPORTED/LANG_NAMES), t() резолв+fallback (lang->en->key, дефолт ru, uk/fa/zh->en, plural-only ключ возвращает key), безопасный format_map (пропущенный/лишний параметр), pluralize RU(1/2-4/5-20)+EN формы, resolve_lang (en-US->en, zh-Hans->zh, unsupported/None->ru), покрытие RU⊆EN + плюральные dict в обоих + stub-ключи имеют EN-fallback.",
+    "createdAt": "2026-06-05T13:53:13.514Z",
+    "updatedAt": "2026-06-05T13:53:13.514Z"
+  },
+  {
+    "element": "app/db/repos/wallet.py",
+    "path": "app/db/repos/wallet.py",
+    "type": "file",
+    "content": "Добавлена get_by_ref(conn,ref)->WalletTxn|None — поиск строки ledger по уникальному non-null ref (idx_wallet_ref). Используется pay-from-balance для восстановления id вставленного spend-txn после try_spend, чтобы записать синтетический payments.telegram_charge_id='wallet:<txn_id>'. Добавлен в __all__.",
+    "createdAt": "2026-06-05T14:02:54.335Z",
+    "updatedAt": "2026-06-05T14:13:39.406Z"
+  },
+  {
+    "element": "app/services/wallet.py",
+    "path": "app/services/wallet.py",
+    "type": "file",
+    "content": "Сервис app.services.wallet — слой бизнес-логики над app.db.repos.wallet для баланса в Stars. credit(conn,user_id,amount,*,type,ref=None)->bool: начисляет +amount (через wallet_repo.add), False при дубле ref (идемпотентность top-up/реферал-бонусов), ValueError при amount<=0. try_spend(conn,user_id,amount,*,ref)->bool: атомарное списание под app.db.engine.transaction (BEGIN IMMEDIATE) — пересчёт баланса + raw INSERT 'spend' с amount=-amount внутри одной транзакции (не использует wallet_repo.add, т.к. тот коммитит сам и сломал бы границы транзакции). False при нехватке баланса (overdraw) ИЛИ дубле ref (replay, IntegrityError ловится снаружи transaction). BEGIN IMMEDIATE сериализует писателей -> защита от double-spend; детерминированный ref -> защита от replay. ref обязателен. ValueError при amount<=0.",
+    "createdAt": "2026-06-05T14:07:15.334Z",
+    "updatedAt": "2026-06-05T14:07:15.334Z"
+  },
+  {
+    "element": "app/handlers/user/wallet.py",
+    "path": "app/handlers/user/wallet.py",
+    "type": "file",
+    "content": "Роутер app.handlers.user.wallet (name='user_wallet') — экран Кошелёк. Хендлеры: cb_open (WalletCB action='open') рендерит баланс (wallet_repo.balance) + историю (list_for_user limit=20) через _render_wallet_text (заголовок, баланс, строки '<sign><abs>⭐ · <label>', label из wallet.type_<type>), клавиатура wallet_screen_kb(has_presets); cb_topup (action='topup') показывает меню пресетов wallet_topup_kb или wallet.no_presets; cb_pick (action='pick', stars) шлёт billing.send_topup_invoice (кредит баланса позже в on_successful_payment). Все тексты через t() namespace wallet.*. Зарегистрирован в app/handlers/user/__init__.py после promo.",
+    "createdAt": "2026-06-05T14:15:57.162Z",
+    "updatedAt": "2026-06-05T14:15:57.162Z"
+  },
+  {
+    "element": "app/db/repos/subscriptions.py::has_trial",
+    "path": "",
+    "type": "unknown",
+    "content": "Возвращает True, если у пользователя уже есть trial-подписка (is_trial=1). Дешёвый race-tolerant SELECT перед activate_trial; жёсткая гарантия 'один trial на юзера' обеспечивается partial-unique индексом idx_subscriptions_one_trial. Используется для скрытия кнопки 'Пробный период' и как предпроверка.",
+    "createdAt": "2026-06-05T14:30:54.256Z",
+    "updatedAt": "2026-06-05T14:30:54.256Z"
+  },
+  {
+    "element": "app/db/repos/subscriptions.py::create",
+    "path": "",
+    "type": "unknown",
+    "content": "Вставляет новую активную подписку. Поддерживает is_trial (по умолчанию False) — при True insert подчиняется partial-unique индексу idx_subscriptions_one_trial (UNIQUE(user_id) WHERE is_trial=1); второй trial для того же юзера => IntegrityError. Колонки: user_id, xui_inbound_id, xui_client_uuid, xui_client_email, xui_sub_id, expires_at, plan_id, status='active', is_trial.",
+    "createdAt": "2026-06-05T14:30:54.521Z",
+    "updatedAt": "2026-06-05T14:30:54.521Z"
+  },
+  {
+    "element": "app/db/repos/referrals.py",
+    "path": "app/db/repos/referrals.py",
+    "type": "file",
+    "content": "Репозиторий таблицы referrals (реферальный леджер). Dataclass Referral{id, referrer_id, referred_id, status pending|rewarded, created_at, rewarded_at}. Функции: create_pending(referrer_id, referred_id) — INSERT OR IGNORE против UNIQUE(referred_id), привязка ровно один раз (None если referred_id уже есть); get_by_referred — лукап по UNIQUE referred_id; try_mark_rewarded(referred_id) — атомарный UPDATE WHERE status='pending' (награда ровно один раз, возвращает Referral или None); count_for_referrer — счётчик приглашённых. Идемпотентность: referred_id UNIQUE + guarded UPDATE.",
+    "createdAt": "2026-06-05T14:32:22.929Z",
+    "updatedAt": "2026-06-05T14:32:22.929Z"
+  },
+  {
+    "element": "app/db/repos/gift_codes.py",
+    "path": "app/db/repos/gift_codes.py",
+    "type": "file",
+    "content": "Репозиторий таблицы gift_codes (подарочные коды). Dataclass GiftCode{id, code, plan_id, inbound_id, buyer_id, payment_id, status active|redeemed|refunded, redeemed_by, subscription_id, created_at, redeemed_at}. Функции: create(code, plan_id, inbound_id, buyer_id, payment_id) — INSERT active, UNIQUE collision => IntegrityError (retry в make_gift_code); get_by_code (COLLATE NOCASE); try_redeem(code, redeemed_by, subscription_id) — под transaction() BEGIN IMMEDIATE, guarded UPDATE WHERE status='active', атомарный claim ровно один раз (bool); set_status — компенсация/refund; list_for_buyer. Жизненный цикл: active→redeemed/refunded.",
+    "createdAt": "2026-06-05T14:33:30.792Z",
+    "updatedAt": "2026-06-05T14:33:30.792Z"
+  },
+  {
+    "element": "app/services/subscriptions.py::activate_trial",
+    "path": "",
+    "type": "unknown",
+    "content": "Сервис активации пробной подписки (один trial на юзера). Сигнатура: activate_trial(conn, xui, user, *, inbound_id, days, traffic_gb). Переиспользует _provision (xui-first, DB-after) с plan_id=None, is_trial=True. Защита 'один trial': (1) дешёвый pre-check subs_repo.has_trial → TrialAlreadyUsedError до обращения к панели (без orphan-клиента); (2) backstop — IntegrityError от partial-unique idx_subscriptions_one_trial при гонке → TrialAlreadyUsedError. Конфиг TRIAL_DAYS (0=выкл), TRIAL_TRAFFIC_GB. Также добавлен класс TrialAlreadyUsedError.",
+    "createdAt": "2026-06-05T14:35:00.069Z",
+    "updatedAt": "2026-06-05T14:35:00.069Z"
+  },
+  {
+    "element": "app/config.py::Settings",
+    "path": "",
+    "type": "unknown",
+    "content": "Настройки приложения (pydantic-settings). Ф3 добавил: TRIAL_DAYS (int>=0, 0=trial выкл), TRIAL_TRAFFIC_GB (int>=0, GB лимит trial, 0=безлимит), REFERRAL_BONUS_STARS (int>=0 Stars реф-бонусу, 0=выкл).",
+    "createdAt": "2026-06-05T14:35:00.332Z",
+    "updatedAt": "2026-06-05T14:35:00.332Z"
+  },
+  {
+    "element": "app/services/referrals.py",
+    "path": "app/services/referrals.py",
+    "type": "file",
+    "content": "Сервис реферальной программы. parse_ref_arg(arg) — извлекает tg_id из ref_<tg_id> (None при невалидном). register_referral(conn, *, referrer_tg_id, referred) — bind invitee к inviter: защита self-referral (referrer.id==referred.id), unknown-inviter, привязка только если get_by_referred is None (первый /start побеждает); под капотом create_pending INSERT OR IGNORE. reward_referrer_after_first_payment(conn, bot, *, referred) — после первого платежа: skip если REFERRAL_BONUS_STARS=0, try_mark_rewarded (атомарно раз) → wallet.credit(referrer_id, bonus, type='referral_bonus', ref=f'referral:{referred_id}') + DM пригласившему (best-effort). Двойная идемпотентность: guarded UPDATE + UNIQUE wallet ref. Вызов награды в buy.on_successful_payment (Step 6b, best-effort).",
+    "createdAt": "2026-06-05T14:37:24.699Z",
+    "updatedAt": "2026-06-05T14:37:24.699Z"
+  },
+  {
+    "element": "app/services/gifts.py",
+    "path": "app/services/gifts.py",
+    "type": "file",
+    "content": "Сервис подарочных подписок. make_gift_code(conn, *, plan_id, inbound_id, buyer_id, payment_id) — минт кода GIFT-+8 hex (secrets), retry до 5 раз на UNIQUE-коллизию. redeem_gift(conn, xui, *, code, redeemer) → (GiftCode, Subscription): claim-first — get_by_code (active?), резолв плана (deleted→GiftRedeemError not_active), try_claim (атомарный active→redeemed под BEGIN IMMEDIATE; None→not_active), create_or_extend(extend_sub_id=None, inbound_id=code.inbound_id, promo=None), link_subscription; компенсация при XuiError — set_status обратно в 'active' + re-raise. Класс GiftRedeemError(reason: not_found|not_active). Repo gift_codes расширен try_claim + link_subscription.",
+    "createdAt": "2026-06-05T14:39:34.290Z",
+    "updatedAt": "2026-06-05T14:39:34.290Z"
+  },
+  {
+    "element": "app/db/repos/gift_codes.py::try_claim",
+    "path": "",
+    "type": "unknown",
+    "content": "Атомарный claim подарочного кода до провижининга (claim-first): под BEGIN IMMEDIATE guarded UPDATE status active→redeemed + redeemed_by/redeemed_at (subscription_id остаётся NULL). Возвращает GiftCode при выигрыше (rowcount=1) или None (нет кода/уже claimed/гонка). Пара к link_subscription (привязка sub после провижининга) и set_status (компенсация→active при XuiError).",
+    "createdAt": "2026-06-05T14:39:34.554Z",
+    "updatedAt": "2026-06-05T14:39:34.554Z"
+  },
+  {
+    "element": "app/handlers/user/trial.py",
+    "path": "app/handlers/user/trial.py",
+    "type": "file",
+    "content": "Роутер активации пробного периода. cb_open (TrialCB action='open'): re-check TRIAL_DAYS>0 и not has_trial; list_user_inbounds — если 1 inbound авто-активация, иначе TrialFlow.choosing_inbound + inbound_select_kb. cb_pick_inbound (InboundCB pick под TrialFlow.choosing_inbound): валидирует offered inbound → activate_trial → deliver_keys. cb_back_inbound (InboundCB back): отмена в меню. _activate_and_deliver: activate_trial(days=TRIAL_DAYS, traffic_gb=TRIAL_TRAFFIC_GB), маппинг TrialAlreadyUsedError→alert, XuiError→apology. Состояние TrialFlow.choosing_inbound (states/user.py). Кнопка trial.btn в user_main_menu при can_trial.",
+    "createdAt": "2026-06-05T14:44:04.288Z",
+    "updatedAt": "2026-06-05T14:44:04.288Z"
+  },
+  {
+    "element": "app/keyboards/user.py::user_main_menu",
+    "path": "",
+    "type": "unknown",
+    "content": "Главное меню юзера. Параметры: has_subscription (порядок Моя/Купить), can_trial (показ кнопки 🎁 Пробный период = TRIAL_DAYS>0 AND not has_trial), lang. Кнопки: Моя/Купить, [trial.btn если can_trial], wallet.btn_open, menu.btn_promo, referral.btn (ReferralCB open), gift.btn_buy (GiftCB buy), gift.btn_redeem (GiftCB redeem), help, lang. Новые callback-фабрики: TrialCB(action), ReferralCB(action), GiftCB(action). BuyCB получил поле gift:int=0.",
+    "createdAt": "2026-06-05T14:44:04.562Z",
+    "updatedAt": "2026-06-05T14:44:04.562Z"
+  },
+  {
+    "element": "app/handlers/user/referral.py",
+    "path": "app/handlers/user/referral.py",
+    "type": "file",
+    "content": "Роутер экрана 'Пригласить друга'. cb_open (ReferralCB action='open'): строит ссылку https://t.me/<bot_username>?start=ref_<tg_id> (username через app.bot_meta.get_bot_username — кэш per bot.id), показывает count_for_referrer + рекламу бонуса (referral.screen_body при REFERRAL_BONUS_STARS>0 иначе screen_body_no_bonus). Тексты referral.* (RU+EN).",
+    "createdAt": "2026-06-05T14:46:42.058Z",
+    "updatedAt": "2026-06-05T14:46:42.058Z"
+  },
+  {
+    "element": "app/bot_meta.py",
+    "path": "app/bot_meta.py",
+    "type": "file",
+    "content": "Кэш идентичности бота. get_bot_username(bot) — Bot.get_me() один раз, мемоизация по bot.id (для ссылок ?start=ref_/gift_). clear_cache() для тестов. Fallback '' если username отсутствует.",
+    "createdAt": "2026-06-05T14:46:42.312Z",
+    "updatedAt": "2026-06-05T14:46:42.312Z"
+  },
+  {
+    "element": "app/handlers/start.py::cmd_start",
+    "path": "",
+    "type": "unknown",
+    "content": "Обработчик /start. Парсит deep-link через _parse_deep_link: ref_<tg_id> → _handle_ref_deep_link (register_referral, привязка на первом /start, защита self-ref, best-effort); gift_<code> → _handle_gift_deep_link (redeem_gift → deliver_keys получателю + _notify_gift_buyer DM покупателю; на GiftRedeemError/XuiError — сообщение об ошибке; True=ранний выход без приветствия). Затем: админ-меню или user_main_menu(has_subscription, can_trial=(TRIAL_DAYS>0 and not has_trial)). Добавлен параметр bot:Bot|None.",
+    "createdAt": "2026-06-05T14:46:42.577Z",
+    "updatedAt": "2026-06-05T14:46:42.577Z"
+  },
+  {
+    "element": "app/handlers/user/buy.py::on_successful_payment",
+    "path": "",
+    "type": "unknown",
+    "content": "Финализация платежа (идемпотентно по telegram_charge_id UNIQUE). Ветки по ctx.kind: topup→_credit_topup; gift (или ctx.gift)→_mint_gift (записать payment, make_gift_code(payment_id) внутри not-duplicate ветки, DM покупателю код+ссылку ?start=gift_<code>, БЕЗ провижининга подписки покупателю); иначе buy/extend (create_or_extend, payment, promo apply, Step 6b referral reward best-effort, deliver_keys). Gift-минт защищён UNIQUE charge_id (код минтится максимум один раз).",
+    "createdAt": "2026-06-05T14:50:55.883Z",
+    "updatedAt": "2026-06-05T14:50:55.883Z"
+  },
+  {
+    "element": "app/services/billing.py::send_gift_invoice",
+    "path": "",
+    "type": "unknown",
+    "content": "Отправляет Stars-инвойс на покупку подарочного кода. Та же цена что send_invoice (промо применяется), но payload через build_gift_payload (kind='gift', gift=1) — successful_payment минтит код вместо подписки покупателю. Всегда новая подписка получателю (без sub_id/extend).",
+    "createdAt": "2026-06-05T14:50:56.148Z",
+    "updatedAt": "2026-06-05T14:50:56.148Z"
+  },
+  {
+    "element": "app/handlers/user/buy.py::cb_gift_buy",
+    "path": "",
+    "type": "unknown",
+    "content": "Вход в покупку подарка (GiftCB action='buy'): clear FSM, set gift=1+sub_id=0, показать список планов (всегда new-sub flow, action-экран продлить/новая пропущен). Поле gift протянуто через FSM и confirm_kb во всех new-sub ветках (cb_pick_plan/cb_pick_inbound/cb_apply_promo/msg_promo_code); cb_confirm при gift=1 шлёт billing.send_gift_invoice. Поле gift:int добавлено в BuyCB и confirm_kb.",
+    "createdAt": "2026-06-05T14:50:56.408Z",
+    "updatedAt": "2026-06-05T14:50:56.408Z"
+  },
+  {
+    "element": "app/handlers/user/gift.py",
+    "path": "app/handlers/user/gift.py",
+    "type": "file",
+    "content": "Роутер активации подарка. cb_redeem (GiftCB action='redeem'): вход в GiftRedeem.waiting_code, промпт ввода кода. msg_code (GiftRedeem.waiting_code): redeem_gift(code, redeemer) → при GiftRedeemError маппинг not_found/not_active в сообщение (остаётся в waiting_code), при XuiError — apology; при успехе deliver_keys получателю + notify_gift_buyer + clear state. notify_gift_buyer(bot, gift) — DM покупателю (best-effort, shared с deep-link путём в start.py). Состояние GiftRedeem.waiting_code в states/user.py. Deep-link gift_<code> обрабатывается в start.cmd_start (_handle_gift_deep_link).",
+    "createdAt": "2026-06-05T14:53:13.012Z",
+    "updatedAt": "2026-06-05T14:53:13.012Z"
+  },
+  {
+    "element": "subscriptions.set_auto_renew",
+    "path": "",
+    "type": "unknown",
+    "content": "Repo method toggling subscriptions.auto_renew (and optionally tg_sub_charge_id). When tg_sub_charge_id is None only auto_renew is written so toggling off never clobbers a stored charge id. Used by native Star subscriptions (first recurring payment sets True + charge id; cancel sets False) and the wallet fallback (True, no charge id).",
+    "createdAt": "2026-06-05T15:15:42.374Z",
+    "updatedAt": "2026-06-05T15:15:42.374Z"
+  },
+  {
+    "element": "subscriptions.list_auto_renew_due",
+    "path": "",
+    "type": "unknown",
+    "content": "Repo query returning active wallet-fallback subscriptions due for renewal: status='active' AND auto_renew=1 AND tg_sub_charge_id IS NULL AND expires_at <= now+within_hours (default 24). Ordered by expires_at asc. Native Star subscriptions are excluded (Telegram bills them). Drives app.scheduler.auto_renew_job.",
+    "createdAt": "2026-06-05T15:15:42.659Z",
+    "updatedAt": "2026-06-05T15:15:42.659Z"
+  },
+  {
+    "element": "subscriptions.get_active_auto_renew_for",
+    "path": "",
+    "type": "unknown",
+    "content": "Repo query returning the user's active native Star-subscription for a given plan_id (status='active' AND auto_renew=1 AND tg_sub_charge_id IS NOT NULL), latest-expiring first. Used by on_successful_payment to locate the subscription a subsequent recurring charge extends.",
+    "createdAt": "2026-06-05T15:15:42.924Z",
+    "updatedAt": "2026-06-05T15:15:42.924Z"
+  },
+  {
+    "element": "Settings.AUTO_RENEW_ENABLED",
+    "path": "",
+    "type": "unknown",
+    "content": "Phase 4 config flag (default True). Master switch for auto-renewal: hides the autopay button, skips the cancel control, and short-circuits auto_renew_job when False. Joined by TRAFFIC_ALERT_PERCENT (default 80, 0-100, 0=off; threshold % of plan.traffic_gb for one-off traffic alerts) and STAR_SUBSCRIPTION_PLAN_DAYS (default 30, >0; plan.days that qualifies for a native Telegram Star subscription matching billing.SUBSCRIPTION_PERIOD_SECONDS).",
+    "createdAt": "2026-06-05T15:16:47.096Z",
+    "updatedAt": "2026-06-05T15:16:47.096Z"
+  },
+  {
+    "element": "renew_reminder_kb",
+    "path": "",
+    "type": "unknown",
+    "content": "Keyboard builder (app/keyboards/user.py): single «🔁 Продлить в 1 тап» button carrying BuyCB(action='extend', sub_id=N). Attached by scheduler.reminders_job to 3d/1d/0d expiry reminders so the user renews from the message via the existing extend flow (buy.cb_pick_action_extend). i18n key reminder.btn_renew (RU+EN).",
+    "createdAt": "2026-06-05T15:18:04.084Z",
+    "updatedAt": "2026-06-05T15:18:04.084Z"
+  },
+  {
+    "element": "traffic_snapshot_job",
+    "path": "",
+    "type": "unknown",
+    "content": "Scheduler job (app/scheduler.py): every 6h snapshots each active subscription's up/down from the panel into traffic_snapshots, then calls _maybe_alert_traffic to compare cumulative up+down against plan.traffic_gb*1024^3 and, at settings.TRAFFIC_ALERT_PERCENT (default 80), sends a one-off DM with renew_reminder_kb, deduped via subscription_notifications kind 'traffic80'. Per-sub try/except so one failure doesn't break the job. Unlimited plans (traffic_gb=0), plan_id NULL, or percent=0 skip alerting.",
+    "createdAt": "2026-06-05T15:21:23.134Z",
+    "updatedAt": "2026-06-05T15:21:23.134Z"
+  },
+  {
+    "element": "_relax_subscription_notifications_kind",
+    "path": "",
+    "type": "unknown",
+    "content": "Engine migration (app/db/engine.py): conditionally drops the legacy CHECK(kind IN ...) on subscription_notifications via a data-preserving table rebuild so new notification kinds (e.g. 'traffic80') can be inserted on existing DBs. Idempotent: inspects sqlite_master.sql and is a no-op when no CHECK remains. Toggles foreign_keys off during the swap and restores it. kind validation now lives in subscriptions.try_mark_notification_sent against NOTIFICATION_KINDS.",
+    "createdAt": "2026-06-05T15:21:23.385Z",
+    "updatedAt": "2026-06-05T15:21:23.385Z"
+  },
+  {
+    "element": "auto_renew_job",
+    "path": "",
+    "type": "unknown",
+    "content": "Scheduler job (app/scheduler.py), CronTrigger(hour=9, minute=0) UTC (before reminders at 10:00), max_instances=1. Wallet-fallback auto-renewal: short-circuits if settings.AUTO_RENEW_ENABLED is False; else list_auto_renew_due(within_hours=24) (auto_renew=1 AND tg_sub_charge_id IS NULL) and delegates each to _renew_one_from_wallet under per-sub try/except. _renew_one_from_wallet: resolves plan+price (billing.calc_price), wallet.try_spend(ref=f'autorenew:{sub}:{expires_at}') replay-safe; on insufficient balance DMs the user; on success create_or_extend(extend_sub_id) xui-first (refund on XuiError), synthetic payment telegram_charge_id=f'wallet:autorenew:{txn_id}', then renewed DM. Registered as 4th job in setup_scheduler.",
+    "createdAt": "2026-06-05T15:23:46.571Z",
+    "updatedAt": "2026-06-05T15:23:46.571Z"
+  },
+  {
+    "element": "_renew_one_from_wallet",
+    "path": "",
+    "type": "unknown",
+    "content": "Helper for auto_renew_job (app/scheduler.py): renews one subscription from the wallet. Resolves plan+user, computes price, try_spend with deterministic ref autorenew:<sub>:<period(expires_at)> (replay-safe via idx_wallet_ref). Distinguishes insufficient-balance (DMs user) from replay (silent no-op via get_by_ref). On spend success: create_or_extend(extend_sub_id=sub.id) xui-first, refund (ref refund:autorenew:<txn>) on XuiError, synthetic payment for stats, renewed DM. Returns True on successful renewal.",
+    "createdAt": "2026-06-05T15:23:46.838Z",
+    "updatedAt": "2026-06-05T15:23:46.838Z"
+  },
+  {
+    "element": "cb_subscribe",
+    "path": "",
+    "type": "unknown",
+    "content": "Handler (app/handlers/user/buy.py) for BuyCB(action='sub'): offers a native recurring Telegram Star subscription. Gated by AUTO_RENEW_ENABLED; re-validates plan + inbound allow-list, then calls billing.create_subscription_invoice_link (kind='sub', subscription_period=2592000) and edits the message to show a subscription_link_kb URL button. Surfaced on the confirm card only for eligible 30-day, new, non-gift purchases (_offers_subscription).",
+    "createdAt": "2026-06-05T15:28:32.621Z",
+    "updatedAt": "2026-06-05T15:28:32.621Z"
+  },
+  {
+    "element": "_handle_recurring",
+    "path": "",
+    "type": "unknown",
+    "content": "Handler helper (app/handlers/user/buy.py): finalises native recurring Star subscription payments. First charge (is_first_recurring) -> create_or_extend(extend_sub_id=None) + set_auto_renew(True, tg_sub_charge_id=charge_id) + payment + deliver_keys. Subsequent charge -> get_active_auto_renew_for(user,plan), extend to subscription_expiration_date (Unix->UTC) + update_client expiryTime + payment + DM. Idempotent via UNIQUE charge_id. Routed from on_successful_payment when payment.is_recurring is True or ctx.kind=='sub'.",
+    "createdAt": "2026-06-05T15:28:32.892Z",
+    "updatedAt": "2026-06-05T15:28:32.892Z"
+  },
+  {
+    "element": "cb_cancel_auto_renew",
+    "path": "",
+    "type": "unknown",
+    "content": "Handlers in app/handlers/user/my_subscription.py: cb_cancel_auto_renew (SubCB action=cancel_renew) and cb_enable_auto_renew (action=enable_renew) toggle a native Star subscription's recurring billing via bot.edit_user_star_subscription(user_id, telegram_payment_charge_id=sub.tg_sub_charge_id, is_canceled=...) then mirror locally via set_auto_renew. Shared by _toggle_auto_renew with ownership + tg_sub_charge_id guards. Buttons rendered per-sub in _build_subs_keyboard for subscriptions with a charge id.",
+    "createdAt": "2026-06-05T15:28:33.149Z",
+    "updatedAt": "2026-06-05T15:28:33.149Z"
+  },
+  {
+    "element": "subscription_link_kb",
+    "path": "",
+    "type": "unknown",
+    "content": "Keyboard builder (app/keyboards/user.py): single URL InlineKeyboardButton opening a native Telegram Star subscription invoice link returned by billing.create_subscription_invoice_link, plus a back-to-menu row. Used by buy.cb_subscribe.",
+    "createdAt": "2026-06-05T15:28:33.409Z",
+    "updatedAt": "2026-06-05T15:28:33.409Z"
+  },
+  {
+    "element": "tickets",
+    "path": "",
+    "type": "unknown",
+    "content": "Репозиторий app/db/repos/tickets.py — таблицы tickets + ticket_messages (двусторонний чат поддержки). Ticket(id,user_id,status,created_at,updated_at) со статусами open→answered→closed; TicketMessage(id,ticket_id,sender('user'|'admin'),text,tg_message_id,created_at). Функции: create_ticket, add_message (бампит updated_at, статус не меняет), get, list_open (non-closed по updated_at DESC), list_for_user, get_open_for_user (reuse тикета), set_status, list_messages.",
+    "createdAt": "2026-06-05T16:18:51.080Z",
+    "updatedAt": "2026-06-05T16:18:51.080Z"
+  },
+  {
+    "element": "audit",
+    "path": "",
+    "type": "unknown",
+    "content": "Репозиторий app/db/repos/audit.py — таблица audit_log (трейл админ-действий). AuditEntry(id,admin_id,action,target_type,target_id,details(JSON),created_at). add (append), get, list_recent (newest first, пагинация limit/offset), count. admin_id — FK users.id ON DELETE SET NULL.",
+    "createdAt": "2026-06-05T16:18:51.351Z",
+    "updatedAt": "2026-06-05T16:18:51.351Z"
+  },
+  {
+    "element": "open_ticket",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/tickets.py — сервис машины статусов тикетов. open_ticket (reuse-or-create non-closed тикета юзера + статус open), reply_user (open), reply_admin (answered), close_ticket (closed, идемпотентно). Framework-agnostic (только БД), ретрансляцию в Telegram делают хендлеры.",
+    "createdAt": "2026-06-05T16:19:05.727Z",
+    "updatedAt": "2026-06-05T16:19:05.727Z"
+  },
+  {
+    "element": "log_action",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/audit.py — crash-safe запись админ-действия в audit_log. log_action(conn,admin_id,action,target_type,target_id,details) сериализует details в JSON, любое исключение проглатывает (возврат None), чтобы аудит-фейл не ломал само действие. Вызывается из plan/promo CRUD, user revoke/toggle_admin/grant_sub/block, broadcast, ticket reply/close.",
+    "createdAt": "2026-06-05T16:19:06.020Z",
+    "updatedAt": "2026-06-05T16:19:06.020Z"
+  },
+  {
+    "element": "grant_subscription",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/subscriptions.py::grant_subscription — ручная выдача подписки админом (xui-first через _provision, без оплаты). days=None → plan.days, иначе override; фиксирует plan_id + traffic_gb; всегда создаёт новую подписку (extend_sub_id=None).",
+    "createdAt": "2026-06-05T16:19:06.293Z",
+    "updatedAt": "2026-06-05T16:19:06.293Z"
+  },
+  {
+    "element": "BlockedUserMiddleware",
+    "path": "",
+    "type": "unknown",
+    "content": "app/middlewares/blocked.py — outer dispatcher-middleware, регистрируется ПЕРВЫМ (до UserContextMiddleware). Резолвит tg_id через _extract_tg_user, проверяет users_repo.is_blocked (узкий lookup, не зависит от data['user']); админы (ADMIN_IDS) никогда не блокируются; забаненному короткий отказ blocked.refused + потребление апдейта; fail-open при ошибке БД.",
+    "createdAt": "2026-06-05T16:19:06.555Z",
+    "updatedAt": "2026-06-05T16:19:06.555Z"
+  },
+  {
+    "element": "set_blocked",
+    "path": "",
+    "type": "unknown",
+    "content": "app/db/repos/users.py::set_blocked/is_blocked — бан/разбан юзера. set_blocked(conn,user_id,blocked) выставляет users.is_blocked; is_blocked(conn,tg_id)->bool узкий lookup для BlockedUserMiddleware (False для неизвестного). User dataclass получил поле is_blocked (дефолт False) + from_row терпит row без колонки.",
+    "createdAt": "2026-06-05T16:19:06.820Z",
+    "updatedAt": "2026-06-05T16:19:06.820Z"
+  },
+  {
+    "element": "health_check_job",
+    "path": "",
+    "type": "unknown",
+    "content": "Scheduler job (app/scheduler.py), CronTrigger minute='0,30' (~every 30 min), max_instances=1. Probes 3x-ui panel via app.services.health.check_xui_health (list_inbounds under 10s timeout), persists state to health_status table via app.db.repos.health.record (returns changed flag), refreshes health.set_cached_status snapshot for keyboards, and alerts admins (ADMIN_IDS + SUPPORT_CHAT_ID, via _alert_admins) ONLY on an up<->down transition. Registered in setup_scheduler as the 5th job.",
+    "createdAt": "2026-06-05T16:26:40.776Z",
+    "updatedAt": "2026-06-05T16:26:40.776Z"
+  },
+  {
+    "element": "check_xui_health",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/health.py: async probe of the 3x-ui panel. Calls app.xui.inbounds.list_inbounds wrapped in asyncio.wait_for(timeout=10s). Returns (ok: bool, error: str|None). Catches TimeoutError, XuiError and any exception -> (False, reason). Companion get_cached_status()/set_cached_status() hold a process-local HealthState snapshot ('up'|'down'|None) read by location keyboards to render a green/red indicator without hitting the panel.",
+    "createdAt": "2026-06-05T16:26:41.044Z",
+    "updatedAt": "2026-06-05T16:26:41.044Z"
+  },
+  {
+    "element": "health_status",
+    "path": "",
+    "type": "unknown",
+    "content": "DB table (schema.sql + engine.create_table_migrations): one row per component (default 'xui'). Columns: id, component UNIQUE, status CHECK in ('up','down'), last_error TEXT NULL, changed_at TIMESTAMP. Repo app/db/repos/health.py: get(conn, component) -> HealthRow|None; record(conn, *, status, last_error, component) upserts and returns (HealthRow, changed) where changed is True only on a real state flip (changed_at bumped only on flip). Drives the health-check alert-on-transition behaviour.",
+    "createdAt": "2026-06-05T16:26:41.318Z",
+    "updatedAt": "2026-06-05T16:26:41.318Z"
+  },
+  {
+    "element": "export_payments_csv",
+    "path": "",
+    "type": "unknown",
+    "content": "app/services/exports.py: async export_payments_csv/export_subscriptions_csv/export_users_csv(conn) -> bytes. Use stdlib csv + io.StringIO, encode utf-8-sig (BOM) for Excel/Cyrillic. Each writes a fixed header row then SELECT ... ORDER BY id rows; NULL -> empty cell. subscriptions export OMITS xui_client_uuid (connection secret). Consumed by admin stats handler cb_export which sends each as BufferedInputFile via bot.send_document and logs a stats.export audit entry.",
+    "createdAt": "2026-06-05T16:37:53.617Z",
+    "updatedAt": "2026-06-05T16:37:53.617Z"
+  },
+  {
+    "element": "cb_export",
+    "path": "",
+    "type": "unknown",
+    "content": "app/handlers/admin/stats.py: StatsCB(action='export', field='all') handler. Builds 3 CSV blobs (payments/subscriptions/users) via app.services.exports, sends each as BufferedInputFile document to the admin chat with localized caption (admin.export.caption_*), records one stats.export audit entry, answers with admin.export.done toast. Best-effort: build/send failures fall back to admin.export.failed alert. Button '📥 Download CSV' (admin.export.btn) added to stats_kb.",
+    "createdAt": "2026-06-05T16:37:53.902Z",
+    "updatedAt": "2026-06-05T16:37:53.902Z"
+  },
+  {
+    "element": "build_import_links",
+    "path": "app/xui/links.py",
+    "type": "function",
+    "content": "Строит deep-link схемы импорта подписки в VPN-клиенты по Subscription URL. Ключи: happ (happ://import/<encoded>, кросс-платформенный, рекомендуемый), v2rayng (v2rayng://install-config?url=<encoded>), hiddify (hiddify://import/<encoded>), streisand (streisand://import/<encoded>). sub_url percent-encoded через quote(safe=''). Пустой sub_url -> {}. Telegram не принимает кастомные схемы в кнопках/href — показываются копируемыми <code>-блоками в гайде build_howto_text. Для Happ дан ручной fallback: добавить Subscription URL через «Добавить подписку».",
+    "createdAt": "2026-06-05T16:39:41.493Z",
+    "updatedAt": "2026-06-05T19:01:24.613Z"
+  },
+  {
+    "element": "build_howto_text",
+    "path": "",
+    "type": "unknown",
+    "content": "app/handlers/user/_keys.py: build_howto_text(sub_url, lang) composes the localized '📲 How to connect' guide (keys.howto.* i18n keys, RU+EN) listing per-client deep-link import URLs from build_import_links as copyable <code> blocks + a manual fallback hint. Returns '' for empty sub_url. deliver_keys sends this as an extra message after the subscription-URL message.",
+    "createdAt": "2026-06-05T16:39:41.760Z",
+    "updatedAt": "2026-06-05T16:39:41.760Z"
+  },
+  {
+    "element": "location_indicator",
+    "path": "",
+    "type": "unknown",
+    "content": "app/keyboards/user.py: location_indicator(lang) -> str. Maps the process-local panel health snapshot (app.services.health.get_cached_status, refreshed by scheduler health_check_job) to a 🟢 (up) / 🔴 (down) / ⚪ (None/unknown) marker via i18n location.indicator_* keys. Synchronous; used by inbound_select_kb to prefix each location button. The snapshot updates every ~30 min on each health probe.",
+    "createdAt": "2026-06-05T16:41:07.889Z",
+    "updatedAt": "2026-06-05T16:41:07.889Z"
+  },
+  {
+    "element": "plan_inbounds_select_kb",
+    "path": "app/keyboards/admin.py",
+    "type": "function",
+    "content": "app/keyboards/admin.py: multi-select keyboard over xui inbounds for plan create/edit. Each row: ☑/☐ marker + remark + (port). Empty panel remark falls back to 'Локация #<id>' (kb.inbound_fallback_remark, RU+EN) so admins never see a blank label. Rows send PlanCB(action='toggle_inbound', id). Admin plan wizard (handlers/admin/plans.py cb_inbounds_done) persists the selection via plans_repo.set_inbounds in both create and edit flows.",
+    "createdAt": "2026-06-05T16:42:01.711Z",
+    "updatedAt": "2026-06-05T16:42:01.711Z"
   }
 ]

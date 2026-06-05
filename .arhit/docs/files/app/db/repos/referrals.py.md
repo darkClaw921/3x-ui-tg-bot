@@ -1,0 +1,3 @@
+# app/db/repos/referrals.py
+
+Репозиторий таблицы referrals (реферальный леджер). Dataclass Referral{id, referrer_id, referred_id, status pending|rewarded, created_at, rewarded_at}. Функции: create_pending(referrer_id, referred_id) — INSERT OR IGNORE против UNIQUE(referred_id), привязка ровно один раз (None если referred_id уже есть); get_by_referred — лукап по UNIQUE referred_id; try_mark_rewarded(referred_id) — атомарный UPDATE WHERE status='pending' (награда ровно один раз, возвращает Referral или None); count_for_referrer — счётчик приглашённых. Идемпотентность: referred_id UNIQUE + guarded UPDATE.

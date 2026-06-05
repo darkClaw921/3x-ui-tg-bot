@@ -56,6 +56,7 @@ from app.keyboards.admin import (
     promo_value_presets_kb,
     promos_list_kb,
 )
+from app.services import audit as audit_service
 from app.states.admin import PromoCreate
 
 router = Router(name="admin_promos")
@@ -206,10 +207,19 @@ async def cb_card(callback: CallbackQuery, callback_data: PromoCB) -> None:
 
 
 @router.callback_query(PromoCB.filter(F.action == "deactivate"))
-async def cb_deactivate(callback: CallbackQuery, callback_data: PromoCB) -> None:
+async def cb_deactivate(
+    callback: CallbackQuery, callback_data: PromoCB, user: User | None = None
+) -> None:
     """Soft-disable a promo and re-render its card."""
     async with get_conn() as conn:
         await promos_repo.deactivate(conn, callback_data.id)
+        await audit_service.log_action(
+            conn,
+            user.id if user is not None else None,
+            "promo.deactivate",
+            target_type="promo",
+            target_id=callback_data.id,
+        )
     if callback.message is not None:
         await _show_card(callback.message, callback_data.id, edit=True)
     await callback.answer("Промокод деактивирован")
@@ -440,6 +450,19 @@ async def _finalize_promo_create(
                 "Не удалось создать промокод (конфликт уникальности). Попробуйте снова."
             )
             return
+        await audit_service.log_action(
+            conn,
+            created_by,
+            "promo.create",
+            target_type="promo",
+            target_id=promo.id,
+            details={
+                "code": promo.code,
+                "type": promo.type,
+                "value": promo.value,
+                "max_uses": promo.max_uses,
+            },
+        )
 
     await state.clear()
     await send(

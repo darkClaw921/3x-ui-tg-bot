@@ -1,0 +1,3 @@
+# app/handlers/user/wallet.py
+
+Роутер app.handlers.user.wallet (name='user_wallet') — экран Кошелёк. Хендлеры: cb_open (WalletCB action='open') рендерит баланс (wallet_repo.balance) + историю (list_for_user limit=20) через _render_wallet_text (заголовок, баланс, строки '<sign><abs>⭐ · <label>', label из wallet.type_<type>), клавиатура wallet_screen_kb(has_presets); cb_topup (action='topup') показывает меню пресетов wallet_topup_kb или wallet.no_presets; cb_pick (action='pick', stars) шлёт billing.send_topup_invoice (кредит баланса позже в on_successful_payment). Все тексты через t() namespace wallet.*. Зарегистрирован в app/handlers/user/__init__.py после promo.

@@ -58,4 +58,43 @@ class PromoActivate(StatesGroup):
     choosing_inbound = State()
 
 
-__all__ = ["BuyFlow", "PromoActivate"]
+class TrialFlow(StatesGroup):
+    """Wizard: activate the free trial subscription.
+
+    Flow: ``choosing_inbound`` (callback chooses an inbound/server for the
+    trial client) → state cleared once the trial is provisioned (or the user
+    cancels). There is no plan step — the trial's duration / traffic come from
+    :data:`app.config.settings.TRIAL_DAYS` / ``TRIAL_TRAFFIC_GB`` — and no
+    extend branch (a trial is always a brand-new subscription).
+    """
+
+    choosing_inbound = State()
+
+
+class GiftRedeem(StatesGroup):
+    """Wizard: redeem a gift code typed by the recipient.
+
+    Flow: ``waiting_code`` (text input of a ``GIFT-…`` code) → the code is
+    validated and redeemed via :func:`app.services.gifts.redeem_gift`, then the
+    state is cleared. The deep-link path (``/start gift_<code>``) bypasses this
+    FSM entirely — it redeems directly from :func:`app.handlers.start.cmd_start`.
+    """
+
+    waiting_code = State()
+
+
+class SupportFlow(StatesGroup):
+    """Wizard: write a support ticket message (create or follow-up).
+
+    Single state — ``writing``: the «❓ Поддержка» button enters it and the
+    user's next text message is recorded as a ticket message via
+    :func:`app.services.tickets.open_ticket` (which reuses the user's existing
+    open ticket or creates a fresh one), the admins are notified, and the state
+    is cleared. A user replying to an admin's answer re-enters this same state
+    from the support screen.
+    """
+
+    writing = State()
+
+
+__all__ = ["BuyFlow", "GiftRedeem", "PromoActivate", "SupportFlow", "TrialFlow"]

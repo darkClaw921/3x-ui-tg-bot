@@ -18,7 +18,16 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from app.handlers.admin import broadcast, menu, plans, promos, stats, users
+from app.handlers.admin import (
+    audit,
+    broadcast,
+    menu,
+    plans,
+    promos,
+    stats,
+    tickets,
+    users,
+)
 from app.middlewares.admin_only import AdminOnlyMiddleware
 
 
@@ -33,6 +42,8 @@ def _build_admin_router() -> Router:
     admin_router.include_router(users.router)
     admin_router.include_router(stats.router)
     admin_router.include_router(broadcast.router)
+    admin_router.include_router(tickets.router)
+    admin_router.include_router(audit.router)
     return admin_router
 
 

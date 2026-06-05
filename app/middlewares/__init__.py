@@ -2,6 +2,10 @@
 
 This package houses dispatcher- and router-level middlewares:
 
+* :mod:`app.middlewares.blocked` — drops updates from admin-blocked users.
+  Registered as an *outer* middleware on the dispatcher **before**
+  :class:`UserContextMiddleware` so a banned user is rejected before any
+  handler or the user-context lookup runs.
 * :mod:`app.middlewares.user_ctx` — loads (or creates) the ``users`` row for
   the current Telegram user and exposes it via ``data['user']``. Registered
   as an *outer* middleware on the dispatcher so every update gets a user.
@@ -12,6 +16,11 @@ This package houses dispatcher- and router-level middlewares:
 from __future__ import annotations
 
 from app.middlewares.admin_only import AdminOnlyMiddleware
+from app.middlewares.blocked import BlockedUserMiddleware
 from app.middlewares.user_ctx import UserContextMiddleware
 
-__all__ = ["AdminOnlyMiddleware", "UserContextMiddleware"]
+__all__ = [
+    "AdminOnlyMiddleware",
+    "BlockedUserMiddleware",
+    "UserContextMiddleware",
+]

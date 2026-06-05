@@ -219,3 +219,131 @@ async def test_user_ctx_marks_admin(file_db, monkey_settings):
     data: dict = {}
     await mw(handler, upd, data)
     assert data["user"].is_admin is True
+
+
+# --------------------------------------------------------------------------- #
+# BlockedUserMiddleware
+# --------------------------------------------------------------------------- #
+
+
+def _update_with_message(tg_id: int):
+    upd = MagicMock(spec=Update)
+    for attr in (
+        "message", "edited_message", "channel_post", "edited_channel_post",
+        "callback_query", "inline_query", "chosen_inline_result",
+        "shipping_query", "pre_checkout_query", "poll_answer",
+        "my_chat_member", "chat_member", "chat_join_request",
+    ):
+        setattr(upd, attr, None)
+    msg = MagicMock(spec=Message)
+    msg.from_user = MagicMock(spec=TgUser, id=tg_id)
+    msg.answer = AsyncMock()
+    upd.message = msg
+    return upd, msg
+
+
+async def test_blocked_mw_blocks_banned_user(file_db, monkey_settings):
+    from app.db.engine import get_conn
+    from app.db.repos import users as users_repo
+    from app.middlewares.blocked import BlockedUserMiddleware
+
+    monkey_settings(ADMIN_IDS=[])
+    async with get_conn() as conn:
+        u = await users_repo.create(conn, tg_id=900, username="b", first_name="B")
+        await users_repo.set_blocked(conn, u.id, True)
+
+    mw = BlockedUserMiddleware()
+    handler = AsyncMock(return_value="ok")
+    upd, msg = _update_with_message(900)
+    res = await mw(handler, upd, {})
+    handler.assert_not_awaited()
+    msg.answer.assert_awaited_once()
+    assert res is None
+
+
+async def test_blocked_mw_passes_normal_user(file_db, monkey_settings):
+    from app.db.engine import get_conn
+    from app.db.repos import users as users_repo
+    from app.middlewares.blocked import BlockedUserMiddleware
+
+    monkey_settings(ADMIN_IDS=[])
+    async with get_conn() as conn:
+        await users_repo.create(conn, tg_id=901, username="n", first_name="N")
+
+    mw = BlockedUserMiddleware()
+    handler = AsyncMock(return_value="ok")
+    upd, _ = _update_with_message(901)
+    res = await mw(handler, upd, {})
+    handler.assert_awaited_once()
+    assert res == "ok"
+
+
+async def test_blocked_mw_never_blocks_admin(file_db, monkey_settings):
+    """An admin id passes even if their row is flagged is_blocked."""
+    from app.db.engine import get_conn
+    from app.db.repos import users as users_repo
+    from app.middlewares.blocked import BlockedUserMiddleware
+
+    monkey_settings(ADMIN_IDS=[902])
+    async with get_conn() as conn:
+        u = await users_repo.create(
+            conn, tg_id=902, username="a", first_name="A", is_admin=True
+        )
+        await users_repo.set_blocked(conn, u.id, True)
+
+    mw = BlockedUserMiddleware()
+    handler = AsyncMock(return_value="ok")
+    upd, _ = _update_with_message(902)
+    res = await mw(handler, upd, {})
+    handler.assert_awaited_once()
+    assert res == "ok"
+
+
+async def test_blocked_mw_passes_update_without_user(file_db):
+    from app.middlewares.blocked import BlockedUserMiddleware
+
+    mw = BlockedUserMiddleware()
+    handler = AsyncMock(return_value="ok")
+    upd = MagicMock(spec=Update)
+    for attr in (
+        "message", "edited_message", "channel_post", "edited_channel_post",
+        "callback_query", "inline_query", "chosen_inline_result",
+        "shipping_query", "pre_checkout_query", "poll_answer",
+        "my_chat_member", "chat_member", "chat_join_request",
+    ):
+        setattr(upd, attr, None)
+    res = await mw(handler, upd, {})
+    handler.assert_awaited_once()
+    assert res == "ok"
+
+
+async def test_blocked_mw_blocks_callback(file_db, monkey_settings):
+    from app.db.engine import get_conn
+    from app.db.repos import users as users_repo
+    from app.middlewares.blocked import BlockedUserMiddleware
+
+    monkey_settings(ADMIN_IDS=[])
+    async with get_conn() as conn:
+        u = await users_repo.create(conn, tg_id=903, username="b", first_name="B")
+        await users_repo.set_blocked(conn, u.id, True)
+
+    mw = BlockedUserMiddleware()
+    handler = AsyncMock(return_value="ok")
+    upd = MagicMock(spec=Update)
+    for attr in (
+        "message", "edited_message", "channel_post", "edited_channel_post",
+        "callback_query", "inline_query", "chosen_inline_result",
+        "shipping_query", "pre_checkout_query", "poll_answer",
+        "my_chat_member", "chat_member", "chat_join_request",
+    ):
+        setattr(upd, attr, None)
+    cb = MagicMock(spec=CallbackQuery)
+    cb.from_user = MagicMock(spec=TgUser, id=903)
+    cb.answer = AsyncMock()
+    upd.callback_query = cb
+    res = await mw(handler, upd, {})
+    handler.assert_not_awaited()
+    cb.answer.assert_awaited_once()
+    args, kwargs = cb.answer.call_args
+    assert kwargs.get("show_alert") is True
+    assert res is None

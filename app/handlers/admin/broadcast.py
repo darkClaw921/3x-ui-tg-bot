@@ -37,7 +37,9 @@ from app.keyboards.admin import (
     broadcast_confirm_kb,
     cancel_kb,
 )
+from app.db.repos.users import User
 from app.logger import logger
+from app.services import audit as audit_service
 from app.services.broadcast import broadcast_message
 from app.states.admin import BroadcastCreate
 
@@ -87,7 +89,12 @@ async def st_post(message: Message, state: FSMContext) -> None:
     BroadcastCreate.confirming,
     AdminCB.filter((F.area == "broadcast") & (F.action == "send")),
 )
-async def cb_send(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+async def cb_send(
+    callback: CallbackQuery,
+    state: FSMContext,
+    bot: Bot,
+    user: User | None = None,
+) -> None:
     """Copy the stored post to every user and report the result.
 
     The callback is answered immediately and the confirmation message is
@@ -122,6 +129,21 @@ async def cb_send(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
         tg_ids=tg_ids,
     )
     await state.clear()
+
+    async with get_conn() as conn:
+        await audit_service.log_action(
+            conn,
+            user.id if user is not None else None,
+            "broadcast.send",
+            target_type="broadcast",
+            target_id=None,
+            details={
+                "total": result.total,
+                "sent": result.sent,
+                "blocked": result.blocked,
+                "failed": result.failed,
+            },
+        )
 
     summary = (
         "✅ <b>Рассылка завершена</b>\n\n"

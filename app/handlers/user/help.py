@@ -18,35 +18,22 @@ from __future__ import annotations
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
+from app.i18n import DEFAULT_LANG, t
 from app.keyboards.user import UserCB, back_to_menu_kb
 
 router = Router(name="user_help")
 
 
-_HELP_TEXT = (
-    "<b>Как подключиться к VPN</b>\n\n"
-    "1️⃣ Установите любой клиент с поддержкой VLESS/Reality:\n"
-    "• <b>v2rayNG</b> — Android (Play Market / GitHub)\n"
-    "• <b>Streisand</b> — iOS / iPadOS (App Store)\n"
-    "• <b>Hiddify</b> — Windows / macOS / Linux\n\n"
-    "2️⃣ После оплаты бот пришлёт три варианта ключа — используйте любой:\n"
-    "• <code>vless://</code> ссылку — скопируйте, в клиенте нажмите "
-    "«Импорт из буфера обмена».\n"
-    "• Subscription URL — в клиенте «Добавить подписку», вставьте ссылку, "
-    "обновите. Удобно тем, что при продлении ничего перенастраивать не "
-    "нужно.\n"
-    "• QR-код — в клиенте «Сканировать QR-код» (камера).\n\n"
-    "3️⃣ Включите подключение в клиенте — иконка статуса станет зелёной.\n\n"
-    "Если что-то не работает — напишите администратору."
-)
-
-
 @router.callback_query(UserCB.filter(F.area == "help"))
-async def cb_help(callback: CallbackQuery) -> None:
-    """Render the connection guide and offer a "back to menu" button."""
+async def cb_help(callback: CallbackQuery, lang: str = DEFAULT_LANG) -> None:
+    """Render the connection guide and offer a "back to menu" button.
+
+    The guide text is localized via :func:`app.i18n.t` (``help.text``); the
+    ``lang`` keyword is injected by :class:`app.middlewares.user_ctx`.
+    """
     if callback.message is not None:
         await callback.message.edit_text(
-            _HELP_TEXT,
+            t("help.text", lang),
             reply_markup=back_to_menu_kb(),
         )
     await callback.answer()

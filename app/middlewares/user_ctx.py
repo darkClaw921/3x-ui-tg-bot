@@ -25,6 +25,7 @@ from loguru import logger
 
 from app.db.engine import get_conn
 from app.db.repos import users as users_repo
+from app.i18n import DEFAULT_LANG
 
 
 def _extract_tg_user(event: TelegramObject) -> TgUser | None:
@@ -70,13 +71,18 @@ class UserContextMiddleware(BaseMiddleware):
     1. Find the originating Telegram user (if any).
     2. Open a connection via :func:`app.db.engine.get_conn`.
     3. Call :func:`app.db.repos.users.get_or_create` — idempotent; also
-       reconciles ``is_admin`` with ``settings.ADMIN_IDS``.
+       reconciles ``is_admin`` with ``settings.ADMIN_IDS``. The Telegram
+       ``language_code`` is forwarded so a brand-new user's initial UI
+       language is seeded from their client locale.
     4. Place the resulting :class:`app.db.repos.users.User` into
-       ``data['user']``.
+       ``data['user']`` and the user's resolved UI language into
+       ``data['lang']`` so handlers can pass it straight to
+       :func:`app.i18n.t` without re-reading the DB.
 
     Errors at the DB layer are logged and swallowed: the update still
-    propagates with ``data['user'] = None`` so handlers can degrade
-    gracefully (typically by replying with a generic error message).
+    propagates with ``data['user'] = None`` and ``data['lang'] =
+    DEFAULT_LANG`` so handlers can degrade gracefully (typically by
+    replying with a generic, default-language error message).
     """
 
     async def __call__(
@@ -88,6 +94,7 @@ class UserContextMiddleware(BaseMiddleware):
         tg_user = _extract_tg_user(event)
         if tg_user is None:
             data["user"] = None
+            data["lang"] = DEFAULT_LANG
             return await handler(event, data)
 
         try:
@@ -97,11 +104,14 @@ class UserContextMiddleware(BaseMiddleware):
                     tg_id=tg_user.id,
                     username=tg_user.username,
                     first_name=tg_user.first_name,
+                    language_code=tg_user.language_code,
                 )
             data["user"] = user
+            data["lang"] = user.lang
         except Exception as exc:  # pragma: no cover — defensive logging
             logger.exception(f"UserContextMiddleware failed for tg_id={tg_user.id}: {exc}")
             data["user"] = None
+            data["lang"] = DEFAULT_LANG
 
         return await handler(event, data)
 

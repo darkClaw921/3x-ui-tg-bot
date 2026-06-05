@@ -30,13 +30,18 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from aiogram import F, Router
-from aiogram.types import CallbackQuery
+from aiogram import Bot, F, Router
+from aiogram.types import BufferedInputFile, CallbackQuery
+from loguru import logger
 
 from app.db.engine import get_conn
 from app.db.repos import users as users_repo
 from app.db.repos.subscriptions import Subscription
+from app.db.repos.users import User
+from app.i18n import DEFAULT_LANG, t
 from app.keyboards.admin import AdminCB, StatsCB, stats_kb
+from app.services import audit as audit_service
+from app.services import exports as exports_service
 from app.services import stats as stats_service
 
 router = Router(name="admin_stats")
@@ -183,6 +188,71 @@ async def cb_refresh(callback: CallbackQuery, callback_data: StatsCB) -> None:
     period = callback_data.field if callback_data.field in _PERIODS else _DEFAULT_PERIOD
     await _render(callback, period)
     await callback.answer("Обновлено")
+
+
+# ``filename`` is timestamped so re-exports don't collide in the chat history.
+_EXPORTS: tuple[tuple[str, str], ...] = (
+    ("payments", "admin.export.caption_payments"),
+    ("subscriptions", "admin.export.caption_subscriptions"),
+    ("users", "admin.export.caption_users"),
+)
+
+
+@router.callback_query(StatsCB.filter(F.action == "export"))
+async def cb_export(
+    callback: CallbackQuery,
+    callback_data: StatsCB,
+    bot: Bot,
+    user: User | None = None,
+    lang: str = DEFAULT_LANG,
+) -> None:
+    """Export payments / subscriptions / users as CSV documents.
+
+    Builds three CSV blobs in-memory (no temp files) via
+    :mod:`app.services.exports`, sends each as a ``BufferedInputFile`` document
+    to the admin's chat, and records one ``stats.export`` audit entry. The whole
+    thing is best-effort: a failure to build or send falls back to a toast so the
+    stats screen stays usable.
+    """
+    if callback.message is None:
+        await callback.answer()
+        return
+    chat_id = callback.message.chat.id
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+
+    try:
+        async with get_conn() as conn:
+            blobs: list[tuple[bytes, str]] = []
+            for dataset, _caption in _EXPORTS:
+                builder = getattr(exports_service, f"export_{dataset}_csv")
+                data = await builder(conn)
+                blobs.append((data, dataset))
+            await audit_service.log_action(
+                conn,
+                user.id if user is not None else None,
+                "stats.export",
+                target_type="stats",
+                details={"datasets": [d for _, d in blobs]},
+            )
+    except Exception as exc:  # noqa: BLE001 — never break the stats screen
+        logger.warning("admin_stats: CSV export build failed: {}", exc)
+        await callback.answer(t("admin.export.failed", lang), show_alert=True)
+        return
+
+    for (data, dataset), (_dataset2, caption_key) in zip(blobs, _EXPORTS, strict=True):
+        rows = max(data.decode("utf-8-sig").count("\n") - 1, 0)
+        try:
+            await bot.send_document(
+                chat_id,
+                document=BufferedInputFile(data, filename=f"{dataset}-{stamp}.csv"),
+                caption=t(caption_key, lang, rows=rows),
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort per document
+            logger.warning(
+                "admin_stats: send_document({}) failed: {}", dataset, exc
+            )
+
+    await callback.answer(t("admin.export.done", lang))
 
 
 __all__ = ["router"]

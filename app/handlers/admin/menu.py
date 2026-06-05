@@ -23,38 +23,40 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from app.i18n import DEFAULT_LANG, t
 from app.keyboards.admin import AdminCB, admin_main_menu
 
 router = Router(name="admin_menu")
 
 
-_GREETING = "Админ-меню. Выберите раздел:"
-
-
 @router.message(Command("admin"))
-async def cmd_admin(message: Message) -> None:
+async def cmd_admin(message: Message, lang: str = DEFAULT_LANG) -> None:
     """Respond to ``/admin`` with the top-level admin menu."""
-    await message.answer(_GREETING, reply_markup=admin_main_menu())
+    await message.answer(t("admin.greeting", lang), reply_markup=admin_main_menu())
 
 
 @router.callback_query(AdminCB.filter((F.area == "main") & (F.action.in_({"open", "back"}))))
-async def open_main(callback: CallbackQuery) -> None:
+async def open_main(callback: CallbackQuery, lang: str = DEFAULT_LANG) -> None:
     """Edit the current message back to the main admin menu."""
     if callback.message is not None:
-        await callback.message.edit_text(_GREETING, reply_markup=admin_main_menu())
+        await callback.message.edit_text(
+            t("admin.greeting", lang), reply_markup=admin_main_menu()
+        )
     await callback.answer()
 
 
 @router.callback_query(AdminCB.filter(F.action == "cancel"))
-async def cancel_fsm(callback: CallbackQuery, state: FSMContext) -> None:
+async def cancel_fsm(
+    callback: CallbackQuery, state: FSMContext, lang: str = DEFAULT_LANG
+) -> None:
     """Clear any active FSM state and return to the admin main menu."""
     await state.clear()
     if callback.message is not None:
         await callback.message.edit_text(
-            "Отменено. " + _GREETING,
+            t("admin.cancelled_greeting", lang),
             reply_markup=admin_main_menu(),
         )
-    await callback.answer("Отменено")
+    await callback.answer(t("admin.cancelled", lang))
 
 
 __all__ = ["router"]

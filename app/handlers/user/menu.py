@@ -23,15 +23,14 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from app.config import settings
 from app.db.engine import get_conn
 from app.db.repos import subscriptions as subs_repo
 from app.db.repos.users import User
+from app.i18n import DEFAULT_LANG, t
 from app.keyboards.user import UserCB, user_main_menu
 
 router = Router(name="user_menu")
-
-
-_GREETING = "Главное меню. Что делаем?"
 
 
 async def _has_active_subscription(user_db_id: int) -> bool:
@@ -46,32 +45,59 @@ async def _has_active_subscription(user_db_id: int) -> bool:
     return sub is not None
 
 
-async def _send_main_menu(message: Message, user: User | None, *, edit: bool) -> None:
+async def _can_trial(user_db_id: int) -> bool:
+    """Return ``True`` iff the «🎁 Пробный период» button should be shown.
+
+    The trial is offered only when the feature is enabled
+    (:data:`app.config.settings.TRIAL_DAYS` > 0) **and** the user has not
+    already claimed a trial (:func:`app.db.repos.subscriptions.has_trial`). A
+    single cheap SELECT guards the latter; the former is a config read.
+    """
+    if int(settings.TRIAL_DAYS) <= 0:
+        return False
+    async with get_conn() as conn:
+        return not await subs_repo.has_trial(conn, user_db_id)
+
+
+async def _send_main_menu(
+    message: Message,
+    user: User | None,
+    *,
+    edit: bool,
+    lang: str = DEFAULT_LANG,
+) -> None:
     """Render the user main menu (either edit current message or send new)."""
     has_sub = False
+    can_trial = False
     if user is not None:
         has_sub = await _has_active_subscription(user.id)
-    kb = user_main_menu(has_subscription=has_sub)
+        can_trial = await _can_trial(user.id)
+    kb = user_main_menu(has_subscription=has_sub, can_trial=can_trial)
+    greeting = t("menu.greeting", lang)
     if edit:
-        await message.edit_text(_GREETING, reply_markup=kb)
+        await message.edit_text(greeting, reply_markup=kb)
     else:
-        await message.answer(_GREETING, reply_markup=kb)
+        await message.answer(greeting, reply_markup=kb)
 
 
 @router.message(Command("menu"))
-async def cmd_menu(message: Message, user: User | None = None) -> None:
+async def cmd_menu(
+    message: Message, user: User | None = None, lang: str = DEFAULT_LANG
+) -> None:
     """Show the user main menu in response to ``/menu``."""
-    await _send_main_menu(message, user, edit=False)
+    await _send_main_menu(message, user, edit=False, lang=lang)
 
 
 @router.callback_query(UserCB.filter(F.area == "menu"))
-async def cb_menu(callback: CallbackQuery, user: User | None = None) -> None:
+async def cb_menu(
+    callback: CallbackQuery, user: User | None = None, lang: str = DEFAULT_LANG
+) -> None:
     """Edit the current message back to the user main menu.
 
     Used as the canonical "Back" callback across every user sub-flow.
     """
     if callback.message is not None:
-        await _send_main_menu(callback.message, user, edit=True)
+        await _send_main_menu(callback.message, user, edit=True, lang=lang)
     await callback.answer()
 
 
@@ -80,12 +106,13 @@ async def cb_cancel(
     callback: CallbackQuery,
     state: FSMContext,
     user: User | None = None,
+    lang: str = DEFAULT_LANG,
 ) -> None:
     """Cancel any active wizard and return to the main menu."""
     await state.clear()
     if callback.message is not None:
-        await _send_main_menu(callback.message, user, edit=True)
-    await callback.answer("Отменено")
+        await _send_main_menu(callback.message, user, edit=True, lang=lang)
+    await callback.answer(t("menu.cancelled", lang))
 
 
 __all__ = ["router"]

@@ -70,6 +70,35 @@ class PromoCreate(StatesGroup):
     waiting_expires_at = State()
 
 
+class AdminTicketReply(StatesGroup):
+    """Wizard: admin replies to a support ticket.
+
+    Single state — ``writing``: the «✍ Ответить» button on a ticket card enters
+    it (stashing ``ticket_id`` in FSM data) and the admin's next text message is
+    recorded via :func:`app.services.tickets.reply_admin` (status → 'answered')
+    and relayed to the ticket owner. The state is cleared afterwards.
+    """
+
+    writing = State()
+
+
+class AdminGrantSub(StatesGroup):
+    """Wizard: manually grant / extend a subscription for a user.
+
+    Flow: ``waiting_plan`` (callback picks a plan from the active list —
+    ``PlanCB(action='card', id=<plan_id>)`` reuse) → ``waiting_days`` (text:
+    a positive int for a custom term, or ``"-"`` to take the plan's natural
+    ``days``) → provision via
+    :func:`app.services.subscriptions.grant_subscription` (xui-first) + clear.
+
+    The target ``user_id``, chosen ``plan_id`` and resolved ``inbound_id`` are
+    stashed in FSM data between transitions.
+    """
+
+    waiting_plan = State()
+    waiting_days = State()
+
+
 class BroadcastCreate(StatesGroup):
     """Wizard: broadcast a post to every registered user.
 
@@ -89,7 +118,9 @@ class BroadcastCreate(StatesGroup):
 
 
 __all__ = [
+    "AdminGrantSub",
     "AdminSearchUser",
+    "AdminTicketReply",
     "BroadcastCreate",
     "PlanCreate",
     "PlanEdit",

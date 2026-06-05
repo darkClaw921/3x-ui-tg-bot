@@ -61,6 +61,7 @@ from loguru import logger
 from app.db.engine import get_conn
 from app.db.repos import plans as plans_repo
 from app.db.repos.plans import Plan
+from app.db.repos.users import User
 from app.keyboards.admin import (
     AdminCB,
     PlanCB,
@@ -73,6 +74,7 @@ from app.keyboards.admin import (
     plan_price_presets_kb,
     plans_list_kb,
 )
+from app.services import audit as audit_service
 from app.services.inbounds import InboundOption, list_user_inbounds
 from app.states.admin import PlanCreate, PlanEdit
 from app.xui import XuiError, get_xui_client
@@ -228,10 +230,19 @@ async def cb_edit_menu(callback: CallbackQuery, callback_data: PlanCB) -> None:
 
 
 @router.callback_query(PlanCB.filter(F.action == "deactivate"))
-async def cb_deactivate(callback: CallbackQuery, callback_data: PlanCB) -> None:
+async def cb_deactivate(
+    callback: CallbackQuery, callback_data: PlanCB, user: User | None = None
+) -> None:
     """Soft-disable a plan and re-render its card."""
     async with get_conn() as conn:
         await plans_repo.deactivate(conn, callback_data.id)
+        await audit_service.log_action(
+            conn,
+            user.id if user is not None else None,
+            "plan.deactivate",
+            target_type="plan",
+            target_id=callback_data.id,
+        )
     if callback.message is not None:
         await _show_card(callback.message, callback_data.id, edit=True)
     await callback.answer("Тариф деактивирован")
@@ -475,6 +486,7 @@ async def cb_toggle_inbound(
 async def cb_inbounds_done(
     callback: CallbackQuery,
     state: FSMContext,
+    user: User | None = None,
 ) -> None:
     """Confirm the multi-select and either create or update the plan.
 
@@ -513,6 +525,14 @@ async def cb_inbounds_done(
                     )
                 await callback.answer()
                 return
+            await audit_service.log_action(
+                conn,
+                user.id if user is not None else None,
+                "plan.edit",
+                target_type="plan",
+                target_id=int(editing_plan_id),
+                details={"field": "inbounds", "inbounds": selected},
+            )
         await state.clear()
         if callback.message is not None:
             await _show_card(callback.message, int(editing_plan_id), edit=True)
@@ -522,7 +542,11 @@ async def cb_inbounds_done(
     # Create mode: persist the plan with the collected wizard data.
     if callback.message is not None:
         await _finalize_plan_create(
-            callback.message, state, selected_inbounds=selected, edit=True
+            callback.message,
+            state,
+            selected_inbounds=selected,
+            edit=True,
+            admin_id=user.id if user is not None else None,
         )
     await callback.answer()
 
@@ -533,6 +557,7 @@ async def _finalize_plan_create(
     *,
     selected_inbounds: list[int],
     edit: bool = False,
+    admin_id: int | None = None,
 ) -> None:
     """Persist the plan with collected FSM data, clear state, render its card.
 
@@ -543,6 +568,7 @@ async def _finalize_plan_create(
 
     ``edit=True`` edits the inbound multi-select message into the plan
     card instead of sending a new message (the inline-button path).
+    ``admin_id`` is the acting admin's ``users.id`` for the audit entry.
     """
     data = await state.get_data()
     title: str = data["title"]
@@ -560,6 +586,20 @@ async def _finalize_plan_create(
         )
         await plans_repo.set_inbounds(conn, plan.id, selected_inbounds)
         inbound_ids = await plans_repo.get_inbounds(conn, plan.id)
+        await audit_service.log_action(
+            conn,
+            admin_id,
+            "plan.create",
+            target_type="plan",
+            target_id=plan.id,
+            details={
+                "title": title,
+                "days": days,
+                "price_stars": price,
+                "traffic_gb": traffic_gb,
+                "inbounds": selected_inbounds,
+            },
+        )
     await state.clear()
     remarks = await _resolve_inbound_remarks(inbound_ids)
     send = message.edit_text if edit else message.answer
@@ -765,7 +805,9 @@ async def cb_edit(
 
 
 @router.message(PlanEdit.waiting_value)
-async def st_edit_value(message: Message, state: FSMContext) -> None:
+async def st_edit_value(
+    message: Message, state: FSMContext, user: User | None = None
+) -> None:
     """Validate and persist the new field value, then re-render the card."""
     data = await state.get_data()
     field: str = data["field"]
@@ -816,6 +858,14 @@ async def st_edit_value(message: Message, state: FSMContext) -> None:
             await state.clear()
             await message.answer(f"Тариф #{plan_id} не найден.")
             return
+        await audit_service.log_action(
+            conn,
+            user.id if user is not None else None,
+            "plan.edit",
+            target_type="plan",
+            target_id=plan_id,
+            details={"field": field, "value": value},
+        )
 
     await state.clear()
     await _show_card(message, plan_id, edit=False)
