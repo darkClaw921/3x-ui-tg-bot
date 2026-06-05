@@ -312,7 +312,9 @@ async def test_fetch_traffic_line_bad_int(
         sub = await make_subscription(conn, user_id=u.id)
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value={"up": "BAD", "down": "X"})
+    xui.request_json = AsyncMock(
+        return_value={"items": [{"email": "x", "traffic": {"up": "BAD", "down": "X"}}]}
+    )
     monkeypatch.setattr(users_mod, "get_xui_client", AsyncMock(return_value=xui))
 
     line = await users_mod._fetch_traffic_line(sub)
@@ -329,7 +331,9 @@ async def test_fetch_traffic_line_ok(
         sub = await make_subscription(conn, user_id=u.id)
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value={"up": 1024, "down": 2048})
+    xui.request_json = AsyncMock(
+        return_value={"items": [{"email": "x", "traffic": {"up": 1024, "down": 2048}}]}
+    )
     monkeypatch.setattr(users_mod, "get_xui_client", AsyncMock(return_value=xui))
     line = await users_mod._fetch_traffic_line(sub)
     assert "↑" in line and "↓" in line

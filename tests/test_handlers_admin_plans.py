@@ -297,26 +297,26 @@ async def test_cb_plan_preset_days(file_db):
     """Days preset writes ``days`` and transitions to ``waiting_price``."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state()
     await plans_mod.cb_plan_preset(cb, PlanCB(action="preset", field="days", id=30), state)
     state.update_data.assert_awaited_with(days=30)
     state.set_state.assert_awaited()
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_plan_preset_price(file_db):
     """Price preset writes ``price`` and transitions to ``waiting_traffic_gb``."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state()
     await plans_mod.cb_plan_preset(cb, PlanCB(action="preset", field="price", id=200), state)
     state.update_data.assert_awaited_with(price=200)
     state.set_state.assert_awaited()
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_plan_preset_gb_advances_to_inbounds(file_db, monkeypatch):
@@ -338,7 +338,7 @@ async def test_cb_plan_preset_gb_advances_to_inbounds(file_db, monkeypatch):
 
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state({"title": "Pg", "days": 30, "price": 100})
     await plans_mod.cb_plan_preset(cb, PlanCB(action="preset", field="gb", id=100), state)
@@ -362,28 +362,28 @@ async def test_cb_plan_manual_days_keeps_state(file_db):
     """Manual button prompts text input without changing state."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     await plans_mod.cb_plan_manual(cb, PlanCB(action="manual", field="days"))
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_plan_manual_price_keeps_state(file_db):
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     await plans_mod.cb_plan_manual(cb, PlanCB(action="manual", field="price"))
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_plan_manual_gb_keeps_state(file_db):
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     await plans_mod.cb_plan_manual(cb, PlanCB(action="manual", field="gb"))
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_plan_manual_unknown_field(file_db):

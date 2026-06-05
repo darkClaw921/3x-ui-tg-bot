@@ -10,6 +10,37 @@ import pytest
 from app.xui.client import XuiClient, XuiError, close_xui_client, get_xui_client
 
 
+@pytest.fixture(autouse=True)
+def _csrf_bootstrap(httpx_mock):
+    """Stub the CSRF bootstrap GET that ``login()`` now performs first.
+
+    Every ``login()`` GETs the panel root to read the
+    ``<meta name="csrf-token">`` token before posting credentials. Register
+    a reusable, optional stub so individual login/relogin tests don't have
+    to spell it out (``is_optional`` keeps tests that never log in — e.g.
+    the singleton test — from failing the "all responses requested" check).
+    """
+    httpx_mock.add_response(
+        method="GET",
+        url="http://xui.test/",
+        text='<meta name="csrf-token" content="TESTCSRF">',
+        is_reusable=True,
+        is_optional=True,
+    )
+
+
+async def test_login_sends_csrf_header(httpx_mock):
+    """The bootstrapped CSRF token is echoed in the login request header."""
+    httpx_mock.add_response(
+        method="POST", url="http://xui.test/login", json={"success": True}
+    )
+    client = XuiClient(base_url="http://xui.test", username="u", password="p", verify_ssl=False)
+    await client.login()
+    login_req = next(r for r in httpx_mock.get_requests() if r.url.path == "/login")
+    assert login_req.headers.get("X-CSRF-Token") == "TESTCSRF"
+    await client.close()
+
+
 async def test_login_success(httpx_mock):
     httpx_mock.add_response(
         method="POST",

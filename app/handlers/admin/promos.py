@@ -407,16 +407,21 @@ async def _finalize_promo_create(
     *,
     expires_at: str | None,
     user: User | None,
+    edit: bool = False,
 ) -> None:
     """Persist the promo with collected FSM data, clear state, render its card.
 
-    Called from both the manual-text path (:func:`st_expires_at`) and the
-    preset-button path (:func:`cb_promo_preset` on the ``expires`` step).
-    All earlier wizard inputs (``code``/``type``/``value``/``max_uses``)
-    come from FSM data populated by previous steps.
+    Called from both the manual-text path (:func:`st_expires_at`,
+    ``edit=False`` — answers the user's text message) and the
+    preset-button path (:func:`cb_promo_preset` on the ``expires`` step,
+    ``edit=True`` — edits the message that carried the inline keyboard in
+    place instead of sending a new one). All earlier wizard inputs
+    (``code``/``type``/``value``/``max_uses``) come from FSM data
+    populated by previous steps.
     """
     data = await state.get_data()
     created_by = user.id if user is not None else None
+    send = message.edit_text if edit else message.answer
 
     async with get_conn() as conn:
         try:
@@ -431,13 +436,13 @@ async def _finalize_promo_create(
             )
         except aiosqlite.IntegrityError:
             await state.clear()
-            await message.answer(
+            await send(
                 "Не удалось создать промокод (конфликт уникальности). Попробуйте снова."
             )
             return
 
     await state.clear()
-    await message.answer(
+    await send(
         f"Промокод создан ✅\n\n{_format_promo(promo)}",
         reply_markup=promo_card_kb(promo.id, is_active=_promo_is_active(promo)),
     )
@@ -514,7 +519,7 @@ async def cb_promo_preset(
         expires_at = _expires_days_to_iso(value)
         if callback.message is not None:
             await _finalize_promo_create(
-                callback.message, state, expires_at=expires_at, user=user
+                callback.message, state, expires_at=expires_at, user=user, edit=True
             )
         await callback.answer()
         return
@@ -523,7 +528,7 @@ async def cb_promo_preset(
     assert next_state is not None  # not the terminal step, narrowed above
     await state.set_state(next_state)
     if callback.message is not None and kb_factory is not None:
-        await callback.message.answer(prompt, reply_markup=kb_factory())
+        await callback.message.edit_text(prompt, reply_markup=kb_factory())
     await callback.answer()
 
 
@@ -546,7 +551,7 @@ async def cb_promo_manual(callback: CallbackQuery, callback_data: PromoCB) -> No
         await callback.answer("Неизвестный шаг", show_alert=True)
         return
     if callback.message is not None:
-        await callback.message.answer(text, reply_markup=cancel_kb())
+        await callback.message.edit_text(text, reply_markup=cancel_kb())
     await callback.answer()
 
 

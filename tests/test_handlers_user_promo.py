@@ -546,7 +546,24 @@ async def test_cb_pick_action_extend_promo_redeems_specific_sub(
         )
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value={"id": "u"})
+
+    # Extend goes through update_client → read-merge-write, so the
+    # clients/get lookup must return a client object (not a bare {"id":...}).
+    async def _rj(method, path, **kwargs):
+        if "clients/get/" in path:
+            return {
+                "client": {
+                    "email": "tg_1_a",
+                    "uuid": "uuid-a",
+                    "enable": True,
+                    "expiryTime": 0,
+                    "totalGB": 0,
+                },
+                "inboundIds": [5],
+            }
+        return {"id": "u"}
+
+    xui.request_json = AsyncMock(side_effect=_rj)
     monkeypatch.setattr(promo_mod, "get_xui_client", AsyncMock(return_value=xui))
     monkeypatch.setattr(promo_mod, "deliver_keys", AsyncMock())
     spy_activate = AsyncMock(wraps=promo_mod.subs_service.activate_free_days)

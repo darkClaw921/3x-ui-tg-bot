@@ -242,8 +242,7 @@ async def revoke(xui: XuiClient, sub: Subscription) -> None:
     try:
         await update_client(
             xui,
-            inbound_id=sub.xui_inbound_id,
-            client_uuid=sub.xui_client_uuid,
+            email=sub.xui_client_email,
             enable=False,
         )
     except Exception as exc:  # pragma: no cover — defensive logging
@@ -344,8 +343,7 @@ async def _provision(
 
         await update_client(
             xui,
-            inbound_id=existing.xui_inbound_id,
-            client_uuid=existing.xui_client_uuid,
+            email=existing.xui_client_email,
             expiryTime=_expiry_ms(new_expiry),
             enable=True,
         )

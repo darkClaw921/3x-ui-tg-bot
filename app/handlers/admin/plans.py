@@ -346,7 +346,9 @@ async def st_traffic_gb(message: Message, state: FSMContext) -> None:
     await _enter_inbounds_step(message, state)
 
 
-async def _enter_inbounds_step(message: Message, state: FSMContext) -> None:
+async def _enter_inbounds_step(
+    message: Message, state: FSMContext, *, edit: bool = False
+) -> None:
     """Load xui inbounds and switch the wizard into :class:`PlanCreate.waiting_inbounds`.
 
     Fetches the list via :func:`list_user_inbounds`, caches the options
@@ -358,21 +360,24 @@ async def _enter_inbounds_step(message: Message, state: FSMContext) -> None:
     inbounds.
 
     Called both from the manual-text traffic-gb path
-    (:func:`st_traffic_gb`) and from the preset-button path
-    (:func:`cb_plan_preset` on the ``gb`` step).
+    (:func:`st_traffic_gb`, ``edit=False`` — answers the user's text
+    message) and from the preset-button path (:func:`cb_plan_preset` on
+    the ``gb`` step, ``edit=True`` — edits the message that carried the
+    inline keyboard in place instead of sending a new one).
     """
+    send = message.edit_text if edit else message.answer
     try:
         xui = await get_xui_client()
         options = await list_user_inbounds(xui)
     except XuiError as exc:
         logger.warning("plans wizard: xui unavailable: {}", exc)
-        await message.answer(
+        await send(
             "Не удалось получить список подключений из 3x-ui. Попробуйте позже.",
             reply_markup=cancel_kb(),
         )
         return
     if not options:
-        await message.answer(
+        await send(
             "В 3x-ui нет активных подключений. Сначала включите хотя бы один inbound.",
             reply_markup=cancel_kb(),
         )
@@ -390,7 +395,7 @@ async def _enter_inbounds_step(message: Message, state: FSMContext) -> None:
             for opt in options
         ],
     )
-    await message.answer(
+    await send(
         "Выберите подключения для тарифа:",
         reply_markup=plan_inbounds_select_kb(options, selected=set()),
     )
@@ -503,20 +508,22 @@ async def cb_inbounds_done(
             except LookupError:
                 await state.clear()
                 if callback.message is not None:
-                    await callback.message.answer(
+                    await callback.message.edit_text(
                         f"Тариф #{editing_plan_id} не найден."
                     )
                 await callback.answer()
                 return
         await state.clear()
         if callback.message is not None:
-            await _show_card(callback.message, int(editing_plan_id), edit=False)
+            await _show_card(callback.message, int(editing_plan_id), edit=True)
         await callback.answer("Подключения обновлены")
         return
 
     # Create mode: persist the plan with the collected wizard data.
     if callback.message is not None:
-        await _finalize_plan_create(callback.message, state, selected_inbounds=selected)
+        await _finalize_plan_create(
+            callback.message, state, selected_inbounds=selected, edit=True
+        )
     await callback.answer()
 
 
@@ -525,6 +532,7 @@ async def _finalize_plan_create(
     state: FSMContext,
     *,
     selected_inbounds: list[int],
+    edit: bool = False,
 ) -> None:
     """Persist the plan with collected FSM data, clear state, render its card.
 
@@ -532,6 +540,9 @@ async def _finalize_plan_create(
     inbound multi-select. All earlier wizard inputs (``title``/``days``/
     ``price``/``traffic_gb``) come from FSM data populated by previous
     steps; ``selected_inbounds`` is the just-confirmed inbound id list.
+
+    ``edit=True`` edits the inbound multi-select message into the plan
+    card instead of sending a new message (the inline-button path).
     """
     data = await state.get_data()
     title: str = data["title"]
@@ -551,7 +562,8 @@ async def _finalize_plan_create(
         inbound_ids = await plans_repo.get_inbounds(conn, plan.id)
     await state.clear()
     remarks = await _resolve_inbound_remarks(inbound_ids)
-    await message.answer(
+    send = message.edit_text if edit else message.answer
+    await send(
         f"Тариф создан ✅\n\n{_format_plan(plan, remarks)}",
         reply_markup=plan_card_kb(plan.id, is_active=plan.is_active),
     )
@@ -611,7 +623,7 @@ async def cb_plan_preset(
     if field == "gb":
         await state.update_data(traffic_gb=value)
         if callback.message is not None:
-            await _enter_inbounds_step(callback.message, state)
+            await _enter_inbounds_step(callback.message, state, edit=True)
         await callback.answer()
         return
 
@@ -619,7 +631,7 @@ async def cb_plan_preset(
     assert next_state is not None  # not the terminal step, narrowed above
     await state.set_state(next_state)
     if callback.message is not None and kb_factory is not None:
-        await callback.message.answer(prompt, reply_markup=kb_factory())
+        await callback.message.edit_text(prompt, reply_markup=kb_factory())
     await callback.answer()
 
 
@@ -642,7 +654,7 @@ async def cb_plan_manual(callback: CallbackQuery, callback_data: PlanCB) -> None
         await callback.answer("Неизвестный шаг", show_alert=True)
         return
     if callback.message is not None:
-        await callback.message.answer(text, reply_markup=cancel_kb())
+        await callback.message.edit_text(text, reply_markup=cancel_kb())
     await callback.answer()
 
 

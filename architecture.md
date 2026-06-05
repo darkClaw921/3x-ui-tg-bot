@@ -41,7 +41,8 @@
     │   ├── promos.py
     │   ├── billing.py
     │   ├── subscriptions.py
-    │   └── stats.py
+    │   ├── stats.py
+    │   └── broadcast.py
     ├── handlers/
     │   ├── __init__.py
     │   ├── start.py
@@ -51,7 +52,8 @@
     │   │   ├── plans.py
     │   │   ├── promos.py
     │   │   ├── users.py
-    │   │   └── stats.py
+    │   │   ├── stats.py
+    │   │   └── broadcast.py
     │   └── user/
     │       ├── __init__.py
     │       ├── _keys.py
@@ -452,6 +454,9 @@ Async-движок поверх `aiosqlite`.
 - `async def create(conn, tg_id, username, first_name, is_admin=False) -> User`.
 - `async def get_or_create(conn, tg_id, username, first_name) -> User` —
   идемпотентен; `is_admin` синхронизируется с `settings.ADMIN_IDS`.
+- `async def list_all_tg_ids(conn) -> list[int]` — `tg_id` всех
+  пользователей, старейшие первыми (`ORDER BY id`); используется
+  админской рассылкой (`app.handlers.admin.broadcast`).
 - `async def set_admin(conn, user_id, value: bool)`.
 
 ### [app/db/repos/plans.py](./app/db/repos/plans.py)
@@ -785,6 +790,30 @@ Async-движок поверх `aiosqlite`.
   - `cb_refresh` (`StatsCB action=refresh`) — пересчёт того же периода
     (period передаётся в `callback_data.field`).
 
+### [app/handlers/admin/broadcast.py](./app/handlers/admin/broadcast.py)
+Админская рассылка поста всем пользователям. FSM `BroadcastCreate`
+(`waiting_post` → `confirming`).
+
+- `router = Router(name="admin_broadcast")`.
+- `_PROMPT` — текст приглашения отправить пост.
+- Хендлеры:
+  - `cb_open` (`AdminCB area=broadcast action=open`) — вход из главного
+    меню: `state.set_state(BroadcastCreate.waiting_post)` + `edit_text`
+    приглашения с `cancel_kb`.
+  - `st_post` (state `waiting_post`, любое сообщение) — сохраняет в FSM
+    `post_chat_id`/`post_message_id` (само сообщение не разбирается —
+    позже копируется как есть), считает аудиторию через
+    `users_repo.list_all_tg_ids`, переходит в `confirming` и отвечает
+    экраном подтверждения `broadcast_confirm_kb`.
+  - `cb_send` (state `confirming`, `AdminCB area=broadcast action=send`) —
+    мгновенно отвечает на callback, меняет сообщение на «⏳ Рассылка
+    запущена…», вызывает `broadcast_message` и редактирует сообщение в
+    итоговую сводку (получатели/доставлено/заблокировали/ошибки) с
+    `back_to_main_kb`. При отсутствии `post_*` в FSM — alert + сброс.
+- `_plural(n)` — дательное окончание «пользовател-» (ю/ям) для счётчика.
+- Отмена на любом шаге — общий `cancel_fsm` из `menu.py` (кнопка
+  «✖ Отмена» переиспользует `AdminCB(area=main, action=cancel)`).
+
 ## Пакет `app/keyboards/`
 
 ### [app/keyboards/\_\_init\_\_.py](./app/keyboards/__init__.py)
@@ -796,7 +825,9 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
 
 **CallbackData-фабрики** (prefix без `:` — это разделитель aiogram):
 - `AdminCB(prefix="adm", area, action)` — навигация
-  (`area` ∈ main/plans/promos/users/stats, `action` ∈ open/back/cancel).
+  (`area` ∈ main/plans/promos/users/stats/**broadcast**,
+  `action` ∈ open/back/cancel/**send**). `action=send` под
+  `area=broadcast` подтверждает рассылку.
 - `PlanCB(prefix="admp", action, id=0, field="")` — list/create/card/
   edit_menu/edit/deactivate/**preset**/**manual**/**toggle_inbound**/
   **inbounds_done**;
@@ -816,10 +847,13 @@ Inline-клавиатуры админ-флоу через `InlineKeyboardBuilde
   `action` ∈ open/period/refresh; `field` несёт период (`7d`/`30d`/`all`).
 
 **Функции:**
-- `admin_main_menu()` — 4 кнопки (Тарифы / Промокоды / Пользователи /
-  Статистика).
+- `admin_main_menu()` — 5 кнопок (Тарифы / Промокоды / Пользователи /
+  Статистика / Рассылка).
 - `back_to_main_kb()` — одна кнопка «В меню».
 - `cancel_kb()` — одна кнопка «✖ Отмена» для FSM-wizard'ов.
+- `broadcast_confirm_kb()` — экран подтверждения рассылки: «✅ Разослать»
+  (`AdminCB area=broadcast action=send`) + «✖ Отмена»
+  (`AdminCB area=main action=cancel`).
 - `plans_list_kb(plans)` — список тарифов + «Создать» + «В меню».
   Inactive с префиксом 🔒.
 - `plan_card_kb(plan_id, is_active=True)` — Редактировать / Деактивировать
@@ -929,6 +963,10 @@ FSM-стейты админ-флоу (aiogram `StatesGroup`).
 - `AdminSearchUser(waiting_query)` — единичный стейт админского поиска
   юзера (tg_id-цифры или `@username`); handler резолвит запрос и
   сразу очищает state.
+- `BroadcastCreate(waiting_post, confirming)` — wizard рассылки поста:
+  `waiting_post` (админ присылает сообщение; его `chat_id`/`message_id`
+  кладутся в FSM data) → `confirming` (подтверждение копирует пост всем
+  через `app.services.broadcast.broadcast_message`).
 
 ## Пакет `app/xui/`
 
@@ -951,16 +989,26 @@ Async REST-клиент панели 3x-ui плюс билдеры vless-ссы�
     timeout=_DEFAULT_TIMEOUT)` — поля по умолчанию из `settings.XUI_*`;
     создаёт `httpx.AsyncClient(base_url, timeout, verify, follow_redirects=True)`,
     `_login_lock = asyncio.Lock()`, `_logged_in = False`.
-  - `async def login()` — `POST /login` с form-data `{username,password}`;
-    сериализуется через `_login_lock`; cookie хранится в httpx jar.
+  - `async def login()` — сначала `_bootstrap_session()` (CSRF), затем
+    `POST /login` с form-data `{username,password}` и заголовком
+    `X-CSRF-Token`; сериализуется через `_login_lock`; cookie в httpx jar.
+  - `async def _bootstrap_session()` — `GET /` корня панели: захватывает
+    session-cookie и CSRF-токен из `<meta name="csrf-token">`
+    (regex `_CSRF_META_RE`) в `self._csrf_token`. Новая мажорная версия
+    3x-ui (React-rewrite) отвечает `403` на POST без токена; старые панели
+    без meta-тега → токен `None`, cookie-only flow (обратная совместимость).
+  - `_csrf_headers(extra=None)` — мержит `X-CSRF-Token` (если есть) в
+    заголовки.
   - `async def request(method, path, **kwargs) -> httpx.Response` —
-    lazy-login + single-retry при истечении сессии.
+    lazy-login + single-retry при истечении сессии; добавляет CSRF-заголовок
+    к каждому запросу (на retry — свежий токен после relogin).
   - `async def request_json(method, path, **kwargs) -> Any` — распаковывает
     `obj` envelope, кидает `XuiError` на неудачи.
   - `async def close()`, `__aenter__`, `__aexit__`.
-  - `@staticmethod _needs_relogin(resp)` — `401` или `success=false` с
-    `msg` содержащим `login`/`session`/`unauthor`.
+  - `@staticmethod _needs_relogin(resp)` — `401`/`403` (протухший CSRF) или
+    `success=false` с `msg` содержащим `login`/`session`/`unauthor`.
   - `@staticmethod _parse(resp)` — валидация и unwrap `{success,msg,obj}`-envelope.
+- Константа `_CSRF_META_RE` — regex поиска CSRF-токена в HTML корня панели.
 - Singleton: `async def get_xui_client() -> XuiClient` (lazy, asyncio.Lock),
   `async def close_xui_client() -> None`.
 
@@ -978,7 +1026,9 @@ Async REST-клиент панели 3x-ui плюс билдеры vless-ссы�
   `clients` доступны через `obj['settings']['clients']`.
 
 ### [app/xui/clients.py](./app/xui/clients.py)
-Операции над клиентами inbound'а.
+Операции над клиентами через новый email-keyed API
+`/panel/api/clients/*` (React-rewrite версия 3x-ui). Клиенты адресуются по
+**email**, не по UUID; envelope `{success,msg,obj}` без изменений.
 
 - Helper `make_client_uuid() -> str` — `str(uuid4())`.
 - Helper `make_client_email(tg_id: int, username: str | None = None) -> str` —
@@ -990,22 +1040,35 @@ Async REST-клиент панели 3x-ui плюс билдеры vless-ссы�
   `secrets.token_hex(3)` (6 hex) обеспечивает уникальность при
   пере-подписке после `del_client`.
 - Helper `_make_sub_id() -> str` — `secrets.token_hex(8)` (16 hex).
+- Helper `_q(value) -> str` — URL-encode сегмента пути/запроса
+  (`quote(safe="")`, зеркало `encodeURIComponent`).
+- Helper `_coerce_tg_id(tg_id) -> int` — приведение к числовому `tgId`
+  (нечисловое → 0).
 - `async def add_client(client, inbound_id, client_uuid, email, expiry_ts_ms,
   total_gb=0, sub_id=None, flow="", enable=True, limit_ip=0, tg_id="",
-  reset=0) -> dict` — `POST /panel/api/inbounds/addClient`; payload
-  `{id: inbound_id, settings: json.dumps({"clients":[...]})}` (важный
-  quirk: settings — JSON-строка). `expiry_ts_ms` в миллисекундах.
-- Константа `_UPDATABLE_CLIENT_FIELDS` — whitelist
-  (`id, email, expiryTime, totalGB, enable, flow, subId, limitIp, tgId, reset`).
-- `async def update_client(client, inbound_id, client_uuid, **fields) -> dict` —
-  `POST /panel/api/inbounds/updateClient/:uuid`; неизвестные ключи →
-  `ValueError`; принимает партиал.
-- `async def del_client(client, inbound_id, client_uuid) -> None` —
-  `POST /panel/api/inbounds/:id/delClient/:uuid`; soft-fail на
-  `not exist`/`not found`/`no such` (идемпотентно).
-- `async def get_client_traffics(client, email) -> dict` —
-  `GET /panel/api/inbounds/getClientTraffics/:email`; возвращает `{}`
-  если `obj=None`.
+  reset=0) -> dict` — `POST /panel/api/clients/add`; тело
+  `{"client": {email, uuid, subId, flow, totalGB, limitIp, tgId, enable,
+  reset, expiryTime, comment}, "inboundIds": [inbound_id]}`. `obj` = `null`
+  на успехе → нормализуется в fallback-dict. `expiry_ts_ms` в миллисекундах.
+- Константы `_CLIENT_FIELDS` (поля для round-trip при update, **без** числового
+  `id`) и `_UPDATABLE_CLIENT_FIELDS` (whitelist override-полей).
+- `async def get_client(client, email) -> dict` —
+  `GET /panel/api/clients/get/:email`; возвращает `obj["client"]` или `{}`
+  (на "record not found").
+- `async def update_client(client, email, **fields) -> dict` — **read-merge-write**:
+  читает текущего клиента через `get_client`, накладывает `fields`, постит
+  весь объект в `POST /panel/api/clients/update/:email` (полная замена;
+  `email` обязателен, числовой `id` выбрасывается). Неизвестные ключи →
+  `ValueError`; отсутствующий клиент → `XuiError`. Сохраняет нетронутые поля
+  (`totalGB`/`subId`/`uuid`) — критично, чтобы revoke/extend не сбрасывали
+  квоту. `_coerce_numeric_fields` приводит типы.
+- `async def del_client(client, email, *, keep_traffic=False) -> None` —
+  `POST /panel/api/clients/del/:email` (`?keepTraffic=1` при `keep_traffic`);
+  soft-fail на `not exist`/`not found`/`no such` (идемпотентно).
+- `async def get_client_traffics(client, email) -> dict` — живой трафик
+  едет в пагинированном списке: `GET /panel/api/clients/list/paged?search=:email`,
+  возвращает `items[].traffic` ({up,down,total,expiryTime,enable}) совпавшего
+  по email элемента (лениво принимает единственную строку). `{}` если не найден.
 
 ### [app/xui/links.py](./app/xui/links.py)
 Билдеры ссылок и QR.
@@ -1261,6 +1324,22 @@ Standalone smoke-тест 3x-ui REST-клиента.
 - `async def users_count_total(conn)` — алиас `users_count`.
 - `async def payments_count_period(conn, date_from, date_to) -> int` —
   `COUNT(*)` по `payments` со `status='paid'` в `[date_from, date_to]`.
+
+### [app/services/broadcast.py](./app/services/broadcast.py)
+Веерная рассылка одного поста всей аудитории (админская «Рассылка»).
+
+- `@dataclass(frozen=True) BroadcastResult(total, sent, blocked, failed)`
+  — счётчики результата; инвариант `sent + blocked + failed == total`.
+- `async def broadcast_message(bot, *, from_chat_id, message_id, tg_ids,
+  throttle=0.05) -> BroadcastResult` — копирует сообщение
+  `(from_chat_id, message_id)` каждому получателю через
+  `bot.copy_message` (доставка verbatim, без «Forwarded from», любой тип
+  контента). Устойчивость: `TelegramForbiddenError` → бакет `blocked`
+  (юзер заблокировал/удалил чат), любая другая ошибка → `failed`, цикл
+  никогда не падает. `TelegramRetryAfter` (flood control) обрабатывается
+  сном на `exc.retry_after` и одной повторной попыткой для этого
+  получателя. Между отправками — `asyncio.sleep(throttle)` как защита от
+  лимита ~30 msg/s (в тестах `throttle=0`).
 
 ## Пакет `app/handlers/user/`
 
@@ -1799,6 +1878,9 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
   `activate_free_days`, `revoke`.
 - [`tests/test_services_stats.py`](tests/test_services_stats.py) — revenue,
   active count, expiring_in_days, top_promos, payments_count_period.
+- [`tests/test_services_broadcast.py`](tests/test_services_broadcast.py) —
+  `broadcast_message`: полная доставка, бакеты blocked/failed,
+  flood-control retry (успех/повторный провал), пустая аудитория.
 - [`tests/test_scheduler.py`](tests/test_scheduler.py) — `_kind_for_days_left`,
   expire/reminders/traffic jobs, dedup через `subscription_notifications`,
   XuiError soft-fail.
@@ -1839,6 +1921,10 @@ Pytest-suite, обеспечивающий >=90% покрытия (фактич�
   revoke, toggle_admin.
 - [`tests/test_handlers_admin_stats.py`](tests/test_handlers_admin_stats.py)
   — переключение периодов 7d/30d/all, refresh, truncation.
+- [`tests/test_handlers_admin_broadcast.py`](tests/test_handlers_admin_broadcast.py)
+  — `cb_open` (вход в waiting_post), `st_post` (сохранение ref + счётчик
+  аудитории), `cb_send` (рассылка + сводка), отсутствие поста в FSM,
+  `_plural`.
 - [`tests/test_keys_helper.py`](tests/test_keys_helper.py) — `deliver_keys`
   happy / XuiError fallback / без sub URL.
 - [`tests/test_handlers_init.py`](tests/test_handlers_init.py) —

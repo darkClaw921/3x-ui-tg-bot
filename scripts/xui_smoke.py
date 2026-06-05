@@ -133,7 +133,7 @@ async def run(keep: bool) -> int:
             logger.warning("--keep: leaving test client in place (uuid={})", test_uuid)
         else:
             try:
-                await del_client(client, settings.XUI_INBOUND_ID, test_uuid)
+                await del_client(client, test_email)
             except XuiError as exc:
                 logger.error("step=del_client failed: {}", exc)
                 return 6

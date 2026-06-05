@@ -178,8 +178,7 @@ async def expire_check_job(bot: Bot) -> None:
             try:
                 await update_client(
                     xui,
-                    inbound_id=sub.xui_inbound_id,
-                    client_uuid=sub.xui_client_uuid,
+                    email=sub.xui_client_email,
                     enable=False,
                 )
             except XuiError as exc:

@@ -1,3 +1,3 @@
 # _finalize_promo_create
 
-Общий helper в app/handlers/admin/promos.py: персистит промокод из FSM-data + переданного expires_at, чистит state и шлёт карточку. Используется из st_expires_at (ручной путь) и cb_promo_preset (пресет +N дней / бессрочно). Обрабатывает aiosqlite.IntegrityError (конфликт уникальности кода).
+Helper: создаёт промокод из FSM-данных, очищает state, рисует карточку. Параметр edit: bool=False определяет вывод: edit=True (вызов из cb_promo_preset на шаге expires) редактирует сообщение через edit_text — и при успехе, и при IntegrityError; edit=False (вызов из st_expires_at, текстовый ввод) — answer. Через send = message.edit_text if edit else message.answer.

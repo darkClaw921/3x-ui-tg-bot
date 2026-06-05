@@ -118,9 +118,9 @@
     "element": "app/xui/client.py",
     "path": "app/xui/client.py",
     "type": "file",
-    "content": "XuiClient — async REST-клиент 3x-ui панели на httpx.AsyncClient. Авторизация: POST /login с form data {username,password}, сессионная cookie хранится в httpx cookie jar. Re-login: serialised через asyncio.Lock; вызывается лениво при первом запросе и автоматически при 401 либо при envelope success=false с msg, содержащим 'login'/'session'/'unauthor'. Методы: login(), request(method, path, **kwargs)->httpx.Response (auto-login + 1 retry), request_json(method, path, **kwargs)->Any (раскрывает obj envelope, кидает XuiError), close(), __aenter__/__aexit__. Внутренний _parse распаковывает {success,msg,obj}-envelope. Singleton: get_xui_client()/close_xui_client() с asyncio.Lock-инициализацией. XuiError(RuntimeError) — единая доменная ошибка для всех проблем (HTTP, JSON, success=false). Timeouts: connect=10s, read=30s, write=30s, pool=10s. verify_ssl читается из settings.XUI_VERIFY_SSL (default True). Зависимости: httpx, loguru, app.config.settings (XUI_BASE_URL/USERNAME/PASSWORD/VERIFY_SSL).",
+    "content": "Базовый async HTTP-клиент 3x-ui (httpx). НОВОЕ: CSRF-bootstrap для React-rewrite версии панели. login() сначала вызывает _bootstrap_session() — GET / корня панели, захват session-cookie + CSRF-токена из <meta name=csrf-token> (regex _CSRF_META_RE) в self._csrf_token; затем POST /login с form-data + заголовком X-CSRF-Token. Без токена новая панель отвечает 403; старые панели без meta → токен None (cookie-only, обратная совместимость). _csrf_headers() мержит X-CSRF-Token во все запросы (request() добавляет на каждый вызов, на retry — свежий после relogin). _needs_relogin теперь триггерит на 401 И 403 (протухший CSRF). request_json распаковывает {success,msg,obj}. Singleton get_xui_client/close_xui_client.",
     "createdAt": "2026-05-16T15:09:28.537Z",
-    "updatedAt": "2026-05-16T15:09:28.537Z"
+    "updatedAt": "2026-06-05T09:18:09.117Z"
   },
   {
     "element": "app/xui/__init__.py",
@@ -142,9 +142,12 @@
     "element": "app/xui/clients.py",
     "path": "app/xui/clients.py",
     "type": "file",
-    "content": "Модуль работы с клиентами 3x-ui inbound'а (CRUD над панелью + helpers генерации ID/email).\n\nHelpers:\n- make_client_uuid() -> str — str(uuid4()) для vless client id.\n- make_client_email(tg_id: int, username: str | None = None) -> str — формирует уникальный label клиента для панели 3x-ui. Если задан username, он нормализуется (lowercase; все символы вне [A-Za-z0-9_] заменяются на _; обрезка ведущих/хвостовых _; cap 32) и формат принимает вид <safe_username>_tg_<tg_id>_<6hex>. Если username пустой или после нормализации остался пустым — fallback на legacy-формат tg_<tg_id>_<6hex>. Suffix secrets.token_hex(3) (6 hex) обеспечивает уникальность при пере-подписке после del_client (3x-ui требует уникальный email на inbound, и сохраняет traffic-снэпшоты после удаления, поэтому нельзя переиспользовать старый email).\n- _make_sub_id() -> str — secrets.token_hex(8) (16 hex), внутренний suffix для panel sub URL.\n\nCRUD функции:\n- add_client(client, inbound_id, client_uuid, email, expiry_ts_ms, total_gb=0, sub_id=None, flow='', enable=True, limit_ip=0, tg_id='', reset=0) -> dict — POST /panel/api/inbounds/addClient. expiry_ts_ms в миллисекундах; total_gb — квота трафика в ГБ (0 = unlimited); settings оборачивается в JSON-строку (важный quirk 3x-ui).\n- update_client(client, inbound_id, client_uuid, **fields) -> dict — POST /panel/api/inbounds/updateClient/:uuid. Whitelist _UPDATABLE_CLIENT_FIELDS (id, email, expiryTime, totalGB, enable, flow, subId, limitIp, tgId, reset). Неизвестные ключи → ValueError. Принимает партиал.\n- del_client(client, inbound_id, client_uuid) -> None — POST /panel/api/inbounds/:id/delClient/:uuid. Soft-fail на 'not exist'/'not found'/'no such' (идемпотентно).\n- get_client_traffics(client, email) -> dict — GET /panel/api/inbounds/getClientTraffics/:email. Возвращает {} если obj=None.\n\nИспользуется services.subscriptions._provision и handlers.user.",
+    "content": "Операции над клиентами через НОВЫЙ email-keyed API /panel/api/clients/* (React-rewrite 3x-ui). Клиенты по email, не UUID. add_client: POST /panel/api/clients/add тело {client:{email,uuid,subId,flow,totalGB,limitIp,tgId,enable,reset,expiryTime,comment}, inboundIds:[id]} (без старой settings-строки). get_client: GET /panel/api/clients/get/:email → obj.client или {}. update_client(client, email, **fields): read-merge-write — читает get_client, накладывает fields, постит весь объект в POST /panel/api/clients/update/:email (ПОЛНАЯ замена, email обязателен, числовой id выбрасывается т.к. API ждёт id строкой). Сохраняет нетронутые поля (totalGB/subId) — revoke/extend не сбрасывают квоту. del_client(client, email, keep_traffic=False): POST /panel/api/clients/del/:email[?keepTraffic=1], soft-fail not found. get_client_traffics(client, email): трафик в пагинированном списке GET /panel/api/clients/list/paged?search=:email → items[].traffic{up,down,total,expiryTime,enable}. Helpers make_client_uuid/make_client_email/_make_sub_id/_q(url-encode)/_coerce_tg_id. Старый /panel/api/inbounds/*Client* мёртв (404). Вызывающие update/del передают sub.xui_client_email.",
     "createdAt": "2026-05-16T15:11:03.230Z",
-    "updatedAt": "2026-05-16T21:44:57.202Z"
+    "updatedAt": "2026-06-05T09:18:09.911Z",
+    "aliases": [
+      "новый clients api панели"
+    ]
   },
   {
     "element": "app/xui/links.py",
@@ -614,25 +617,25 @@
     "element": "cb_promo_preset",
     "path": "",
     "type": "unknown",
-    "content": "Общий callback-хендлер пресет-кнопок мастера создания промокода в app/handlers/admin/promos.py. Фильтр: PromoCB.filter(F.action == 'preset'). На основе callback_data.field (value/max_uses/expires) и таблицы _PRESET_FLOW записывает callback_data.id в FSM data под нужным ключом, затем переводит state и отправляет следующую пресет-клавиатуру. Для терминального шага expires вызывает _expires_days_to_iso (0 → None, иначе now+N days в формате _parse_expires_at) и _finalize_promo_create. Принимает user: User | None из UserContextMiddleware для проброса created_by.",
+    "content": "Callback-обработчик кнопки-пресета на шагах мастера промокодов (value/max_uses/expires). Записывает значение в FSM и редактирует текущее сообщение через edit_text для перехода к следующему шагу (раньше answer). На терминальном шаге expires передаёт edit=True в _finalize_promo_create, чтобы карточка созданного промокода отрисовывалась редактированием сообщения. Инлайн-кнопки не создают новых сообщений.",
     "createdAt": "2026-05-16T21:39:34.797Z",
-    "updatedAt": "2026-05-16T21:39:34.797Z"
+    "updatedAt": "2026-06-05T08:22:55.103Z"
   },
   {
     "element": "cb_promo_manual",
     "path": "",
     "type": "unknown",
-    "content": "Callback-хендлер кнопки '✏ Ввести вручную' в мастере промокода (app/handlers/admin/promos.py). Фильтр: PromoCB.filter(F.action == 'manual'). По callback_data.field (value/max_uses/expires) шлёт подсказку с cancel_kb(). State НЕ меняет — уже в waiting_*, текстовый хендлер примет ввод.",
+    "content": "Callback-обработчик кнопки «ввести вручную» на шагах мастера промокодов. Редактирует текущее сообщение через edit_text (вместо answer), показывая prompt с cancel_kb. State не меняется.",
     "createdAt": "2026-05-16T21:39:37.379Z",
-    "updatedAt": "2026-05-16T21:39:37.379Z"
+    "updatedAt": "2026-06-05T08:22:55.370Z"
   },
   {
     "element": "_finalize_promo_create",
     "path": "",
     "type": "unknown",
-    "content": "Общий helper в app/handlers/admin/promos.py: персистит промокод из FSM-data + переданного expires_at, чистит state и шлёт карточку. Используется из st_expires_at (ручной путь) и cb_promo_preset (пресет +N дней / бессрочно). Обрабатывает aiosqlite.IntegrityError (конфликт уникальности кода).",
+    "content": "Helper: создаёт промокод из FSM-данных, очищает state, рисует карточку. Параметр edit: bool=False определяет вывод: edit=True (вызов из cb_promo_preset на шаге expires) редактирует сообщение через edit_text — и при успехе, и при IntegrityError; edit=False (вызов из st_expires_at, текстовый ввод) — answer. Через send = message.edit_text if edit else message.answer.",
     "createdAt": "2026-05-16T21:39:40.794Z",
-    "updatedAt": "2026-05-16T21:39:40.794Z"
+    "updatedAt": "2026-06-05T08:22:55.649Z"
   },
   {
     "element": "_expires_days_to_iso",
@@ -826,5 +829,83 @@
     "content": "Tests for app.handlers.user.my_subscription after Phase 4 (multi-subscription screen).\n\n## Coverage\n\n- **Pure helpers**: _format_bytes (0/KB/GB/negative), _parse_iso, _days_delta (future/past), _pluralize_subs (1 / 2-4 / 5+), _format_status_line (active/revoked/expired), _format_days_line (today/yesterday).\n- **_fetch_traffics**: bad int from panel, unexpected exception — both must return ok=False without crashing.\n- **_sort_subs**: active first by expires_at DESC, inactive after.\n- **cb_open_my**:\n  - test_cb_open_my_no_subs_renders_buy_cta — empty state with BuyCB(open) shortcut.\n  - test_cb_open_my_single_active_sub_renders_card_with_actions — full layout pinned: top 🆕 Купить новую (BuyCB new), per-sub 🔑 Ключи #N + 🛒 Продлить #N, bottom ◀ В меню.\n  - test_cb_open_my_renders_all_subscriptions — ≥2 active subs each get their own keys+extend buttons.\n  - test_cb_open_my_expired_sub_has_no_extend_button — expired sub gets only Ключи #N; top buy-new still present.\n  - test_cb_open_my_caps_at_5_and_shows_footer — 7 subs → 5 cards + '… и ещё 2 подписки'; keyboard buttons mirror the cap.\n  - test_cb_open_my_active_sorted_by_expiry_desc — long/mid/short expiries appear in the right order.\n  - test_cb_open_my_active_before_inactive — even when inactive row is newer, active comes first.\n  - test_cb_open_my_top_button_is_buy_new — first row is always BuyCB(new).\n  - test_cb_open_my_xui_error — panel down falls back to soft notice.\n  - test_cb_open_my_user_none — missing user triggers alert via callback.answer.\n  - test_cb_open_my_multiple_subs / test_cb_open_my_lots_of_inactive — smoke + footer rendering.\n- **cb_resend_keys**: no_user / no_sub_id / ownership_mismatch / no_message / happy / xui_error_message.\n\n## Test helpers\n\n- _kb_buttons(markup) — list-of-rows of (text, callback_data) tuples.\n- _flat_buttons(markup) — flat list across all rows; the workhorse for asserting individual buttons exist.\n- _mock_callback() — MagicMock CallbackQuery with awaited edit_text + answer.\n- _make_sub(...) — in-memory Subscription factory for direct _sort_subs / formatter assertions, bypassing the DB layer.",
     "createdAt": "2026-05-17T10:55:10.031Z",
     "updatedAt": "2026-05-17T10:55:10.031Z"
+  },
+  {
+    "element": "cb_plan_preset",
+    "path": "",
+    "type": "unknown",
+    "content": "Callback-обработчик нажатия кнопки-пресета на числовых шагах мастера создания тарифа (days/price/gb). Записывает выбранное значение в FSM-данные и редактирует текущее сообщение через edit_text для перехода к следующему шагу (раньше отправлял новое сообщение через answer). На шаге gb передаёт edit=True в _enter_inbounds_step, чтобы мульти-селект подключений тоже отрисовывался редактированием. Инлайн-кнопки больше не плодят новые сообщения в чате.",
+    "createdAt": "2026-06-05T08:22:35.645Z",
+    "updatedAt": "2026-06-05T08:22:35.645Z"
+  },
+  {
+    "element": "cb_plan_manual",
+    "path": "",
+    "type": "unknown",
+    "content": "Callback-обработчик кнопки «ввести вручную» на шагах мастера тарифа. Редактирует текущее сообщение через edit_text (вместо answer), показывая prompt с cancel_kb. Состояние FSM не меняется — пользователь уже в нужном waiting_* состоянии. Инлайн-кнопка редактирует сообщение, а не отправляет новое.",
+    "createdAt": "2026-06-05T08:22:35.912Z",
+    "updatedAt": "2026-06-05T08:22:35.912Z"
+  },
+  {
+    "element": "_enter_inbounds_step",
+    "path": "",
+    "type": "unknown",
+    "content": "Helper мастера тарифов: загружает inbounds из 3x-ui, кэширует их в FSM (inbound_options), переводит в PlanCreate.waiting_inbounds и рисует мульти-селект. Параметр edit: bool=False управляет способом вывода — при edit=True используется message.edit_text (путь инлайн-кнопки из cb_plan_preset gb-шага), при edit=False — message.answer (путь текстового ввода из st_traffic_gb). Внутри: send = message.edit_text if edit else message.answer применяется ко всем веткам (ошибка xui, пустой список, успешный вывод).",
+    "createdAt": "2026-06-05T08:22:36.250Z",
+    "updatedAt": "2026-06-05T08:22:36.250Z"
+  },
+  {
+    "element": "_finalize_plan_create",
+    "path": "",
+    "type": "unknown",
+    "content": "Helper: сохраняет тариф из FSM-данных, очищает state, рисует карточку тарифа. Параметр edit: bool=False определяет вывод: edit=True (вызов из cb_inbounds_done) редактирует сообщение мульти-селекта в карточку через edit_text; edit=False — answer. Через send = message.edit_text if edit else message.answer.",
+    "createdAt": "2026-06-05T08:22:36.576Z",
+    "updatedAt": "2026-06-05T08:22:36.576Z"
+  },
+  {
+    "element": "inline-buttons-edit-messages",
+    "path": "",
+    "type": "page",
+    "content": "Изменение поведения инлайн-кнопок в админских мастерах тарифов и промокодов: callback-обработчики теперь редактируют исходное сообщение (edit_text) вместо отправки нового (answer). Затронуты: app/handlers/admin/plans.py (cb_plan_preset, cb_plan_manual, cb_inbounds_done, helpers _enter_inbounds_step/_finalize_plan_create получили параметр edit) и app/handlers/admin/promos.py (cb_promo_preset, cb_promo_manual, helper _finalize_promo_create получил параметр edit). Паттерн: helper-функции, вызываемые и из callback (инлайн-кнопка → edit=True → edit_text), и из text-input хендлеров (st_* → edit=False → answer, т.к. сообщение пользователя редактировать нельзя), используют send = message.edit_text if edit else message.answer. Текстовый ввод (st_traffic_gb, st_expires_at, msg_*) и доставка ключей/инвойсов остаются новыми сообщениями. Остальные хендлеры (buy, promo, my_subscription, menu, users, stats, help) уже использовали edit_text.",
+    "createdAt": "2026-06-05T08:22:55.913Z",
+    "updatedAt": "2026-06-05T08:22:55.913Z"
+  },
+  {
+    "element": "broadcast_message",
+    "path": "",
+    "type": "unknown",
+    "content": "Сервис app/services/broadcast.py: веерная рассылка одного поста всей аудитории. broadcast_message(bot, *, from_chat_id, message_id, tg_ids, throttle=0.05) -> BroadcastResult копирует сообщение каждому получателю через bot.copy_message (доставка как есть, без 'Forwarded from', поддержка любого типа контента: текст/фото/видео/документ). Устойчивость: TelegramForbiddenError -> бакет blocked (юзер заблокировал бота), любая другая ошибка -> failed, цикл не падает. TelegramRetryAfter (flood control) -> sleep(retry_after) + одна повторная попытка для получателя. throttle=asyncio.sleep между отправками (защита от лимита ~30 msg/s; в тестах 0). BroadcastResult(total, sent, blocked, failed) frozen dataclass, инвариант sent+blocked+failed==total.",
+    "createdAt": "2026-06-05T08:40:01.898Z",
+    "updatedAt": "2026-06-05T08:40:02.953Z",
+    "aliases": [
+      "broadcast"
+    ]
+  },
+  {
+    "element": "app/handlers/admin/broadcast.py",
+    "path": "app/handlers/admin/broadcast.py",
+    "type": "file",
+    "content": "Админский хендлер рассылки поста всем пользователям. FSM BroadcastCreate (waiting_post -> confirming). Router 'admin_broadcast' под admin_router (gated AdminOnlyMiddleware). Хендлеры: cb_open (AdminCB area=broadcast action=open) — вход из главного меню, set_state(waiting_post) + edit_text приглашения с cancel_kb. st_post (state waiting_post, любое сообщение) — сохраняет в FSM post_chat_id/post_message_id (сообщение не разбирается, копируется позже verbatim), считает аудиторию users_repo.list_all_tg_ids, переход в confirming, answer экраном broadcast_confirm_kb. cb_send (state confirming, AdminCB area=broadcast action=send) — answer callback, edit 'Рассылка запущена', вызов services.broadcast.broadcast_message, clear state, edit в сводку (получатели/доставлено/заблокировали/ошибки) + back_to_main_kb; при отсутствии post_* в FSM — alert + сброс. _plural(n) — дательное окончание пользовател-(ю/ям). Отмена — общий cancel_fsm из menu.py.",
+    "createdAt": "2026-06-05T08:40:02.168Z",
+    "updatedAt": "2026-06-05T08:40:02.697Z",
+    "aliases": [
+      "рассылка пользователям"
+    ]
+  },
+  {
+    "element": "admin-broadcast-feature",
+    "path": "",
+    "type": "page",
+    "content": "Фича админской рассылки постов. Админ -> главное меню -> '📣 Рассылка' -> присылает любой пост (текст/фото/видео) -> подтверждение с счётчиком аудитории -> бот копирует пост всем зарегистрированным пользователям через bot.copy_message и показывает сводку доставки. Затронутые файлы: app/db/repos/users.py (list_all_tg_ids), app/states/admin.py (BroadcastCreate: waiting_post/confirming), app/keyboards/admin.py (кнопка '📣 Рассылка' в admin_main_menu, broadcast_confirm_kb, AdminCB area=broadcast action=send), app/services/broadcast.py (broadcast_message + BroadcastResult, обработка blocked/failed/RetryAfter + throttle), app/handlers/admin/broadcast.py (cb_open/st_post/cb_send), app/handlers/admin/__init__.py (регистрация router). Доставка verbatim через copy_message поддерживает любой тип сообщения без парсинга. Тесты: test_services_broadcast.py, test_handlers_admin_broadcast.py, test_db_users.py (list_all_tg_ids), test_handlers_admin_routing.py (broadcast_confirm_kb).",
+    "createdAt": "2026-06-05T08:40:02.438Z",
+    "updatedAt": "2026-06-05T08:40:02.438Z"
+  },
+  {
+    "element": "3xui-api-migration",
+    "path": "",
+    "type": "page",
+    "content": "Миграция бота на новый REST API панели 3x-ui (мажорный апдейт, React/antd/axios фронтенд). Изменения: (1) app/xui/client.py — CSRF-bootstrap (GET / → meta csrf-token + cookie, заголовок X-CSRF-Token на login и все запросы, relogin на 401/403). (2) app/xui/clients.py — полностью переписан под /panel/api/clients/* (add с {client,inboundIds}; get/update/del по email; update = read-merge-write полная замена без числового id; трафик через clients/list/paged?search). (3) call sites: subscriptions.revoke/extend и scheduler disable теперь update_client(email=sub.xui_client_email); smoke del_client(email). Inbounds API (list/get) без изменений. Проверено smoke-тестом против живой панели (полный цикл login→list→get→add→traffics→del проходит) + 620 unit-тестов. Спецификация API: [[reference-3xui-new-api]].",
+    "createdAt": "2026-06-05T09:18:09.658Z",
+    "updatedAt": "2026-06-05T09:18:09.658Z"
   }
 ]

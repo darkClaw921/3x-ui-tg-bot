@@ -32,6 +32,7 @@ from app.handlers.admin import admin_router
 from app.keyboards.admin import (
     admin_main_menu,
     back_to_main_kb,
+    broadcast_confirm_kb,
     cancel_kb,
     plan_card_kb,
     plan_days_presets_kb,
@@ -50,7 +51,7 @@ from app.keyboards.admin import (
     user_card_kb,
 )
 from app.services.inbounds import InboundOption
-from app.states.admin import PlanCreate, PromoCreate
+from app.states.admin import BroadcastCreate, PlanCreate, PromoCreate
 
 
 # --------------------------------------------------------------------------- #
@@ -238,6 +239,13 @@ def _all_admin_keyboards() -> list[tuple[str, InlineKeyboardMarkup, str | None]]
         ("stats_kb(7d)", stats_kb(active_period="7d"), None),
         ("stats_kb(30d)", stats_kb(active_period="30d"), None),
         ("stats_kb(all)", stats_kb(active_period="all"), None),
+        # Broadcast — confirm screen is gated on BroadcastCreate.confirming;
+        # the «Отмена» button reuses the stateless cancel handler.
+        (
+            "broadcast_confirm_kb",
+            broadcast_confirm_kb(),
+            BroadcastCreate.confirming.state,
+        ),
     ]
 
 

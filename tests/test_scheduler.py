@@ -239,7 +239,10 @@ async def test_traffic_snapshot_job_writes(
         sub = await make_subscription(conn, user_id=user.id)
 
     xui_mock = AsyncMock()
-    xui_mock.request_json = AsyncMock(return_value={"up": 100, "down": 200})
+    # New panel: live traffic rides the paged client list (items[].traffic).
+    xui_mock.request_json = AsyncMock(
+        return_value={"items": [{"email": "x", "traffic": {"up": 100, "down": 200}}], "total": 1}
+    )
     monkeypatch.setattr(sch_module, "get_xui_client", AsyncMock(return_value=xui_mock))
 
     await traffic_snapshot_job(mock_bot)

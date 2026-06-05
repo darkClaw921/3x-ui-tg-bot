@@ -1,6 +1,6 @@
 {
   "root": "/Users/igorgerasimov/claudeWorkspace/3x-ui-tg-bot",
-  "generatedAt": "2026-05-17T11:04:31.435Z",
+  "generatedAt": "2026-06-05T09:18:08.552Z",
   "nodes": [
     {
       "id": "app/__init__.py",
@@ -26,6 +26,8 @@
           "type": "class",
           "path": "app/config.py",
           "line": 31,
+          "signature": "class Settings(BaseSettings)",
+          "docComment": "Strongly-typed application settings sourced from .env / environment.",
           "exports": [
             "Settings"
           ]
@@ -83,6 +85,8 @@
           "type": "function",
           "path": "app/db/engine.py",
           "line": 41,
+          "signature": "_resolve_db_path() -> Path",
+          "docComment": "Return the configured DB path as a :class:`Path` (not yet created).",
           "exports": []
         }
       ]
@@ -134,6 +138,8 @@
           "type": "class",
           "path": "app/db/repos/payments.py",
           "line": 22,
+          "signature": "class Payment",
+          "docComment": "A row from the ``payments`` table.",
           "exports": [
             "Payment"
           ]
@@ -152,6 +158,8 @@
           "type": "function",
           "path": "app/db/repos/payments.py",
           "line": 163,
+          "signature": "_to_iso(value: datetime | str) -> str",
+          "docComment": "Normalize ``value`` to an ISO-8601 string in UTC.",
           "exports": []
         }
       ]
@@ -179,6 +187,8 @@
           "type": "class",
           "path": "app/db/repos/plans.py",
           "line": 25,
+          "signature": "class Plan",
+          "docComment": "A row from the ``plans`` table.",
           "exports": [
             "Plan"
           ]
@@ -212,6 +222,8 @@
           "type": "class",
           "path": "app/db/repos/promos.py",
           "line": 29,
+          "signature": "class Promo",
+          "docComment": "A row from the ``promos`` table.",
           "exports": [
             "Promo"
           ]
@@ -222,6 +234,8 @@
           "type": "class",
           "path": "app/db/repos/promos.py",
           "line": 59,
+          "signature": "class Redemption",
+          "docComment": "A row from the ``promo_redemptions`` table.",
           "exports": [
             "Redemption"
           ]
@@ -232,6 +246,8 @@
           "type": "function",
           "path": "app/db/repos/promos.py",
           "line": 80,
+          "signature": "_utcnow_iso() -> str",
+          "docComment": "Return current UTC time in ISO-8601 (seconds resolution).",
           "exports": []
         }
       ]
@@ -264,6 +280,8 @@
           "type": "function",
           "path": "app/db/repos/subscriptions.py",
           "line": 23,
+          "signature": "_to_iso(value: datetime | str) -> str",
+          "docComment": "Normalize ``value`` to an ISO-8601 string in UTC.",
           "exports": []
         },
         {
@@ -272,6 +290,8 @@
           "type": "function",
           "path": "app/db/repos/subscriptions.py",
           "line": 34,
+          "signature": "_utcnow_iso() -> str",
+          "docComment": "Return current UTC time in ISO-8601 (seconds resolution).",
           "exports": []
         },
         {
@@ -280,6 +300,8 @@
           "type": "class",
           "path": "app/db/repos/subscriptions.py",
           "line": 40,
+          "signature": "class Subscription",
+          "docComment": "A row from the ``subscriptions`` table.",
           "exports": [
             "Subscription"
           ]
@@ -290,6 +312,8 @@
           "type": "class",
           "path": "app/db/repos/subscriptions.py",
           "line": 72,
+          "signature": "class TrafficSnapshot",
+          "docComment": "A row from the ``traffic_snapshots`` table.",
           "exports": [
             "TrafficSnapshot"
           ]
@@ -351,6 +375,8 @@
           "type": "class",
           "path": "app/db/repos/users.py",
           "line": 25,
+          "signature": "class User",
+          "docComment": "A row from the ``users`` table.",
           "exports": [
             "User"
           ]
@@ -372,6 +398,8 @@
           "type": "function",
           "path": "app/handlers/__init__.py",
           "line": 20,
+          "signature": "register_routers(dp: Dispatcher) -> None",
+          "docComment": "Attach every handler router (and shared middlewares) to the dispatcher.\n\n    Order:\n\n    1. Outer middleware ``UserContextMiddleware`` on ``dp.update`` so every\n       update — message / callback / inline / pre_checkout / … — has the\n       domain user resolved before routing.\n    2. Routers in handler-resolution order. ``start`` first so ``/start``\n       wins regardless of state; ``admin_router`` second (covers ``/admin``\n       + every admin callback, gated by ``AdminOnlyMiddleware``);\n       ``user_router`` last so it catches every user-flow callback and\n       message that did not match the admin gate.",
           "exports": [
             "register_routers"
           ]
@@ -412,6 +440,8 @@
           "type": "function",
           "path": "app/handlers/admin/__init__.py",
           "line": 25,
+          "signature": "_build_admin_router() -> Router",
+          "docComment": "Return a fully-wired admin router with the gate middleware attached.",
           "exports": []
         },
         {
@@ -419,7 +449,7 @@
           "name": "admin_router",
           "type": "variable",
           "path": "app/handlers/admin/__init__.py",
-          "line": 38,
+          "line": 39,
           "exports": [
             "admin_router"
           ]
@@ -429,7 +459,54 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/admin/__init__.py",
-          "line": 40,
+          "line": 41,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/handlers/admin/broadcast.py",
+      "name": "broadcast.py",
+      "type": "file",
+      "path": "app/handlers/admin/broadcast.py",
+      "exports": [
+        "router"
+      ],
+      "children": [
+        {
+          "id": "app/handlers/admin/broadcast.py:router",
+          "name": "router",
+          "type": "variable",
+          "path": "app/handlers/admin/broadcast.py",
+          "line": 44,
+          "exports": [
+            "router"
+          ]
+        },
+        {
+          "id": "app/handlers/admin/broadcast.py:_PROMPT",
+          "name": "_PROMPT",
+          "type": "variable",
+          "path": "app/handlers/admin/broadcast.py",
+          "line": 47,
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/broadcast.py:_plural",
+          "name": "_plural",
+          "type": "function",
+          "path": "app/handlers/admin/broadcast.py",
+          "line": 137,
+          "signature": "_plural(n: int) -> str",
+          "docComment": "Russian plural ending for «пользовател-» (ю / ям) by count.\n\n    1 пользователю; 2/5/… пользователям. We only need the dative endings\n    used in the confirmation prompt.",
+          "exports": []
+        },
+        {
+          "id": "app/handlers/admin/broadcast.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/handlers/admin/broadcast.py",
+          "line": 146,
           "exports": []
         }
       ]
@@ -496,6 +573,8 @@
           "type": "function",
           "path": "app/handlers/admin/plans.py",
           "line": 88,
+          "signature": "_format_plan(plan: Plan, inbound_remarks: dict[int, str] | None = None) -> str",
+          "docComment": "Return a human-readable plan card body (HTML).\n\n    ``inbound_remarks`` maps ``inbound_id`` → display name (``remark`` from\n    the panel, or ``\"\"`` if the panel response was unavailable). The card\n    appends a «Подключения» line built from this mapping plus the list of\n    inbound ids attached to the plan. If an inbound id present on the plan\n    is missing from ``inbound_remarks`` (admin deleted it on the panel) it\n    is rendered as ``id=NN (удалён)``; if the mapping is ``None`` or empty\n    the line is rendered with raw ``id=NN`` tokens (graceful degrade when\n    the panel is unreachable).",
           "exports": []
         },
         {
@@ -503,7 +582,9 @@
           "name": "_options_from_data",
           "type": "function",
           "path": "app/handlers/admin/plans.py",
-          "line": 399,
+          "line": 404,
+          "signature": "_options_from_data(data: dict[str, object]) -> list[InboundOption]",
+          "docComment": "Rebuild :class:`InboundOption` list from FSM data.\n\n    The wizard stores option dicts under ``inbound_options`` so we can\n    redraw the multi-select keyboard on toggles without re-hitting the\n    panel. This helper reconstructs the typed list back from raw dicts.",
           "exports": []
         },
         {
@@ -511,7 +592,7 @@
           "name": "_PRESET_FLOW",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 569,
+          "line": 581,
           "exports": []
         },
         {
@@ -519,7 +600,7 @@
           "name": "_FIELD_LABELS",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 657,
+          "line": 669,
           "exports": []
         },
         {
@@ -527,7 +608,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/admin/plans.py",
-          "line": 812,
+          "line": 824,
           "exports": []
         }
       ]
@@ -565,6 +646,8 @@
           "type": "function",
           "path": "app/handlers/admin/promos.py",
           "line": 76,
+          "signature": "_format_promo(promo: Promo) -> str",
+          "docComment": "Return a human-readable promo card body (HTML).",
           "exports": []
         },
         {
@@ -573,6 +656,8 @@
           "type": "function",
           "path": "app/handlers/admin/promos.py",
           "line": 119,
+          "signature": "_promo_is_active(promo: Promo) -> bool",
+          "docComment": "Return ``True`` iff a promo is currently usable (not deactivated).",
           "exports": []
         },
         {
@@ -581,6 +666,8 @@
           "type": "function",
           "path": "app/handlers/admin/promos.py",
           "line": 157,
+          "signature": "_parse_expires_at(raw: str) -> str | None | bool",
+          "docComment": "Parse user input for ``expires_at``.\n\n    Returns:\n    * ``None`` if the user typed ``-`` / ``skip`` / ``нет`` (no expiry).\n    * An ISO-8601 UTC timestamp (string, seconds resolution) on success.\n    * ``False`` if the input is unparseable — callers re-ask.",
           "exports": []
         },
         {
@@ -588,7 +675,7 @@
           "name": "_PRESET_FLOW",
           "type": "variable",
           "path": "app/handlers/admin/promos.py",
-          "line": 455,
+          "line": 460,
           "exports": []
         },
         {
@@ -596,7 +683,9 @@
           "name": "_expires_days_to_iso",
           "type": "function",
           "path": "app/handlers/admin/promos.py",
-          "line": 472,
+          "line": 477,
+          "signature": "_expires_days_to_iso(days: int) -> str | None",
+          "docComment": "Convert a preset «+N days» value to an ISO-8601 expires_at string.\n\n    Mirrors :func:`_parse_expires_at`: the resulting date is anchored to\n    ``23:59:59 UTC`` so the same comparison logic in\n    :func:`_promo_is_active` and the repository works unchanged. ``0``\n    means «бессрочно» → ``None``.",
           "exports": []
         },
         {
@@ -604,7 +693,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/handlers/admin/promos.py",
-          "line": 553,
+          "line": 558,
           "exports": []
         }
       ]
@@ -682,6 +771,8 @@
           "type": "function",
           "path": "app/handlers/admin/stats.py",
           "line": 66,
+          "signature": "_period_meta(key: str) -> tuple[str, timedelta]",
+          "docComment": "Return ``(label, lookback)`` for ``key`` (fallback to default).",
           "exports": []
         },
         {
@@ -690,6 +781,8 @@
           "type": "function",
           "path": "app/handlers/admin/stats.py",
           "line": 76,
+          "signature": "_format_expiring(subs: list[Subscription], tg_ids: dict[int, int]) -> str",
+          "docComment": "Format the \"expiring soon\" sub-section.\n\n    ``tg_ids`` is a precomputed ``{users.id: tg_id}`` map (populated in\n    :func:`_build_text`) so we don't hit the DB once per row.",
           "exports": []
         },
         {
@@ -735,6 +828,8 @@
           "type": "function",
           "path": "app/handlers/admin/users.py",
           "line": 76,
+          "signature": "_safe(value: object) -> str",
+          "docComment": "Return ``value`` as a plain string for HTML rendering.\n\n    Telegram HTML mode is forgiving inside ``<code>`` tags, but\n    usernames and first-names may contain ``<``/``>``/``&``. We strip\n    those characters to keep the message valid without pulling in a\n    full HTML-escaper.",
           "exports": []
         },
         {
@@ -743,6 +838,8 @@
           "type": "function",
           "path": "app/handlers/admin/users.py",
           "line": 123,
+          "signature": "_sub_status_glyph(sub: Subscription) -> str",
+          "docComment": "Return the emoji for the subscription's effective status.",
           "exports": []
         },
         {
@@ -751,6 +848,8 @@
           "type": "function",
           "path": "app/handlers/admin/users.py",
           "line": 132,
+          "signature": "_format_payment(p: Payment) -> str",
+          "docComment": "Return a single-line summary of a payment.",
           "exports": []
         },
         {
@@ -810,6 +909,8 @@
           "type": "function",
           "path": "app/handlers/user/__init__.py",
           "line": 21,
+          "signature": "_build_user_router() -> Router",
+          "docComment": "Return a fully-wired user router with every sub-router included.\n\n    Resolution order: menu first (so ``/menu`` and main-menu callbacks\n    short-circuit before more specific buy / promo flows pick up an\n    update), then ``my_subscription`` (owns ``UserCB(area='my')`` plus\n    the ``SubCB(action='keys')`` re-delivery), buy (carries the heaviest\n    set of FSM-bound handlers plus pre_checkout / successful_payment),\n    promo, and finally help (a single callback).",
           "exports": []
         },
         {
@@ -897,6 +998,7 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 92,
+          "signature": "_format_confirm(",
           "exports": []
         },
         {
@@ -905,6 +1007,8 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 149,
+          "signature": "_shift_expiry(current_expires_at: str, plus_days: int) -> str",
+          "docComment": "Return ``current_expires_at + plus_days`` in YYYY-MM-DD format.\n\n    Used by :func:`_format_confirm` for the \"Действует до DATE\" line on\n    the extend confirmation card. Falls back to the raw string when the\n    timestamp cannot be parsed (defensive — should never happen for a\n    well-formed DB row).",
           "exports": []
         },
         {
@@ -913,6 +1017,8 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 177,
+          "signature": "_plan_is_buyable(plan: Plan | None) -> bool",
+          "docComment": "Return ``True`` if a plan exists and is currently active.",
           "exports": []
         },
         {
@@ -921,6 +1027,8 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 182,
+          "signature": "_promo_is_usable(promo: Promo | None) -> bool",
+          "docComment": "Return ``True`` if a promo is non-expired and has capacity left.\n\n    Mirrors the cheap checks inside :func:`app.services.promos.validate`\n    but without the \"already redeemed by this user\" check — used in\n    :func:`on_pre_checkout` where we accept the promo if it was valid\n    when chosen even if its global state changed slightly (the\n    one-per-user guarantee is enforced at redemption time by\n    :func:`app.db.repos.promos.try_redeem`).",
           "exports": []
         },
         {
@@ -929,6 +1037,8 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 374,
+          "signature": "_remark_for(options: list[InboundOption] | list[dict], inbound_id: int) -> str",
+          "docComment": "Return the user-facing remark of ``inbound_id`` from ``options``.\n\n    Accepts either a list of :class:`InboundOption` (in-memory) or a\n    list of plain dicts (after a round-trip through the FSM, where\n    aiogram serialises dataclasses to dicts). Falls back to a\n    placeholder when the inbound is not found in the supplied options.",
           "exports": []
         },
         {
@@ -937,6 +1047,8 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 392,
+          "signature": "_options_to_jsonable(options: list[InboundOption]) -> list[dict]",
+          "docComment": "Serialise :class:`InboundOption` for FSM storage.\n\n    aiogram's FSM storage round-trips data through JSON, so frozen\n    dataclasses must be flattened to plain dicts before being stashed.",
           "exports": []
         },
         {
@@ -945,6 +1057,8 @@
           "type": "function",
           "path": "app/handlers/user/buy.py",
           "line": 404,
+          "signature": "_jsonable_to_options(items: list[dict]) -> list[InboundOption]",
+          "docComment": "Inverse of :func:`_options_to_jsonable`.",
           "exports": []
         },
         {
@@ -1064,6 +1178,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 95,
+          "signature": "_format_bytes(value: int | float) -> str",
+          "docComment": "Return ``value`` rendered as a human-readable string.\n\n    Uses binary units (1024 step) with a single decimal once we leave the\n    ``B`` bucket — matching the convention used by 3x-ui itself in its\n    web UI (so a user comparing values won't see a mismatch).\n\n    Examples\n    --------\n    >>> _format_bytes(0)\n    '0 B'\n    >>> _format_bytes(1024)\n    '1.0 KB'\n    >>> _format_bytes(5 * 1024 ** 3)\n    '5.0 GB'",
           "exports": []
         },
         {
@@ -1072,6 +1188,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 121,
+          "signature": "_parse_iso(value: str) -> datetime",
+          "docComment": "Parse an ISO-8601 string from the DB into a UTC-aware datetime.\n\n    The repo serialises with ``sep=' '`` and seconds resolution, but we\n    accept ``'T'`` too so ad-hoc rows from external tools still load.",
           "exports": []
         },
         {
@@ -1080,6 +1198,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 134,
+          "signature": "_days_delta(expires_at: str) -> int",
+          "docComment": "Return ``floor((expires_at - now).total_seconds() / 86400)``.\n\n    Positive when the subscription is still valid, negative when it has\n    already expired. We deliberately use ``//`` so \"expires in 12 hours\"\n    rounds *down* to 0 (the user reads \"истекает сегодня\"), and\n    \"expired 6 hours ago\" rounds *down* to ``-1`` (the user reads\n    \"истекла 1 день назад\") — both are the friendlier framings.",
           "exports": []
         },
         {
@@ -1088,6 +1208,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 151,
+          "signature": "_is_active(sub: Subscription) -> bool",
+          "docComment": "Return ``True`` iff ``status='active'`` AND ``expires_at`` is in the future.",
           "exports": []
         },
         {
@@ -1096,6 +1218,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 158,
+          "signature": "_format_days_line(sub: Subscription) -> str",
+          "docComment": "Return the «осталось / истекла» line for a subscription.",
           "exports": []
         },
         {
@@ -1104,6 +1228,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 173,
+          "signature": "_format_status_line(sub: Subscription) -> str",
+          "docComment": "Return a translated status line.\n\n    Combines the DB ``status`` with a \"is currently valid\" check so a row\n    with ``status='active'`` whose ``expires_at`` is already in the past\n    (the expire-job hasn't run yet — Phase 8) still reads as \"истекла\"\n    to the user, instead of misleading \"active\".",
           "exports": []
         },
         {
@@ -1112,6 +1238,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 238,
+          "signature": "_format_sub_card(sub: Subscription, traffic: tuple[int | None, int | None, bool]) -> str",
+          "docComment": "Build the HTML card body for a single subscription.\n\n    The card has four lines: status, expiry timestamp, days-delta, and a\n    traffic line that either renders live counters or falls back to a\n    \"панель недоступна\" notice. We deliberately separate \"the subscription\n    exists\" from \"we could reach the panel\" so a panel outage never hides\n    the parts the bot already knows.",
           "exports": []
         },
         {
@@ -1128,6 +1256,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 266,
+          "signature": "_sort_subs(subs: list[Subscription]) -> list[Subscription]",
+          "docComment": "Return ``subs`` sorted active-first.\n\n    Order:\n\n    * Active subscriptions (status ``active`` AND not yet expired) come\n      first, sorted by ``expires_at`` DESC so the latest extension is\n      at the top.\n    * The remainder (``expired``, ``revoked``, or ``active`` rows whose\n      ``expires_at`` is already in the past — the expire job hasn't run\n      yet) follow, sorted by ``created_at`` DESC.\n\n    Ties are broken by ``id`` DESC for determinism. The ordering is\n    pinned by tests in\n    :mod:`tests.test_handlers_user_my_subscription` so future\n    sort-key tweaks need a matching test update.",
           "exports": []
         },
         {
@@ -1136,6 +1266,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 290,
+          "signature": "_build_subs_keyboard(visible: list[Subscription]) -> InlineKeyboardBuilder",
+          "docComment": "Build the inline keyboard for the «Моя подписка» screen.\n\n    Layout (top → bottom):\n\n    1. ``🆕 Купить новую подписку`` (``BuyCB(action='new')``) — always\n       rendered, even when every existing sub is expired. This is the\n       canonical entry point into the buy flow with ``sub_id=0``.\n    2. For each visible subscription — one row with\n       ``🔑 Ключи #N`` (``SubCB(action='keys', sub_id=N)``) and, when\n       the subscription is currently active, ``🛒 Продлить #N``\n       (``BuyCB(action='extend', sub_id=N)``). For inactive subs the\n       row contains only the keys button — ``cb_pick_action_extend``\n       in :mod:`app.handlers.user.buy` rejects non-active rows.\n    3. ``◀ В меню`` (``UserCB(area='menu')``) — back to the main menu.\n\n    ``visible`` MUST already be capped to :data:`_MAX_VISIBLE_SUBS` by\n    the caller — this helper does not enforce the cap so it can be\n    reused for screens that paginate differently.",
           "exports": []
         },
         {
@@ -1144,6 +1276,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 330,
+          "signature": "_btn(text: str, cb)",
+          "docComment": "Tiny helper: build an ``InlineKeyboardButton`` from a callback factory.\n\n    ``InlineKeyboardBuilder.row(*buttons)`` expects already-constructed\n    buttons, so we materialise them here instead of going through\n    ``builder.button(...)`` (which appends to the implicit pending row).\n    Centralising this keeps the keyboard composition in\n    :func:`_build_subs_keyboard` compact and easy to audit.",
           "exports": []
         },
         {
@@ -1152,6 +1286,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 344,
+          "signature": "_no_subscription_kb() -> InlineKeyboardBuilder",
+          "docComment": "Keyboard shown when the user has no subscription history at all.",
           "exports": []
         },
         {
@@ -1160,6 +1296,8 @@
           "type": "function",
           "path": "app/handlers/user/my_subscription.py",
           "line": 423,
+          "signature": "_pluralize_subs(n: int) -> str",
+          "docComment": "Return the Russian plural form for «подписка» given ``n``.\n\n    Russian uses three plural forms: 1 / 2-4 / 5-20. ``n`` is the\n    *displayed* count (always positive in our caller), so the function\n    only needs to cover the three nominal buckets — there is no zero\n    branch.",
           "exports": []
         },
         {
@@ -1230,6 +1368,8 @@
           "type": "function",
           "path": "app/handlers/user/promo.py",
           "line": 98,
+          "signature": "_options_to_jsonable(options: list[InboundOption]) -> list[dict]",
+          "docComment": "Serialise :class:`InboundOption` for FSM storage.\n\n    aiogram's FSM storage round-trips data through JSON, so frozen\n    dataclasses must be flattened to plain dicts before being stashed.\n    Mirrors the helper in ``app.handlers.user.buy``.",
           "exports": []
         },
         {
@@ -1238,6 +1378,8 @@
           "type": "function",
           "path": "app/handlers/user/promo.py",
           "line": 111,
+          "signature": "_jsonable_to_options(items: list[dict]) -> list[InboundOption]",
+          "docComment": "Inverse of :func:`_options_to_jsonable`.",
           "exports": []
         },
         {
@@ -1270,6 +1412,7 @@
         "StatsCB",
         "PromoCB",
         "admin_main_menu",
+        "broadcast_confirm_kb",
         "back_to_main_kb",
         "cancel_kb",
         "plans_list_kb",
@@ -1295,6 +1438,8 @@
           "type": "class",
           "path": "app/keyboards/admin.py",
           "line": 39,
+          "signature": "class AdminCB(CallbackData, prefix=\"adm\")",
+          "docComment": "Top-level admin navigation: open an area / go back / cancel.\n\n    The ``broadcast`` area additionally uses ``action=\"send\"`` to confirm\n    the post fan-out from the confirmation screen (see\n    :func:`broadcast_confirm_kb` and :mod:`app.handlers.admin.broadcast`).",
           "exports": [
             "AdminCB"
           ]
@@ -1304,7 +1449,9 @@
           "name": "PlanCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 46,
+          "line": 51,
+          "signature": "class PlanCB(CallbackData, prefix=\"admp\")",
+          "docComment": "Plan CRUD callbacks.\n\n    ``action``:\n    * ``list``           — show plan list (no ``id``).\n    * ``create``         — start :class:`PlanCreate` FSM (no ``id``).\n    * ``card``           — open a plan card.\n    * ``edit_menu``      — open the «choose field to edit» keyboard.\n    * ``edit``           — start :class:`PlanEdit` FSM for a specific field\n      (``field`` = ``title``/``days``/``price_stars``/``traffic_gb``/\n      ``inbounds``).\n    * ``deactivate``     — soft-disable the plan.\n    * ``preset``         — preset button inside the create-plan wizard\n      (``field`` = ``days``/``price``/``gb``; ``id`` carries the chosen\n      integer value).\n    * ``manual``         — «введу вручную» button inside the create-plan\n      wizard (``field`` = ``days``/``price``/``gb``).\n    * ``toggle_inbound`` — flip the selection of one inbound inside the\n      multi-select screen (``id`` carries the ``inbound_id``).\n    * ``inbounds_done``  — confirm the inbound multi-select and proceed\n      (no ``id``; used both in the create wizard and in the edit flow).",
           "exports": [
             "PlanCB"
           ]
@@ -1314,7 +1461,9 @@
           "name": "UserCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 74,
+          "line": 79,
+          "signature": "class UserCB(CallbackData, prefix=\"admu\")",
+          "docComment": "Admin \"Пользователи\" callbacks.\n\n    ``action``:\n    * ``search``       — start :class:`AdminSearchUser` (no ``id``).\n    * ``card``         — open the user card by ``users.id``.\n    * ``revoke``       — revoke a subscription; ``id`` is the\n      ``subscriptions.id``, ``user_id`` is the parent user (so the\n      handler can re-render the card after the revoke).\n    * ``toggle_admin`` — flip the ``is_admin`` flag; ``id`` is\n      ``users.id``.",
           "exports": [
             "UserCB"
           ]
@@ -1324,7 +1473,9 @@
           "name": "StatsCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 92,
+          "line": 97,
+          "signature": "class StatsCB(CallbackData, prefix=\"adms\")",
+          "docComment": "Admin \"Статистика\" callbacks.\n\n    ``action``:\n    * ``open``    — render the stats screen with the default 30-day\n      window.\n    * ``period``  — switch the headline period. ``field`` carries the\n      window key (``7d`` / ``30d`` / ``all``).\n    * ``refresh`` — re-render with the currently selected period\n      (carried in ``field`` for stateless edits).",
           "exports": [
             "StatsCB"
           ]
@@ -1334,7 +1485,9 @@
           "name": "PromoCB",
           "type": "class",
           "path": "app/keyboards/admin.py",
-          "line": 108,
+          "line": 113,
+          "signature": "class PromoCB(CallbackData, prefix=\"admpr\")",
+          "docComment": "Promo CRUD callbacks.\n\n    ``action``:\n    * ``list``        — show promo list (no ``id``).\n    * ``create``      — start :class:`PromoCreate` FSM (no ``id``).\n    * ``card``        — open a promo card.\n    * ``deactivate``  — soft-disable the promo (sets ``expires_at=now``).\n    * ``redemptions`` — show redemption history for a promo.\n    * ``type``        — chosen during FSM ``waiting_type`` (``field`` carries\n      ``percent|flat_stars|free_days``).\n    * ``preset``      — preset button inside the create-promo wizard\n      (``field`` = ``value``/``max_uses``/``expires``; ``id`` carries the\n      chosen integer; for ``expires`` it is the number of days from now,\n      with ``0`` meaning «бессрочно»).\n    * ``manual``      — «введу вручную» button inside the create-promo\n      wizard (``field`` = ``value``/``max_uses``/``expires``).",
           "exports": [
             "PromoCB"
           ]
@@ -1344,9 +1497,23 @@
           "name": "admin_main_menu",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 137,
+          "line": 142,
+          "signature": "admin_main_menu() -> InlineKeyboardMarkup",
+          "docComment": "Top-level admin menu shown by ``/admin``.\n\n    Five buttons (one per row for readability on mobile): Plans, Promos,\n    Users, Stats, Broadcast.",
           "exports": [
             "admin_main_menu"
+          ]
+        },
+        {
+          "id": "app/keyboards/admin.py:broadcast_confirm_kb",
+          "name": "broadcast_confirm_kb",
+          "type": "function",
+          "path": "app/keyboards/admin.py",
+          "line": 158,
+          "signature": "broadcast_confirm_kb() -> InlineKeyboardMarkup",
+          "docComment": "Confirmation keyboard for the broadcast wizard.\n\n    «✅ Разослать» fires :class:`AdminCB` ``area=broadcast, action=send``\n    (handled in :mod:`app.handlers.admin.broadcast` under the\n    ``BroadcastCreate.confirming`` state); «✖ Отмена» reuses the canonical\n    cancel callback so the shared :func:`cancel_fsm` handler clears state.",
+          "exports": [
+            "broadcast_confirm_kb"
           ]
         },
         {
@@ -1354,7 +1521,9 @@
           "name": "back_to_main_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 153,
+          "line": 179,
+          "signature": "back_to_main_kb() -> InlineKeyboardMarkup",
+          "docComment": "Single «◀ В меню» button — used as a fallback footer keyboard.",
           "exports": [
             "back_to_main_kb"
           ]
@@ -1364,7 +1533,9 @@
           "name": "cancel_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 160,
+          "line": 186,
+          "signature": "cancel_kb() -> InlineKeyboardMarkup",
+          "docComment": "Single «✖ Отмена» button used during any FSM wizard.",
           "exports": [
             "cancel_kb"
           ]
@@ -1374,7 +1545,9 @@
           "name": "plans_list_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 170,
+          "line": 196,
+          "signature": "plans_list_kb(plans: Sequence[Plan]) -> InlineKeyboardMarkup",
+          "docComment": "Plan list: one button per plan plus «Создать» and «В меню».\n\n    Inactive plans get a leading ``🔒`` so admins still see them but\n    recognise their state at a glance.",
           "exports": [
             "plans_list_kb"
           ]
@@ -1384,7 +1557,9 @@
           "name": "plan_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 190,
+          "line": 216,
+          "signature": "plan_card_kb(plan_id: int, *, is_active: bool = True) -> InlineKeyboardMarkup",
+          "docComment": "Plan card: Edit / Deactivate / Back. Hides Deactivate if already off.",
           "exports": [
             "plan_card_kb"
           ]
@@ -1394,7 +1569,9 @@
           "name": "plan_edit_fields_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 207,
+          "line": 233,
+          "signature": "plan_edit_fields_kb(plan_id: int) -> InlineKeyboardMarkup",
+          "docComment": "Choose which plan field to edit (title / days / price / traffic_gb / inbounds).",
           "exports": [
             "plan_edit_fields_kb"
           ]
@@ -1404,7 +1581,8 @@
           "name": "plan_inbounds_select_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 235,
+          "line": 261,
+          "signature": "plan_inbounds_select_kb(",
           "exports": [
             "plan_inbounds_select_kb"
           ]
@@ -1414,7 +1592,9 @@
           "name": "_plan_preset_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 271,
+          "line": 297,
+          "signature": "_plan_preset_kb(field: str, values: Sequence[int], labels: Sequence[str]) -> InlineKeyboardMarkup",
+          "docComment": "Build a preset keyboard for one of the create-plan wizard steps.\n\n    Each preset button carries ``PlanCB(action=\"preset\", field=<field>,\n    id=<value>)``; the «✏ Ввести вручную» button switches back to text\n    input via ``PlanCB(action=\"manual\", field=<field>)``; finally a\n    universal cancel button drops the wizard.",
           "exports": []
         },
         {
@@ -1422,7 +1602,9 @@
           "name": "plan_days_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 295,
+          "line": 321,
+          "signature": "plan_days_presets_kb() -> InlineKeyboardMarkup",
+          "docComment": "Preset days for ``PlanCreate.waiting_days``: 7/14/30/90/180/365.",
           "exports": [
             "plan_days_presets_kb"
           ]
@@ -1432,7 +1614,9 @@
           "name": "plan_price_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 302,
+          "line": 328,
+          "signature": "plan_price_presets_kb() -> InlineKeyboardMarkup",
+          "docComment": "Preset prices for ``PlanCreate.waiting_price``: 0/50/100/200/500/1000.",
           "exports": [
             "plan_price_presets_kb"
           ]
@@ -1442,7 +1626,9 @@
           "name": "plan_gb_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 309,
+          "line": 335,
+          "signature": "plan_gb_presets_kb() -> InlineKeyboardMarkup",
+          "docComment": "Preset traffic limits for ``PlanCreate.waiting_traffic_gb``.\n\n    ``0`` means «без лимита» (matches xui ``totalGB`` semantics); the\n    rest are common per-client monthly quotas.",
           "exports": [
             "plan_gb_presets_kb"
           ]
@@ -1452,7 +1638,9 @@
           "name": "promos_list_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 323,
+          "line": 349,
+          "signature": "promos_list_kb(promos: Sequence[Promo]) -> InlineKeyboardMarkup",
+          "docComment": "Promo list: one button per promo plus «Создать» and «В меню».",
           "exports": [
             "promos_list_kb"
           ]
@@ -1462,7 +1650,9 @@
           "name": "promo_type_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 341,
+          "line": 367,
+          "signature": "promo_type_kb() -> InlineKeyboardMarkup",
+          "docComment": "Three buttons used during ``PromoCreate.waiting_type``.",
           "exports": [
             "promo_type_kb"
           ]
@@ -1472,7 +1662,8 @@
           "name": "_promo_preset_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 364,
+          "line": 390,
+          "signature": "_promo_preset_kb(",
           "exports": []
         },
         {
@@ -1480,7 +1671,9 @@
           "name": "promo_value_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 393,
+          "line": 419,
+          "signature": "promo_value_presets_kb(promo_type: str) -> InlineKeyboardMarkup",
+          "docComment": "Preset values for ``PromoCreate.waiting_value``, parameterised by type.\n\n    * ``percent``    — 5/10/15/25/50%\n    * ``flat_stars`` — 25/50/100/250/500 ⭐\n    * ``free_days``  — 1/3/7/14/30 дней\n\n    Unknown types fall back to a manual-only keyboard (no presets) so the\n    handler can still recover via the «Ввести вручную» button.",
           "exports": [
             "promo_value_presets_kb"
           ]
@@ -1490,7 +1683,9 @@
           "name": "promo_max_uses_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 418,
+          "line": 444,
+          "signature": "promo_max_uses_presets_kb() -> InlineKeyboardMarkup",
+          "docComment": "Preset max_uses for ``PromoCreate.waiting_max_uses``.\n\n    ``0`` means «без лимита» (matches DB semantics — see\n    :class:`~app.db.repos.promos.Promo`).",
           "exports": [
             "promo_max_uses_presets_kb"
           ]
@@ -1500,7 +1695,9 @@
           "name": "promo_expires_presets_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 429,
+          "line": 455,
+          "signature": "promo_expires_presets_kb() -> InlineKeyboardMarkup",
+          "docComment": "Preset expires_at for ``PromoCreate.waiting_expires_at``.\n\n    The callback id carries the number of days from «сейчас»: ``0`` means\n    «бессрочно» (``expires_at=None``), the rest are converted by the\n    handler to an ISO-8601 string ``now + N days`` in the same format as\n    :func:`_parse_expires_at`.",
           "exports": [
             "promo_expires_presets_kb"
           ]
@@ -1510,7 +1707,9 @@
           "name": "promo_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 442,
+          "line": 468,
+          "signature": "promo_card_kb(promo_id: int, *, is_active: bool = True) -> InlineKeyboardMarkup",
+          "docComment": "Promo card: Redemptions / Deactivate / Back.",
           "exports": [
             "promo_card_kb"
           ]
@@ -1520,7 +1719,8 @@
           "name": "user_card_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 462,
+          "line": 488,
+          "signature": "user_card_kb(",
           "exports": [
             "user_card_kb"
           ]
@@ -1530,7 +1730,9 @@
           "name": "stats_kb",
           "type": "function",
           "path": "app/keyboards/admin.py",
-          "line": 502,
+          "line": 528,
+          "signature": "stats_kb(active_period: str = \"30d\") -> InlineKeyboardMarkup",
+          "docComment": "Stats screen footer: period switcher + refresh + back.\n\n    Three period buttons (7д / 30д / Всё время). The currently-active\n    one is prefixed with «· » so it reads as the selected option without\n    needing a separate label layout. The Refresh button carries the\n    current ``field`` so the handler can re-run the same window.",
           "exports": [
             "stats_kb"
           ]
@@ -1540,7 +1742,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/keyboards/admin.py",
-          "line": 536,
+          "line": 562,
           "exports": []
         }
       ]
@@ -1573,6 +1775,8 @@
           "type": "class",
           "path": "app/keyboards/user.py",
           "line": 43,
+          "signature": "class UserCB(CallbackData, prefix=\"u\")",
+          "docComment": "Top-level user navigation: menu / help / my subscription / cancel.",
           "exports": [
             "UserCB"
           ]
@@ -1583,6 +1787,8 @@
           "type": "class",
           "path": "app/keyboards/user.py",
           "line": 49,
+          "signature": "class BuyCB(CallbackData, prefix=\"ub\")",
+          "docComment": "Buy-flow callbacks.\n\n    ``action``:\n    * ``open``         — entry point (\"Купить\") — show plan list or the\n      \"продлить vs новая\" action screen when the user already has at\n      least one active subscription.\n    * ``extend``       — user picked \"🔄 Продлить #N\" from the action\n      screen (or directly from a subscription card in\n      :mod:`app.handlers.user.my_subscription`); ``sub_id`` identifies\n      the subscription whose expiry will be pushed forward.\n    * ``new``          — user picked \"🆕 Новая подписка\" — proceed with a\n      regular new-subscription buy flow (``sub_id`` stays ``0``).\n    * ``plan``         — a plan was picked (id in ``plan_id``).\n    * ``apply_promo``  — user wants to type a promo code.\n    * ``confirm``      — proceed to the Stars invoice; the chosen\n      inbound is carried in ``inbound_id`` (``0`` when the plan has a\n      single inbound and the wizard auto-skipped the select step).\n      ``sub_id`` > 0 signals \"extend the existing subscription #N\"\n      instead of provisioning a brand-new one.\n    * ``cancel``       — abort the wizard and return to the main menu.\n\n    ``sub_id``:\n    * ``0`` (default) — create a new subscription.\n    * ``>0``          — extend the subscription with this id. The\n      inbound is then inherited from the existing sub and the allow-list\n      check is skipped (an existing sub may live on an inbound that is\n      no longer attached to any plan).",
           "exports": [
             "BuyCB"
           ]
@@ -1593,6 +1799,8 @@
           "type": "class",
           "path": "app/keyboards/user.py",
           "line": 86,
+          "signature": "class InboundCB(CallbackData, prefix=\"inb\")",
+          "docComment": "Inbound selection step (shared by buy + free-days promo flows).\n\n    ``action``:\n    * ``pick`` — user picked a specific inbound (``inbound_id``).\n      ``plan_id`` is non-zero for the buy flow and ``promo_id`` is\n      non-zero for the standalone promo flow — handlers route on\n      whichever is set.\n    * ``back`` — return to the previous step (plan list for the buy\n      flow, promo entry for the promo flow). ``inbound_id`` is unused.",
           "exports": [
             "InboundCB"
           ]
@@ -1603,6 +1811,8 @@
           "type": "class",
           "path": "app/keyboards/user.py",
           "line": 104,
+          "signature": "class SubCB(CallbackData, prefix=\"us\")",
+          "docComment": "Actions over an existing subscription card.\n\n    ``action``:\n    * ``keys`` — re-send vless + QR + subscription URL.\n    * ``back`` — return to the user main menu.",
           "exports": [
             "SubCB"
           ]
@@ -1613,6 +1823,8 @@
           "type": "class",
           "path": "app/keyboards/user.py",
           "line": 116,
+          "signature": "class PromoActCB(CallbackData, prefix=\"up\")",
+          "docComment": "Standalone promo activation (free-days flow).\n\n    ``action``:\n    * ``open``   — entry point (\"Активировать промокод\").\n    * ``extend`` — user picked \"🔄 Продлить #N\" from the action screen\n      shown when the free-days promo could attach to an existing\n      subscription instead of provisioning a new one; ``sub_id``\n      identifies the subscription whose expiry will be pushed forward.\n    * ``new``    — user picked \"🆕 Новая подписка\" — proceed with the\n      regular inbound-selection step (``sub_id`` stays ``0``).\n    * ``cancel`` — abort and return to the main menu.\n\n    ``inbound_id``:\n    * ``0`` (default) — unused for the ``open`` / ``extend`` / ``new`` /\n      ``cancel`` callbacks; reserved for future flows.\n\n    ``sub_id``:\n    * ``0`` (default) — create a new subscription (or n/a).\n    * ``>0``          — extend the subscription with this id. The\n      inbound is inherited from the existing sub and the allow-list\n      check is skipped (an existing sub may live on an inbound that is\n      no longer attached to any plan).",
           "exports": [
             "PromoActCB"
           ]
@@ -1623,6 +1835,8 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 151,
+          "signature": "user_main_menu(*, has_subscription: bool) -> InlineKeyboardMarkup",
+          "docComment": "Top-level menu shown after ``/start`` and ``/menu``.\n\n    When the user already has an active subscription the «Моя подписка»\n    button is shown first; otherwise «Купить» takes the leading spot. Both\n    buttons are always present so the layout stays predictable — the\n    ``has_subscription`` flag only reorders them.",
           "exports": [
             "user_main_menu"
           ]
@@ -1633,6 +1847,8 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 175,
+          "signature": "back_to_menu_kb() -> InlineKeyboardMarkup",
+          "docComment": "Single «◀ В меню» button — used as a fallback footer keyboard.",
           "exports": [
             "back_to_menu_kb"
           ]
@@ -1643,6 +1859,8 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 182,
+          "signature": "cancel_kb() -> InlineKeyboardMarkup",
+          "docComment": "Single «✖ Отмена» button — cancels any active FSM wizard.",
           "exports": [
             "cancel_kb"
           ]
@@ -1653,6 +1871,8 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 189,
+          "signature": "plans_kb(plans: Sequence[Plan]) -> InlineKeyboardMarkup",
+          "docComment": "Plan list shown to the user when buying.\n\n    Each row is a single plan button labelled ``<title> · <days>д · <price>⭐``.\n    A trailing «◀ В меню» button lets the user back out of the wizard.",
           "exports": [
             "plans_kb"
           ]
@@ -1663,6 +1883,7 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 206,
+          "signature": "inbound_select_kb(",
           "exports": [
             "inbound_select_kb"
           ]
@@ -1673,6 +1894,7 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 241,
+          "signature": "confirm_kb(",
           "exports": [
             "confirm_kb"
           ]
@@ -1683,6 +1905,7 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 284,
+          "signature": "buy_action_kb(",
           "exports": [
             "buy_action_kb"
           ]
@@ -1693,6 +1916,7 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 316,
+          "signature": "promo_action_kb(",
           "exports": [
             "promo_action_kb"
           ]
@@ -1703,6 +1927,8 @@
           "type": "function",
           "path": "app/keyboards/user.py",
           "line": 352,
+          "signature": "subscription_kb(sub_id: int) -> InlineKeyboardMarkup",
+          "docComment": "Subscription card keyboard: re-send keys / back to menu.",
           "exports": [
             "subscription_kb"
           ]
@@ -1733,6 +1959,8 @@
           "type": "class",
           "path": "app/logger.py",
           "line": 25,
+          "signature": "class InterceptHandler(logging.Handler)",
+          "docComment": "Forwards records from the stdlib ``logging`` module to loguru.\n\n    Preserves the original level name when known, falls back to the numeric\n    level otherwise. Also walks the frame stack so loguru reports the actual\n    caller instead of this handler.",
           "exports": [
             "InterceptHandler"
           ]
@@ -1751,6 +1979,8 @@
           "type": "function",
           "path": "app/logger.py",
           "line": 56,
+          "signature": "setup_logging(level: str | None = None) -> None",
+          "docComment": "Configure loguru and bridge stdlib logging into it.\n\n    Parameters\n    ----------\n    level:\n        Optional override for the log level. When omitted, uses\n        :data:`app.config.settings.LOG_LEVEL`.",
           "exports": [
             "setup_logging"
           ]
@@ -1818,6 +2048,8 @@
           "type": "class",
           "path": "app/middlewares/admin_only.py",
           "line": 31,
+          "signature": "class AdminOnlyMiddleware(BaseMiddleware)",
+          "docComment": "Reject non-admin updates with a polite message and stop propagation.",
           "exports": [
             "AdminOnlyMiddleware"
           ]
@@ -1847,6 +2079,8 @@
           "type": "function",
           "path": "app/middlewares/user_ctx.py",
           "line": 30,
+          "signature": "_extract_tg_user(event: TelegramObject) -> TgUser | None",
+          "docComment": "Return the originating ``from_user`` for any update-bearing object.\n\n    Falls through unknown update types (poll updates etc.) by returning\n    ``None`` — the middleware will then pass control on without writing.",
           "exports": []
         },
         {
@@ -1855,6 +2089,8 @@
           "type": "class",
           "path": "app/middlewares/user_ctx.py",
           "line": 65,
+          "signature": "class UserContextMiddleware(BaseMiddleware)",
+          "docComment": "Inject the resolved domain ``User`` into handler data.\n\n    On every update:\n\n    1. Find the originating Telegram user (if any).\n    2. Open a connection via :func:`app.db.engine.get_conn`.\n    3. Call :func:`app.db.repos.users.get_or_create` — idempotent; also\n       reconciles ``is_admin`` with ``settings.ADMIN_IDS``.\n    4. Place the resulting :class:`app.db.repos.users.User` into\n       ``data['user']``.\n\n    Errors at the DB layer are logged and swallowed: the update still\n    propagates with ``data['user'] = None`` so handlers can degrade\n    gracefully (typically by replying with a generic error message).",
           "exports": [
             "UserContextMiddleware"
           ]
@@ -1911,6 +2147,8 @@
           "type": "function",
           "path": "app/scheduler.py",
           "line": 74,
+          "signature": "_parse_iso(value: str) -> datetime",
+          "docComment": "Парсит ISO-строку из БД в aware-datetime (UTC).\n\n    Подписки в БД хранятся через `_to_iso` (см. `db/repos/subscriptions.py`)\n    в формате ``YYYY-MM-DD HH:MM:SS`` без TZ-маркера, иногда — с ``+00:00``.\n    Здесь мы нормализуем оба случая в aware UTC.",
           "exports": []
         },
         {
@@ -1919,6 +2157,8 @@
           "type": "function",
           "path": "app/scheduler.py",
           "line": 88,
+          "signature": "_days_left(expires_at: str, now: datetime) -> int",
+          "docComment": "Сколько целых суток осталось до истечения (отрицательное = просрочено).\n\n    Считаем по числу полных календарных суток разницы; используется только\n    для маппинга на kind ('3d'/'1d'/'0d').",
           "exports": []
         },
         {
@@ -1927,6 +2167,8 @@
           "type": "function",
           "path": "app/scheduler.py",
           "line": 100,
+          "signature": "_kind_for_days_left(days_left: int) -> ReminderKind | None",
+          "docComment": "Маппит «дней осталось» в kind напоминания.\n\n    Возвращает ``None``, если подписке не пора слать ни одно из 3d/1d/0d\n    напоминаний (например, осталось 5 дней — рано, или -2 — это уже работа\n    expire-checker'а).",
           "exports": []
         },
         {
@@ -1934,7 +2176,8 @@
           "name": "_wrap",
           "type": "function",
           "path": "app/scheduler.py",
-          "line": 372,
+          "line": 371,
+          "signature": "_wrap(",
           "exports": []
         },
         {
@@ -1942,7 +2185,9 @@
           "name": "setup_scheduler",
           "type": "function",
           "path": "app/scheduler.py",
-          "line": 394,
+          "line": 393,
+          "signature": "setup_scheduler(bot: Bot) -> AsyncIOScheduler",
+          "docComment": "Создаёт и наполняет :class:`AsyncIOScheduler` тремя job-ами.\n\n    Не стартует scheduler — это ответственность вызывающей стороны\n    (`scheduler.start()` в `app/main.py`), чтобы можно было настроить\n    timezone / event-listeners перед запуском.",
           "exports": [
             "setup_scheduler"
           ]
@@ -2004,6 +2249,8 @@
           "type": "class",
           "path": "app/services/billing.py",
           "line": 50,
+          "signature": "class InvoicePrice",
+          "docComment": "Final price summary returned by :func:`calc_price`.\n\n    * ``stars`` — what the user will pay (always ``>= _STARS_MIN``).\n    * ``raw_discount`` — the raw :class:`DiscountResult` from\n      :mod:`app.services.promos` (before the Stars-minimum floor).\n    * ``extra_days`` — bonus days granted by a ``free_days`` promo (0\n      otherwise). Kept here so the confirmation message can show it.",
           "exports": [
             "InvoicePrice"
           ]
@@ -2014,6 +2261,8 @@
           "type": "function",
           "path": "app/services/billing.py",
           "line": 70,
+          "signature": "calc_price(plan: Plan, promo: Promo | None) -> InvoicePrice",
+          "docComment": "Return the final Stars price for ``plan`` after applying ``promo``.\n\n    Delegates to :func:`app.services.promos.compute_discount` and then\n    raises the price to ``_STARS_MIN`` if the discount would otherwise\n    produce a 0-Stars invoice (Telegram requires at least 1).",
           "exports": [
             "calc_price"
           ]
@@ -2024,6 +2273,7 @@
           "type": "function",
           "path": "app/services/billing.py",
           "line": 87,
+          "signature": "build_invoice_payload(",
           "exports": [
             "build_invoice_payload"
           ]
@@ -2034,6 +2284,8 @@
           "type": "function",
           "path": "app/services/billing.py",
           "line": 134,
+          "signature": "parse_invoice_payload(payload: str) -> tuple[int, int | None, int, int]",
+          "docComment": "Decode the JSON written by :func:`build_invoice_payload`.\n\n    Returns ``(plan_id, promo_id_or_None, inbound_id, sub_id)``. Raises\n    :class:`ValueError` on a malformed payload — the buy handler treats\n    this as \"answer pre_checkout with ok=False\".\n\n    Backwards compatibility:\n\n    * The new payload uses short keys ``p`` / ``r`` / ``i`` / ``s``.\n      Old payloads (pre-inbound-selection rollout) use the long keys\n      ``plan_id`` / ``promo_id`` and have no ``i`` field; we still\n      accept them and fall back to :attr:`settings.XUI_INBOUND_ID` with\n      a WARNING log so operators see exactly how many in-flight invoices\n      were affected by the deploy.\n    * The ``s`` key (sub_id-to-extend) is optional. Payloads without it\n      — both legacy and current \"create new subscription\" payloads —\n      decode as ``sub_id=0``.",
           "exports": [
             "parse_invoice_payload"
           ]
@@ -2044,6 +2296,8 @@
           "type": "function",
           "path": "app/services/billing.py",
           "line": 227,
+          "signature": "_invoice_title(plan: Plan) -> str",
+          "docComment": "Return a concise title for the Stars-invoice header.",
           "exports": []
         },
         {
@@ -2052,6 +2306,7 @@
           "type": "function",
           "path": "app/services/billing.py",
           "line": 232,
+          "signature": "_invoice_description(",
           "exports": []
         },
         {
@@ -2060,6 +2315,37 @@
           "type": "variable",
           "path": "app/services/billing.py",
           "line": 311,
+          "exports": []
+        }
+      ]
+    },
+    {
+      "id": "app/services/broadcast.py",
+      "name": "broadcast.py",
+      "type": "file",
+      "path": "app/services/broadcast.py",
+      "exports": [
+        "BroadcastResult"
+      ],
+      "children": [
+        {
+          "id": "app/services/broadcast.py:BroadcastResult",
+          "name": "BroadcastResult",
+          "type": "class",
+          "path": "app/services/broadcast.py",
+          "line": 40,
+          "signature": "class BroadcastResult",
+          "docComment": "Outcome of a broadcast run.\n\n    * ``total`` — number of recipients attempted.\n    * ``sent`` — successfully delivered copies.\n    * ``blocked`` — recipients who blocked the bot / are unreachable\n      (:class:`TelegramForbiddenError`); expected attrition, not a fault.\n    * ``failed`` — any other delivery error (logged individually).\n\n    Invariant: ``sent + blocked + failed == total``.",
+          "exports": [
+            "BroadcastResult"
+          ]
+        },
+        {
+          "id": "app/services/broadcast.py:__all__",
+          "name": "__all__",
+          "type": "variable",
+          "path": "app/services/broadcast.py",
+          "line": 140,
           "exports": []
         }
       ]
@@ -2088,6 +2374,8 @@
           "type": "class",
           "path": "app/services/inbounds.py",
           "line": 43,
+          "signature": "class InboundOption",
+          "docComment": "Projection of a 3x-ui inbound surfaced to handlers and keyboards.\n\n    Only the fields the bot needs to render a choice button and persist\n    the selection. ``enabled`` mirrors the panel's ``enable`` flag; we\n    expose it for completeness even though :func:`list_user_inbounds`\n    filters disabled inbounds out — admin tooling may want to inspect the\n    flag downstream.",
           "exports": [
             "InboundOption"
           ]
@@ -2122,6 +2410,8 @@
           "type": "function",
           "path": "app/services/inbounds.py",
           "line": 68,
+          "signature": "_is_fresh(now: float) -> bool",
+          "docComment": "Return True if the cache is populated and within the TTL.",
           "exports": []
         },
         {
@@ -2130,6 +2420,8 @@
           "type": "function",
           "path": "app/services/inbounds.py",
           "line": 73,
+          "signature": "clear_cache() -> None",
+          "docComment": "Drop the cached inbounds list.\n\n    Exposed for tests and for admin actions that mutate panel-side\n    inbound state and need the next render to reflect the change\n    immediately rather than waiting up to ``_CACHE_TTL_SEC`` seconds.",
           "exports": [
             "clear_cache"
           ]
@@ -2161,6 +2453,8 @@
           "type": "class",
           "path": "app/services/promos.py",
           "line": 38,
+          "signature": "class PromoValidation",
+          "docComment": "Outcome of :func:`validate`.\n\n    * ``is_valid=True``  — ``promo`` is set, ``error`` is ``None``.\n    * ``is_valid=False`` — ``promo`` may still be set (e.g. user already\n      redeemed the code) but the caller MUST refuse usage. ``error`` is a\n      user-facing message in Russian, safe to send to the chat verbatim.",
           "exports": [
             "PromoValidation"
           ]
@@ -2171,6 +2465,8 @@
           "type": "class",
           "path": "app/services/promos.py",
           "line": 53,
+          "signature": "class DiscountResult",
+          "docComment": "Outcome of :func:`compute_discount`.\n\n    * ``final_price`` — price in Stars to charge after the discount. For\n      ``free_days`` it stays equal to the plan's nominal price.\n    * ``extra_days`` — additional days to grant on top of ``plan.days``.\n      Always 0 except for ``free_days``.",
           "exports": [
             "DiscountResult"
           ]
@@ -2181,6 +2477,8 @@
           "type": "function",
           "path": "app/services/promos.py",
           "line": 71,
+          "signature": "_utcnow_iso() -> str",
+          "docComment": "Return current UTC time in ISO-8601 (seconds resolution).\n\n    Mirrors the helper inside :mod:`app.db.repos.promos` so this module\n    doesn't reach into private repo internals.",
           "exports": []
         },
         {
@@ -2189,6 +2487,8 @@
           "type": "function",
           "path": "app/services/promos.py",
           "line": 179,
+          "signature": "compute_discount(plan: Plan, promo: Promo | None) -> DiscountResult",
+          "docComment": "Compute the post-discount price (Stars) and bonus days for a plan.\n\n    Rules:\n\n    * ``promo is None``           → ``final_price = plan.price_stars``,\n      ``extra_days = 0``.\n    * ``promo.type == 'percent'`` → ``final_price = ceil(plan.price_stars\n      * (100 - promo.value) / 100)``. ``promo.value`` is a percentage\n      (1..100). The result is rounded **up** so we never undercharge by\n      a fractional Stars (Stars are integers).\n    * ``promo.type == 'flat_stars'`` → ``final_price = max(0,\n      plan.price_stars - promo.value)``.\n    * ``promo.type == 'free_days'`` → ``final_price = plan.price_stars``,\n      ``extra_days = promo.value``.\n\n    The final price floor is left at 0 here; the invoice builder\n    (:mod:`app.services.billing`) raises it to 1 because Telegram refuses\n    Stars invoices below 1.",
           "exports": [
             "compute_discount"
           ]
@@ -2216,6 +2516,8 @@
           "type": "function",
           "path": "app/services/stats.py",
           "line": 38,
+          "signature": "_utcnow() -> datetime",
+          "docComment": "Return current UTC time, seconds resolution, tz-aware.",
           "exports": []
         },
         {
@@ -2224,6 +2526,8 @@
           "type": "function",
           "path": "app/services/stats.py",
           "line": 192,
+          "signature": "_iso(value: datetime | str) -> str",
+          "docComment": "Normalize ``value`` to an ISO-8601 string in UTC (seconds resolution).",
           "exports": []
         },
         {
@@ -2272,6 +2576,8 @@
           "type": "function",
           "path": "app/services/subscriptions.py",
           "line": 57,
+          "signature": "_expiry_ms(expires_at: datetime) -> int",
+          "docComment": "Convert a UTC :class:`datetime` to milliseconds since epoch.\n\n    3x-ui's client ``expiryTime`` is a UNIX timestamp in **milliseconds**\n    (not seconds). 0 means \"never\".",
           "exports": []
         },
         {
@@ -2280,6 +2586,8 @@
           "type": "function",
           "path": "app/services/subscriptions.py",
           "line": 68,
+          "signature": "_parse_iso(value: str) -> datetime",
+          "docComment": "Parse an ISO-8601 timestamp produced by the repo back into a datetime.\n\n    Accepts both the ``\" \"``-separated form (default of\n    :func:`datetime.isoformat` with ``sep=\" \"``) and the ``\"T\"``-separated\n    form. Always returns a timezone-aware UTC datetime — naive strings\n    (which SQLite's ``CURRENT_TIMESTAMP`` produces) are assumed UTC.",
           "exports": []
         },
         {
@@ -2288,6 +2596,8 @@
           "type": "function",
           "path": "app/services/subscriptions.py",
           "line": 88,
+          "signature": "_bonus_days_from_promo(promo: Promo | None) -> int",
+          "docComment": "Return the extra days a promo grants (0 unless ``type='free_days'``).",
           "exports": []
         },
         {
@@ -2296,6 +2606,8 @@
           "type": "function",
           "path": "app/services/subscriptions.py",
           "line": 97,
+          "signature": "_make_sub_id() -> str",
+          "docComment": "Generate a fresh subscription id (delegates to xui.clients).",
           "exports": []
         },
         {
@@ -2303,7 +2615,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/services/subscriptions.py",
-          "line": 403,
+          "line": 401,
           "exports": []
         }
       ]
@@ -2334,7 +2646,8 @@
         "PlanCreate",
         "PlanEdit",
         "AdminSearchUser",
-        "PromoCreate"
+        "PromoCreate",
+        "BroadcastCreate"
       ],
       "children": [
         {
@@ -2343,6 +2656,8 @@
           "type": "class",
           "path": "app/states/admin.py",
           "line": 15,
+          "signature": "class PlanCreate(StatesGroup)",
+          "docComment": "Wizard: create a new plan.\n\n    Flow: ``waiting_title`` (text) → ``waiting_days`` (positive int) →\n    ``waiting_price`` (non-negative int) → ``waiting_traffic_gb``\n    (non-negative int; 0 = unlimited) → ``waiting_inbounds``\n    (multi-select via callbacks; empty set = «все доступные») → DB write\n    + clear.",
           "exports": [
             "PlanCreate"
           ]
@@ -2353,6 +2668,8 @@
           "type": "class",
           "path": "app/states/admin.py",
           "line": 32,
+          "signature": "class PlanEdit(StatesGroup)",
+          "docComment": "Wizard: edit one field of an existing plan.\n\n    Flow: ``waiting_field`` (callback chooses title/days/price_stars) →\n    ``waiting_value`` (text). The chosen field name and target plan id are\n    kept in FSM data under ``plan_id`` / ``field``.",
           "exports": [
             "PlanEdit"
           ]
@@ -2363,6 +2680,8 @@
           "type": "class",
           "path": "app/states/admin.py",
           "line": 44,
+          "signature": "class AdminSearchUser(StatesGroup)",
+          "docComment": "Wizard: find a user by ``tg_id`` or ``@username``.\n\n    Single state — the admin types a digit-only string (interpreted as\n    Telegram id) or an ``@handle``/``handle`` (interpreted as username,\n    case-insensitive). On hit the handler clears the state and renders\n    a user card.",
           "exports": [
             "AdminSearchUser"
           ]
@@ -2373,8 +2692,22 @@
           "type": "class",
           "path": "app/states/admin.py",
           "line": 56,
+          "signature": "class PromoCreate(StatesGroup)",
+          "docComment": "Wizard: create a new promo code.\n\n    Flow: ``waiting_code`` (text, unique) → ``waiting_type`` (callback:\n    percent / flat_stars / free_days) → ``waiting_value`` (int, range\n    depends on type) → ``waiting_max_uses`` (int ≥ 0; 0 = unlimited) →\n    ``waiting_expires_at`` (``\"-\"`` / ``\"skip\"`` for no expiry, otherwise\n    ``YYYY-MM-DD``) → DB write + clear.",
           "exports": [
             "PromoCreate"
+          ]
+        },
+        {
+          "id": "app/states/admin.py:BroadcastCreate",
+          "name": "BroadcastCreate",
+          "type": "class",
+          "path": "app/states/admin.py",
+          "line": 73,
+          "signature": "class BroadcastCreate(StatesGroup)",
+          "docComment": "Wizard: broadcast a post to every registered user.\n\n    Flow: ``waiting_post`` (the admin sends any message — text, photo,\n    video, etc.; its ``chat_id`` + ``message_id`` are stashed in FSM data\n    under ``post_chat_id`` / ``post_message_id``) → ``confirming``\n    (callback confirms; the stored message is copied to every user via\n    :func:`app.services.broadcast.broadcast_message`) → clear.\n\n    The post is never re-parsed or re-rendered — it is delivered verbatim\n    with :meth:`aiogram.Bot.copy_message`, so any message type the admin\n    can send is supported.",
+          "exports": [
+            "BroadcastCreate"
           ]
         },
         {
@@ -2382,7 +2715,7 @@
           "name": "__all__",
           "type": "variable",
           "path": "app/states/admin.py",
-          "line": 73,
+          "line": 91,
           "exports": []
         }
       ]
@@ -2403,6 +2736,8 @@
           "type": "class",
           "path": "app/states/user.py",
           "line": 15,
+          "signature": "class BuyFlow(StatesGroup)",
+          "docComment": "Wizard: buy a subscription via Stars.\n\n    Flow: ``choosing_action`` (optional — only shown when the user\n    already has one or more active subscriptions, lets them pick\n    \"продлить #N\" vs \"🆕 Новая подписка\") → ``choosing_plan`` (callback\n    chooses a plan) → ``choosing_inbound`` (callback chooses an\n    inbound/server from the plan's allow-list; skipped automatically\n    when only one inbound is available **or** when the user is extending\n    an existing subscription — the inbound is then inherited from the\n    extended sub) → ``confirming`` (user reviews and either pays or\n    applies a promo) → ``entering_promo`` (text input of a promo code) →\n    back to ``confirming`` with the promo attached.\n\n    The state is cleared once the invoice is sent — the rest of the flow\n    (pre_checkout / successful_payment) lives in stateless Telegram updates\n    whose payload carries ``plan_id`` / ``promo_id`` / ``inbound_id`` /\n    ``sub_id`` (0 for \"create new\", >0 for \"extend sub #N\").",
           "exports": [
             "BuyFlow"
           ]
@@ -2413,6 +2748,8 @@
           "type": "class",
           "path": "app/states/user.py",
           "line": 42,
+          "signature": "class PromoActivate(StatesGroup)",
+          "docComment": "Wizard: activate a standalone promo (typically ``free_days``).\n\n    Flow: ``waiting_code`` (text input) → ``choosing_action`` (optional —\n    only shown for ``free_days`` codes when the user already has one or\n    more active subscriptions, lets them pick «🔄 Продлить #N» vs\n    «🆕 Новая подписка») → ``choosing_inbound`` (callback chooses an\n    inbound/server for the free-days subscription; skipped automatically\n    when only one inbound is available **or** when the user is extending\n    an existing subscription — the inbound is then inherited from the\n    extended sub) → state cleared once a subscription is provisioned\n    (or the user cancels).",
           "exports": [
             "PromoActivate"
           ]
@@ -2483,17 +2820,25 @@
           "name": "Usage",
           "type": "variable",
           "path": "app/xui/client.py",
-          "line": 12,
+          "line": 19,
           "exports": [
             "Usage"
           ]
+        },
+        {
+          "id": "app/xui/client.py:_CSRF_META_RE",
+          "name": "_CSRF_META_RE",
+          "type": "variable",
+          "path": "app/xui/client.py",
+          "line": 45,
+          "exports": []
         },
         {
           "id": "app/xui/client.py:_DEFAULT_TIMEOUT",
           "name": "_DEFAULT_TIMEOUT",
           "type": "variable",
           "path": "app/xui/client.py",
-          "line": 35,
+          "line": 52,
           "exports": []
         },
         {
@@ -2501,7 +2846,9 @@
           "name": "XuiError",
           "type": "class",
           "path": "app/xui/client.py",
-          "line": 38,
+          "line": 55,
+          "signature": "class XuiError(RuntimeError)",
+          "docComment": "Raised when the panel returns ``success=false`` or an invalid envelope.\n\n    The string form contains the panel-provided ``msg`` (or an HTTP/status hint)\n    so the message is safe to surface to operators in logs.",
           "exports": [
             "XuiError"
           ]
@@ -2511,7 +2858,9 @@
           "name": "XuiClient",
           "type": "class",
           "path": "app/xui/client.py",
-          "line": 46,
+          "line": 63,
+          "signature": "class XuiClient",
+          "docComment": "Async client for the 3x-ui panel REST API.\n\n    Holds a single :class:`httpx.AsyncClient` and an authenticated session\n    cookie. The class is safe to share across coroutines; concurrent calls\n    that race into ``login()`` are serialised through an internal lock so\n    only one re-login happens per cookie expiry.",
           "exports": [
             "XuiClient"
           ]
@@ -2521,7 +2870,7 @@
           "name": "_singleton",
           "type": "variable",
           "path": "app/xui/client.py",
-          "line": 244,
+          "line": 311,
           "exports": []
         },
         {
@@ -2529,7 +2878,7 @@
           "name": "_singleton_lock",
           "type": "variable",
           "path": "app/xui/client.py",
-          "line": 245,
+          "line": 312,
           "exports": []
         }
       ]
@@ -2549,7 +2898,9 @@
           "name": "make_client_uuid",
           "type": "function",
           "path": "app/xui/clients.py",
-          "line": 39,
+          "line": 47,
+          "signature": "make_client_uuid() -> str",
+          "docComment": "Generate a fresh random UUID4 for a vless client id.",
           "exports": [
             "make_client_uuid"
           ]
@@ -2559,7 +2910,9 @@
           "name": "make_client_email",
           "type": "function",
           "path": "app/xui/clients.py",
-          "line": 44,
+          "line": 52,
+          "signature": "make_client_email(tg_id: int, username: str | None = None) -> str",
+          "docComment": "Generate a unique-ish client label for the panel.\n\n    3x-ui requires the ``email`` field to be unique across an inbound.\n    We embed the Telegram id for traceability and append a short random\n    suffix so re-subscribing a user (after a delete) does not collide\n    with stale traffic snapshots.\n\n    When ``username`` is provided, it is normalised (lowercased; chars\n    outside ``[A-Za-z0-9_]`` collapsed to ``_``; trimmed; capped at 32)\n    and prepended for human-readable identification in the panel. If\n    the resulting normalised slug is empty, the function falls back to\n    the legacy ``tg_<id>_<hex>`` shape.",
           "exports": [
             "make_client_email"
           ]
@@ -2569,7 +2922,37 @@
           "name": "_make_sub_id",
           "type": "function",
           "path": "app/xui/clients.py",
-          "line": 66,
+          "line": 74,
+          "signature": "_make_sub_id() -> str",
+          "docComment": "Generate a random subscription id (16 hex chars).",
+          "exports": []
+        },
+        {
+          "id": "app/xui/clients.py:_q",
+          "name": "_q",
+          "type": "function",
+          "path": "app/xui/clients.py",
+          "line": 79,
+          "signature": "_q(value: str) -> str",
+          "docComment": "URL-encode a path/query segment (mirrors the panel's encodeURIComponent).",
+          "exports": []
+        },
+        {
+          "id": "app/xui/clients.py:_coerce_tg_id",
+          "name": "_coerce_tg_id",
+          "type": "function",
+          "path": "app/xui/clients.py",
+          "line": 150,
+          "signature": "_coerce_tg_id(tg_id: int | str) -> int",
+          "docComment": "Best-effort coercion of ``tg_id`` to the numeric ``tgId`` the API wants.",
+          "exports": []
+        },
+        {
+          "id": "app/xui/clients.py:_CLIENT_FIELDS",
+          "name": "_CLIENT_FIELDS",
+          "type": "variable",
+          "path": "app/xui/clients.py",
+          "line": 164,
           "exports": []
         },
         {
@@ -2577,7 +2960,17 @@
           "name": "_UPDATABLE_CLIENT_FIELDS",
           "type": "variable",
           "path": "app/xui/clients.py",
-          "line": 140,
+          "line": 186,
+          "exports": []
+        },
+        {
+          "id": "app/xui/clients.py:_coerce_numeric_fields",
+          "name": "_coerce_numeric_fields",
+          "type": "function",
+          "path": "app/xui/clients.py",
+          "line": 264,
+          "signature": "_coerce_numeric_fields(payload: dict[str, Any]) -> None",
+          "docComment": "Coerce known numeric / bool fields in-place so the panel accepts them.",
           "exports": []
         }
       ]
@@ -2603,6 +2996,8 @@
           "type": "function",
           "path": "app/xui/inbounds.py",
           "line": 26,
+          "signature": "_parse_inbound(raw: dict[str, Any]) -> dict[str, Any]",
+          "docComment": "Decode JSON-string subfields of an inbound payload to nested dicts.\n\n    Non-destructive: the input ``raw`` is shallow-copied so callers that\n    cache the original (e.g. in tests) are not affected. Missing or empty\n    fields are tolerated.",
           "exports": []
         }
       ]
@@ -2624,6 +3019,8 @@
           "type": "function",
           "path": "app/xui/links.py",
           "line": 36,
+          "signature": "build_subscription_url(sub_id: str) -> str",
+          "docComment": "Return the public subscription URL for a client's ``subId``.\n\n    Joins ``settings.XUI_SUB_BASE_URL`` with ``sub_id`` while collapsing\n    duplicate slashes (the base URL may or may not have a trailing slash;\n    callers should not have to care).",
           "exports": [
             "build_subscription_url"
           ]
@@ -2634,6 +3031,8 @@
           "type": "function",
           "path": "app/xui/links.py",
           "line": 52,
+          "signature": "_find_client(inbound: dict[str, Any], client_uuid: str) -> dict[str, Any]",
+          "docComment": "Locate a client record inside ``inbound.settings.clients`` by uuid.",
           "exports": []
         },
         {
@@ -2642,6 +3041,8 @@
           "type": "function",
           "path": "app/xui/links.py",
           "line": 63,
+          "signature": "_stream_params(stream: dict[str, Any]) -> dict[str, str]",
+          "docComment": "Extract vless query params from ``streamSettings``.\n\n    Only includes keys whose value is non-empty; xray clients ignore them\n    anyway and the resulting URI looks cleaner.",
           "exports": []
         },
         {
@@ -2650,6 +3051,8 @@
           "type": "function",
           "path": "app/xui/links.py",
           "line": 179,
+          "signature": "build_vless_link(inbound: dict[str, Any], client_uuid: str, email: str) -> str",
+          "docComment": "Build a ``vless://`` URI from a parsed inbound + a client uuid.\n\n    Parameters\n    ----------\n    inbound\n        Inbound payload as returned by :func:`app.xui.inbounds.get_inbound`\n        (with ``settings`` / ``streamSettings`` already decoded).\n    client_uuid\n        Client UUID — used as both the userinfo of the URI and the lookup\n        key in ``settings.clients``.\n    email\n        Email/label of the client. Used for the URI fragment (``#email``)\n        so that xray-core clients can display a readable name.\n\n    The host is taken from :data:`app.config.settings.XUI_SERVER_HOST`\n    (not from the panel) because the panel often binds to ``0.0.0.0``\n    while the public DNS name lives elsewhere.",
           "exports": [
             "build_vless_link"
           ]
@@ -2660,6 +3063,8 @@
           "type": "function",
           "path": "app/xui/links.py",
           "line": 225,
+          "signature": "make_qr_png(text: str) -> bytes",
+          "docComment": "Render ``text`` as a QR code and return raw PNG bytes.\n\n    The bytes are ready to feed directly to ``aiogram``'s ``send_photo``\n    (or to write to disk). Uses :func:`qrcode.make` with library defaults\n    (auto-fit version, error-correction L, 10px box size).",
           "exports": [
             "make_qr_png"
           ]
@@ -2700,6 +3105,8 @@
           "type": "function",
           "path": "scripts/xui_smoke.py",
           "line": 47,
+          "signature": "_short(obj: Any, limit: int = 400) -> str",
+          "docComment": "Compact json.dumps for log lines, truncated to ``limit`` chars.",
           "exports": []
         },
         {
@@ -2708,6 +3115,7 @@
           "type": "function",
           "path": "scripts/xui_smoke.py",
           "line": 148,
+          "signature": "main() -> int",
           "exports": [
             "main"
           ]
@@ -2752,6 +3160,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 44,
+          "signature": "monkey_settings(monkeypatch: pytest.MonkeyPatch)",
+          "docComment": "Yield a callable that patches `app.config.settings` attributes.",
           "exports": [
             "monkey_settings"
           ]
@@ -2762,6 +3172,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 61,
+          "signature": "tmp_db_path(tmp_path)",
+          "docComment": "Return a path to a temporary, file-backed SQLite database.",
           "exports": [
             "tmp_db_path"
           ]
@@ -2772,6 +3184,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 115,
+          "signature": "make_user()",
+          "docComment": "Factory: insert a user row and return the :class:`User` dataclass.",
           "exports": [
             "make_user"
           ]
@@ -2782,6 +3196,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 139,
+          "signature": "make_plan()",
+          "docComment": "Factory: create a plan row, with at least one attached inbound.\n\n    Mirrors the production behaviour where every active plan has at least\n    one inbound (enforced by the migration backfill in\n    :func:`app.db.engine._apply_migrations`). Pass ``inbound_ids=None`` to\n    fall back to ``[settings.XUI_INBOUND_ID]``; pass an explicit list to\n    attach a custom set (use ``[]`` to skip attachment entirely, which is\n    only useful for negative-path tests).",
           "exports": [
             "make_plan"
           ]
@@ -2792,6 +3208,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 179,
+          "signature": "make_promo()",
+          "docComment": "Factory: create a promo row.",
           "exports": [
             "make_promo"
           ]
@@ -2802,6 +3220,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 207,
+          "signature": "make_subscription()",
+          "docComment": "Factory: create a subscription row.",
           "exports": [
             "make_subscription"
           ]
@@ -2812,6 +3232,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 244,
+          "signature": "mock_bot()",
+          "docComment": "Return an AsyncMock standing in for :class:`aiogram.Bot`.",
           "exports": [
             "mock_bot"
           ]
@@ -2822,6 +3244,8 @@
           "type": "function",
           "path": "tests/conftest.py",
           "line": 255,
+          "signature": "mock_xui_client()",
+          "docComment": "Return an AsyncMock with the XuiClient surface used by the codebase.",
           "exports": [
             "mock_xui_client"
           ]
@@ -2855,6 +3279,8 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 10,
+          "signature": "_fresh_settings(monkeypatch, **env)",
+          "docComment": "Build a fresh Settings() with given env vars (no global mutation).\n\n    We do NOT reload :mod:`app.config` so that the shared singleton used by\n    other tests is not perturbed. We construct a new :class:`Settings`\n    object directly.",
           "exports": []
         },
         {
@@ -2863,6 +3289,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 53,
+          "signature": "test_admin_ids_csv(monkeypatch)",
           "exports": [
             "test_admin_ids_csv"
           ]
@@ -2873,6 +3300,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 58,
+          "signature": "test_admin_ids_csv_with_spaces(monkeypatch)",
           "exports": [
             "test_admin_ids_csv_with_spaces"
           ]
@@ -2883,6 +3311,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 63,
+          "signature": "test_admin_ids_empty(monkeypatch)",
           "exports": [
             "test_admin_ids_empty"
           ]
@@ -2893,6 +3322,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 68,
+          "signature": "test_admin_ids_unset(monkeypatch)",
           "exports": [
             "test_admin_ids_unset"
           ]
@@ -2903,6 +3333,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 74,
+          "signature": "test_admin_ids_json_brackets(monkeypatch)",
           "exports": [
             "test_admin_ids_json_brackets"
           ]
@@ -2913,6 +3344,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 79,
+          "signature": "test_admin_ids_json_brackets_with_spaces(monkeypatch)",
           "exports": [
             "test_admin_ids_json_brackets_with_spaces"
           ]
@@ -2923,6 +3355,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 84,
+          "signature": "test_admin_ids_json_brackets_empty(monkeypatch)",
           "exports": [
             "test_admin_ids_json_brackets_empty"
           ]
@@ -2933,6 +3366,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 89,
+          "signature": "test_admin_ids_json_brackets_invalid_json(monkeypatch)",
           "exports": [
             "test_admin_ids_json_brackets_invalid_json"
           ]
@@ -2943,6 +3377,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 96,
+          "signature": "test_admin_ids_single(monkeypatch)",
           "exports": [
             "test_admin_ids_single"
           ]
@@ -2953,6 +3388,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 101,
+          "signature": "test_admin_ids_trailing_comma(monkeypatch)",
           "exports": [
             "test_admin_ids_trailing_comma"
           ]
@@ -2963,6 +3399,8 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 106,
+          "signature": "test_admin_ids_pre_parsed_list(monkeypatch)",
+          "docComment": "The validator must pass through real lists untouched.",
           "exports": [
             "test_admin_ids_pre_parsed_list"
           ]
@@ -2973,6 +3411,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 123,
+          "signature": "test_settings_defaults_present(monkeypatch)",
           "exports": [
             "test_settings_defaults_present"
           ]
@@ -2983,6 +3422,7 @@
           "type": "function",
           "path": "tests/test_config.py",
           "line": 130,
+          "signature": "test_settings_verify_ssl_false(monkeypatch)",
           "exports": [
             "test_settings_verify_ssl_false"
           ]
@@ -3034,6 +3474,7 @@
           "type": "function",
           "path": "tests/test_db_promos.py",
           "line": 14,
+          "signature": "_iso(dt: datetime) -> str",
           "exports": []
         }
       ]
@@ -3063,6 +3504,37 @@
       "children": []
     },
     {
+      "id": "tests/test_handlers_admin_broadcast.py",
+      "name": "test_handlers_admin_broadcast.py",
+      "type": "file",
+      "path": "tests/test_handlers_admin_broadcast.py",
+      "exports": [
+        "test_plural_endings"
+      ],
+      "children": [
+        {
+          "id": "tests/test_handlers_admin_broadcast.py:_state",
+          "name": "_state",
+          "type": "function",
+          "path": "tests/test_handlers_admin_broadcast.py",
+          "line": 12,
+          "signature": "_state(data=None)",
+          "exports": []
+        },
+        {
+          "id": "tests/test_handlers_admin_broadcast.py:test_plural_endings",
+          "name": "test_plural_endings",
+          "type": "function",
+          "path": "tests/test_handlers_admin_broadcast.py",
+          "line": 21,
+          "signature": "test_plural_endings()",
+          "exports": [
+            "test_plural_endings"
+          ]
+        }
+      ]
+    },
+    {
       "id": "tests/test_handlers_admin_plans.py",
       "name": "test_handlers_admin_plans.py",
       "type": "file",
@@ -3080,6 +3552,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 15,
+          "signature": "_state(data: dict | None = None)",
           "exports": []
         },
         {
@@ -3088,6 +3561,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 24,
+          "signature": "_stub_inbounds(*ids: int) -> list[InboundOption]",
+          "docComment": "Build an `InboundOption` list with the given ids.",
           "exports": []
         },
         {
@@ -3096,6 +3571,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 33,
+          "signature": "_clear_inbounds_cache()",
           "exports": []
         },
         {
@@ -3104,6 +3580,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 831,
+          "signature": "test_format_plan_with_remarks()",
+          "docComment": "Card body includes the «Подключения» line with resolved remarks.",
           "exports": [
             "test_format_plan_with_remarks"
           ]
@@ -3114,6 +3592,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 843,
+          "signature": "test_format_plan_with_missing_remark()",
+          "docComment": "An inbound id present on the plan but missing from the panel response is\n    rendered as ``id=NN (удалён)``.",
           "exports": [
             "test_format_plan_with_missing_remark"
           ]
@@ -3124,6 +3604,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 855,
+          "signature": "test_format_plan_no_inbound_remarks_arg()",
+          "docComment": "No remarks arg → the «Подключения» line is omitted entirely.",
           "exports": [
             "test_format_plan_no_inbound_remarks_arg"
           ]
@@ -3134,6 +3616,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_plans.py",
           "line": 865,
+          "signature": "test_format_plan_empty_remarks_dict()",
+          "docComment": "An empty remarks dict still renders the «не настроены» hint.",
           "exports": [
             "test_format_plan_empty_remarks_dict"
           ]
@@ -3161,6 +3645,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 13,
+          "signature": "_state(data=None)",
           "exports": []
         },
         {
@@ -3169,6 +3654,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 22,
+          "signature": "test_parse_expires_at_skip()",
           "exports": [
             "test_parse_expires_at_skip"
           ]
@@ -3179,6 +3665,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 31,
+          "signature": "test_parse_expires_at_invalid()",
           "exports": [
             "test_parse_expires_at_invalid"
           ]
@@ -3189,6 +3676,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 35,
+          "signature": "test_parse_expires_at_valid()",
           "exports": [
             "test_parse_expires_at_valid"
           ]
@@ -3199,6 +3687,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 41,
+          "signature": "test_promo_is_active()",
           "exports": [
             "test_promo_is_active"
           ]
@@ -3209,6 +3698,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 51,
+          "signature": "test_promo_is_active_past_expires()",
           "exports": [
             "test_promo_is_active_past_expires"
           ]
@@ -3219,6 +3709,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 531,
+          "signature": "test_expires_days_to_iso_zero_is_none()",
+          "docComment": "``_expires_days_to_iso(0)`` returns ``None`` (бессрочно).",
           "exports": [
             "test_expires_days_to_iso_zero_is_none"
           ]
@@ -3229,6 +3721,8 @@
           "type": "function",
           "path": "tests/test_handlers_admin_promos.py",
           "line": 536,
+          "signature": "test_expires_days_to_iso_positive_returns_iso()",
+          "docComment": "``_expires_days_to_iso(N)`` returns ISO string anchored at 23:59:59 UTC.",
           "exports": [
             "test_expires_days_to_iso_positive_returns_iso"
           ]
@@ -3247,7 +3741,9 @@
           "name": "_walk",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 61,
+          "line": 62,
+          "signature": "_walk(router: Router) -> Iterable[Router]",
+          "docComment": "Yield ``router`` and every router it (recursively) includes.",
           "exports": []
         },
         {
@@ -3255,7 +3751,9 @@
           "name": "_all_buttons",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 68,
+          "line": 69,
+          "signature": "_all_buttons(kb: InlineKeyboardMarkup) -> list[tuple[str, str]]",
+          "docComment": "Return ``(button_text, callback_data)`` for every button on ``kb``.\n\n    Skips URL / switch_inline buttons — only callback buttons can ever\n    be ambiguously unrouted.",
           "exports": []
         },
         {
@@ -3263,7 +3761,8 @@
           "name": "_sample_plan",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 116,
+          "line": 117,
+          "signature": "_sample_plan(plan_id: int = 7, *, is_active: bool = True) -> Plan",
           "exports": []
         },
         {
@@ -3271,7 +3770,8 @@
           "name": "_sample_promo",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 128,
+          "line": 129,
+          "signature": "_sample_promo(promo_id: int = 3) -> Promo",
           "exports": []
         },
         {
@@ -3279,7 +3779,9 @@
           "name": "_sample_inbound_options",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 142,
+          "line": 143,
+          "signature": "_sample_inbound_options() -> list[InboundOption]",
+          "docComment": "Two-inbound mix exercising both selected and deselected branches.",
           "exports": []
         },
         {
@@ -3287,7 +3789,9 @@
           "name": "_all_admin_keyboards",
           "type": "function",
           "path": "tests/test_handlers_admin_routing.py",
-          "line": 150,
+          "line": 151,
+          "signature": "_all_admin_keyboards() -> list[tuple[str, InlineKeyboardMarkup, str | None]]",
+          "docComment": "Every admin keyboard variant the bot can render, with the FSM state\n    each one is shown under (or ``None`` for stateless screens).\n\n    Each tuple is ``(pytest_id, keyboard, raw_state)``.",
           "exports": []
         }
       ]
@@ -3317,6 +3821,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_users.py",
           "line": 14,
+          "signature": "_state(data=None)",
           "exports": []
         },
         {
@@ -3325,6 +3830,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_users.py",
           "line": 23,
+          "signature": "test_safe_escapes_html()",
           "exports": [
             "test_safe_escapes_html"
           ]
@@ -3335,6 +3841,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_users.py",
           "line": 28,
+          "signature": "test_format_payment_basic()",
           "exports": [
             "test_format_payment_basic"
           ]
@@ -3345,6 +3852,7 @@
           "type": "function",
           "path": "tests/test_handlers_admin_users.py",
           "line": 42,
+          "signature": "test_format_payment_refunded()",
           "exports": [
             "test_format_payment_refunded"
           ]
@@ -3366,6 +3874,8 @@
           "type": "function",
           "path": "tests/test_handlers_init.py",
           "line": 10,
+          "signature": "test_register_routers_attaches_to_dispatcher()",
+          "docComment": "register_routers must include the start router and admin/user trees.",
           "exports": [
             "test_register_routers_attaches_to_dispatcher"
           ]
@@ -3385,6 +3895,7 @@
           "type": "function",
           "path": "tests/test_handlers_start.py",
           "line": 13,
+          "signature": "_user(*, is_admin: bool, user_id: int = 1, tg_id: int = 1) -> User",
           "exports": []
         }
       ]
@@ -3405,6 +3916,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 18,
+          "signature": "_user(user_id=1, tg_id=1, is_admin=False)",
           "exports": []
         },
         {
@@ -3413,6 +3925,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 25,
+          "signature": "_state(data: dict | None = None)",
+          "docComment": "Build a mock FSMContext, optionally pre-seeded with state data.",
           "exports": []
         },
         {
@@ -3421,6 +3935,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 35,
+          "signature": "_stub_inbounds(*ids: int) -> list[InboundOption]",
+          "docComment": "Build an `InboundOption` list with the given ids (remarks autogenerated).",
           "exports": []
         },
         {
@@ -3429,6 +3945,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 44,
+          "signature": "_clear_inbounds_cache()",
+          "docComment": "Drop the inbounds service cache between tests to avoid leakage.",
           "exports": []
         },
         {
@@ -3437,6 +3955,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 851,
+          "signature": "_make_sub_obj(sub_id: int = 7, user_id: int = 1, inbound_id: int = 1)",
+          "docComment": "Build an in-memory Subscription stand-in for _format_confirm tests.",
           "exports": []
         },
         {
@@ -3445,6 +3965,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 869,
+          "signature": "test_format_confirm_renders_extending_card()",
+          "docComment": "extending_sub set → card uses '🔄 Продление подписки #N' header and shows new expiry.",
           "exports": [
             "test_format_confirm_renders_extending_card"
           ]
@@ -3455,6 +3977,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_buy.py",
           "line": 887,
+          "signature": "test_format_confirm_renders_new_card()",
+          "docComment": "extending_sub=None → card uses '🆕 Новая подписка' header.",
           "exports": [
             "test_format_confirm_renders_new_card"
           ]
@@ -3474,6 +3998,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_menu.py",
           "line": 14,
+          "signature": "_state()",
           "exports": []
         }
       ]
@@ -3506,6 +4031,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 35,
+          "signature": "test_format_bytes_zero()",
           "exports": [
             "test_format_bytes_zero"
           ]
@@ -3516,6 +4042,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 39,
+          "signature": "test_format_bytes_kb()",
           "exports": [
             "test_format_bytes_kb"
           ]
@@ -3526,6 +4053,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 43,
+          "signature": "test_format_bytes_gb()",
           "exports": [
             "test_format_bytes_gb"
           ]
@@ -3536,6 +4064,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 47,
+          "signature": "test_format_bytes_negative_clamped()",
           "exports": [
             "test_format_bytes_negative_clamped"
           ]
@@ -3546,6 +4075,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 51,
+          "signature": "test_parse_iso_with_space()",
           "exports": [
             "test_parse_iso_with_space"
           ]
@@ -3556,6 +4086,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 56,
+          "signature": "test_days_delta_future()",
           "exports": [
             "test_days_delta_future"
           ]
@@ -3566,6 +4097,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 61,
+          "signature": "test_days_delta_past()",
           "exports": [
             "test_days_delta_past"
           ]
@@ -3576,6 +4108,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 66,
+          "signature": "test_pluralize_subs_one()",
           "exports": [
             "test_pluralize_subs_one"
           ]
@@ -3586,6 +4119,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 70,
+          "signature": "test_pluralize_subs_few()",
           "exports": [
             "test_pluralize_subs_few"
           ]
@@ -3596,6 +4130,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 75,
+          "signature": "test_pluralize_subs_many()",
           "exports": [
             "test_pluralize_subs_many"
           ]
@@ -3606,6 +4141,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 86,
+          "signature": "_kb_buttons(markup) -> list[list[tuple[str, str]]]",
+          "docComment": "Return ``[[(text, callback_data), ...], ...]`` for one ``InlineKeyboardMarkup``.",
           "exports": []
         },
         {
@@ -3614,6 +4151,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 94,
+          "signature": "_flat_buttons(markup) -> list[tuple[str, str]]",
+          "docComment": "Return a flat list of ``(text, callback_data)`` across all rows.",
           "exports": []
         },
         {
@@ -3622,6 +4161,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 103,
+          "signature": "_mock_callback() -> MagicMock",
           "exports": []
         },
         {
@@ -3630,6 +4170,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 570,
+          "signature": "test_format_status_lines()",
           "exports": [
             "test_format_status_lines"
           ]
@@ -3640,6 +4181,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 597,
+          "signature": "test_format_days_line_today()",
           "exports": [
             "test_format_days_line_today"
           ]
@@ -3650,6 +4192,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 610,
+          "signature": "test_format_days_line_yesterday()",
           "exports": [
             "test_format_days_line_yesterday"
           ]
@@ -3660,6 +4203,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 712,
+          "signature": "_make_sub(sub_id: int, *, expires_at: datetime, status: str = \"active\",",
           "exports": []
         },
         {
@@ -3668,6 +4212,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_my_subscription.py",
           "line": 725,
+          "signature": "test_sort_subs_active_then_inactive()",
           "exports": [
             "test_sort_subs_active_then_inactive"
           ]
@@ -3699,6 +4244,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_promo.py",
           "line": 26,
+          "signature": "_state(data: dict | None = None)",
           "exports": []
         },
         {
@@ -3707,6 +4253,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_promo.py",
           "line": 35,
+          "signature": "_stub_inbounds(*ids: int) -> list[InboundOption]",
           "exports": []
         },
         {
@@ -3715,6 +4262,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_promo.py",
           "line": 43,
+          "signature": "_clear_inbounds_cache()",
           "exports": []
         }
       ]
@@ -3732,6 +4280,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_routing.py",
           "line": 56,
+          "signature": "_walk(router: Router) -> Iterable[Router]",
+          "docComment": "Yield ``router`` and every router it (recursively) includes.",
           "exports": []
         },
         {
@@ -3740,6 +4290,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_routing.py",
           "line": 63,
+          "signature": "_all_buttons(kb: InlineKeyboardMarkup) -> list[tuple[str, str]]",
+          "docComment": "Return ``(button_text, callback_data)`` for every callback button.\n\n    URL / switch_inline buttons are skipped — they cannot be \"unrouted\",\n    so they are out of scope for this test.",
           "exports": []
         },
         {
@@ -3748,6 +4300,7 @@
           "type": "function",
           "path": "tests/test_handlers_user_routing.py",
           "line": 111,
+          "signature": "_sample_plan(plan_id: int = 7) -> Plan",
           "exports": []
         },
         {
@@ -3756,6 +4309,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_routing.py",
           "line": 123,
+          "signature": "_sample_inbound_options() -> list[InboundOption]",
+          "docComment": "Two inbounds — enough to exercise every button on the select keyboard.",
           "exports": []
         },
         {
@@ -3764,6 +4319,8 @@
           "type": "function",
           "path": "tests/test_handlers_user_routing.py",
           "line": 131,
+          "signature": "_all_user_keyboards() -> list[tuple[str, InlineKeyboardMarkup, str | None]]",
+          "docComment": "Every user-facing keyboard variant the bot can render, paired with\n    the FSM state each one is shown under (or ``None`` for stateless\n    screens).\n\n    Each tuple is ``(pytest_id, keyboard, raw_state)``.",
           "exports": []
         }
       ]
@@ -3781,6 +4338,7 @@
           "type": "function",
           "path": "tests/test_keys_helper.py",
           "line": 14,
+          "signature": "_sub(sub_id=1, xui_sub_id=\"subid\", uuid=\"u\", email=\"e\")",
           "exports": []
         }
       ]
@@ -3803,6 +4361,7 @@
           "type": "function",
           "path": "tests/test_logger.py",
           "line": 12,
+          "signature": "test_setup_logging_runs_without_error()",
           "exports": [
             "test_setup_logging_runs_without_error"
           ]
@@ -3813,6 +4372,7 @@
           "type": "function",
           "path": "tests/test_logger.py",
           "line": 19,
+          "signature": "test_setup_logging_default_level()",
           "exports": [
             "test_setup_logging_default_level"
           ]
@@ -3823,6 +4383,7 @@
           "type": "function",
           "path": "tests/test_logger.py",
           "line": 24,
+          "signature": "test_intercept_handler_emit_known_level()",
           "exports": [
             "test_intercept_handler_emit_known_level"
           ]
@@ -3833,6 +4394,8 @@
           "type": "function",
           "path": "tests/test_logger.py",
           "line": 34,
+          "signature": "test_intercept_handler_emit_unknown_level()",
+          "docComment": "An unknown level name falls back to numeric level.",
           "exports": [
             "test_intercept_handler_emit_unknown_level"
           ]
@@ -3856,6 +4419,7 @@
           "type": "function",
           "path": "tests/test_middlewares.py",
           "line": 16,
+          "signature": "_domain_user(*, is_admin: bool, user_id: int = 1, tg_id: int = 1) -> User",
           "exports": []
         },
         {
@@ -3864,6 +4428,7 @@
           "type": "function",
           "path": "tests/test_middlewares.py",
           "line": 85,
+          "signature": "test_extract_tg_user_from_message()",
           "exports": [
             "test_extract_tg_user_from_message"
           ]
@@ -3874,6 +4439,7 @@
           "type": "function",
           "path": "tests/test_middlewares.py",
           "line": 111,
+          "signature": "test_extract_tg_user_returns_none_for_empty_update()",
           "exports": [
             "test_extract_tg_user_returns_none_for_empty_update"
           ]
@@ -3884,6 +4450,8 @@
           "type": "function",
           "path": "tests/test_middlewares.py",
           "line": 132,
+          "signature": "test_extract_tg_user_fallback_for_direct_message()",
+          "docComment": "A test harness may pass a Message directly (no Update wrapper).",
           "exports": [
             "test_extract_tg_user_fallback_for_direct_message"
           ]
@@ -3909,6 +4477,7 @@
           "type": "function",
           "path": "tests/test_scheduler.py",
           "line": 22,
+          "signature": "test_kind_for_days_left_table()",
           "exports": [
             "test_kind_for_days_left_table"
           ]
@@ -3919,6 +4488,7 @@
           "type": "function",
           "path": "tests/test_scheduler.py",
           "line": 33,
+          "signature": "test_parse_iso_naive_assumed_utc()",
           "exports": [
             "test_parse_iso_naive_assumed_utc"
           ]
@@ -3929,6 +4499,7 @@
           "type": "function",
           "path": "tests/test_scheduler.py",
           "line": 38,
+          "signature": "test_parse_iso_aware()",
           "exports": [
             "test_parse_iso_aware"
           ]
@@ -3939,6 +4510,7 @@
           "type": "function",
           "path": "tests/test_scheduler.py",
           "line": 43,
+          "signature": "test_days_left()",
           "exports": [
             "test_days_left"
           ]
@@ -3949,6 +4521,7 @@
           "type": "function",
           "path": "tests/test_scheduler.py",
           "line": 50,
+          "signature": "test_setup_scheduler_registers_three_jobs()",
           "exports": [
             "test_setup_scheduler_registers_three_jobs"
           ]
@@ -3999,6 +4572,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 15,
+          "signature": "_plan(price=100, days=30, plan_id=1, active=True)",
           "exports": []
         },
         {
@@ -4007,6 +4581,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 27,
+          "signature": "_promo(promo_type, value, max_uses=0, expires_at=None, used_count=0, promo_id=1)",
           "exports": []
         },
         {
@@ -4015,6 +4590,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 41,
+          "signature": "test_calc_price_no_promo()",
           "exports": [
             "test_calc_price_no_promo"
           ]
@@ -4025,6 +4601,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 47,
+          "signature": "test_calc_price_percent_basic()",
           "exports": [
             "test_calc_price_percent_basic"
           ]
@@ -4035,6 +4612,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 53,
+          "signature": "test_calc_price_percent_ceiling()",
+          "docComment": "33% off 99 = 66.33 → ceil → 67.",
           "exports": [
             "test_calc_price_percent_ceiling"
           ]
@@ -4045,6 +4624,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 60,
+          "signature": "test_calc_price_percent_100_floors_to_one()",
           "exports": [
             "test_calc_price_percent_100_floors_to_one"
           ]
@@ -4055,6 +4635,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 65,
+          "signature": "test_calc_price_percent_clamped_high()",
+          "docComment": "value>100 is clamped to 100.",
           "exports": [
             "test_calc_price_percent_clamped_high"
           ]
@@ -4065,6 +4647,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 71,
+          "signature": "test_calc_price_percent_clamped_low()",
           "exports": [
             "test_calc_price_percent_clamped_low"
           ]
@@ -4075,6 +4658,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 76,
+          "signature": "test_calc_price_flat_stars()",
           "exports": [
             "test_calc_price_flat_stars"
           ]
@@ -4085,6 +4669,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 81,
+          "signature": "test_calc_price_flat_stars_exceeds_floor()",
           "exports": [
             "test_calc_price_flat_stars_exceeds_floor"
           ]
@@ -4095,6 +4680,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 86,
+          "signature": "test_calc_price_free_days_keeps_price()",
           "exports": [
             "test_calc_price_free_days_keeps_price"
           ]
@@ -4105,6 +4691,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 92,
+          "signature": "test_calc_price_free_days_negative_clamped()",
           "exports": [
             "test_calc_price_free_days_negative_clamped"
           ]
@@ -4115,6 +4702,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 97,
+          "signature": "test_calc_price_unknown_type_fallback()",
+          "docComment": "Promo with bogus type defaults to the plan price.",
           "exports": [
             "test_calc_price_unknown_type_fallback"
           ]
@@ -4125,6 +4714,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 103,
+          "signature": "test_calc_price_min_one_zero_priced_plan()",
+          "docComment": "A free plan with no promo also yields 1 (Stars min).",
           "exports": [
             "test_calc_price_min_one_zero_priced_plan"
           ]
@@ -4135,6 +4726,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 114,
+          "signature": "test_build_payload_encodes_correctly()",
           "exports": [
             "test_build_payload_encodes_correctly"
           ]
@@ -4145,6 +4737,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 123,
+          "signature": "test_build_payload_no_promo()",
           "exports": [
             "test_build_payload_no_promo"
           ]
@@ -4155,6 +4748,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 130,
+          "signature": "test_build_payload_promo_zero_treated_as_none()",
           "exports": [
             "test_build_payload_promo_zero_treated_as_none"
           ]
@@ -4165,6 +4759,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 136,
+          "signature": "test_parse_payload_basic()",
           "exports": [
             "test_parse_payload_basic"
           ]
@@ -4175,6 +4770,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 144,
+          "signature": "test_parse_payload_no_promo()",
           "exports": [
             "test_parse_payload_no_promo"
           ]
@@ -4185,6 +4781,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 151,
+          "signature": "test_parse_payload_zero_promo_id_becomes_none()",
+          "docComment": "An explicit ``r=0`` in the payload is normalised to None.",
           "exports": [
             "test_parse_payload_zero_promo_id_becomes_none"
           ]
@@ -4195,6 +4793,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 160,
+          "signature": "test_parse_payload_bad_json()",
           "exports": [
             "test_parse_payload_bad_json"
           ]
@@ -4205,6 +4804,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 165,
+          "signature": "test_parse_payload_not_object()",
           "exports": [
             "test_parse_payload_not_object"
           ]
@@ -4215,6 +4815,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 170,
+          "signature": "test_parse_payload_missing_plan_id()",
           "exports": [
             "test_parse_payload_missing_plan_id"
           ]
@@ -4225,6 +4826,7 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 175,
+          "signature": "test_parse_payload_bad_promo_id_type()",
           "exports": [
             "test_parse_payload_bad_promo_id_type"
           ]
@@ -4235,6 +4837,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 180,
+          "signature": "test_parse_payload_bad_inbound_id_type()",
+          "docComment": "An explicit inbound_id that is not coercible to int raises ValueError.",
           "exports": [
             "test_parse_payload_bad_inbound_id_type"
           ]
@@ -4245,6 +4849,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 189,
+          "signature": "test_parse_payload_legacy_long_keys()",
+          "docComment": "Old payloads with ``plan_id``/``promo_id`` long keys still parse.",
           "exports": [
             "test_parse_payload_legacy_long_keys"
           ]
@@ -4255,6 +4861,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 199,
+          "signature": "test_parse_payload_legacy_missing_inbound_falls_back()",
+          "docComment": "Any payload missing ``i`` falls back to settings.XUI_INBOUND_ID.",
           "exports": [
             "test_parse_payload_legacy_missing_inbound_falls_back"
           ]
@@ -4265,6 +4873,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 208,
+          "signature": "test_parse_payload_legacy_uses_patched_default(monkey_settings)",
+          "docComment": "The fallback honours the *current* settings.XUI_INBOUND_ID value.",
           "exports": [
             "test_parse_payload_legacy_uses_patched_default"
           ]
@@ -4275,6 +4885,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 221,
+          "signature": "test_payload_byte_limit_guard(monkeypatch)",
+          "docComment": "An impossibly large payload is rejected if it exceeds 128 bytes.",
           "exports": [
             "test_payload_byte_limit_guard"
           ]
@@ -4285,6 +4897,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 228,
+          "signature": "test_payload_fits_in_128_bytes_for_large_ids()",
+          "docComment": "Realistic large ids (10 digits each) still fit in the 128-byte budget.",
           "exports": [
             "test_payload_fits_in_128_bytes_for_large_ids"
           ]
@@ -4295,6 +4909,8 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 317,
+          "signature": "test_billing_payload_roundtrip_with_sub_id()",
+          "docComment": "build → parse round-trips sub_id>0 and omits 's' when sub_id=0.",
           "exports": [
             "test_billing_payload_roundtrip_with_sub_id"
           ]
@@ -4305,9 +4921,38 @@
           "type": "function",
           "path": "tests/test_services_billing.py",
           "line": 339,
+          "signature": "test_billing_payload_legacy_without_s_returns_zero()",
+          "docComment": "Hand-crafted legacy payloads with no 's' key parse as sub_id=0.",
           "exports": [
             "test_billing_payload_legacy_without_s_returns_zero"
           ]
+        }
+      ]
+    },
+    {
+      "id": "tests/test_services_broadcast.py",
+      "name": "test_services_broadcast.py",
+      "type": "file",
+      "path": "tests/test_services_broadcast.py",
+      "exports": [],
+      "children": [
+        {
+          "id": "tests/test_services_broadcast.py:_forbidden",
+          "name": "_forbidden",
+          "type": "function",
+          "path": "tests/test_services_broadcast.py",
+          "line": 13,
+          "signature": "_forbidden() -> TelegramForbiddenError",
+          "exports": []
+        },
+        {
+          "id": "tests/test_services_broadcast.py:_retry_after",
+          "name": "_retry_after",
+          "type": "function",
+          "path": "tests/test_services_broadcast.py",
+          "line": 20,
+          "signature": "_retry_after(seconds: int) -> TelegramRetryAfter",
+          "exports": []
         }
       ]
     },
@@ -4324,6 +4969,8 @@
           "type": "function",
           "path": "tests/test_services_inbounds.py",
           "line": 28,
+          "signature": "_reset_cache()",
+          "docComment": "Drop the module-level cache before AND after each test.\n\n    The cache is process-global so leaks between tests would otherwise\n    produce flaky behaviour depending on test ordering.",
           "exports": []
         },
         {
@@ -4332,6 +4979,7 @@
           "type": "function",
           "path": "tests/test_services_inbounds.py",
           "line": 39,
+          "signature": "_make_panel_inbound(",
           "exports": []
         }
       ]
@@ -4353,6 +5001,7 @@
           "type": "function",
           "path": "tests/test_services_promos.py",
           "line": 14,
+          "signature": "_plan(price=100, days=30, plan_id=1)",
           "exports": []
         },
         {
@@ -4361,6 +5010,7 @@
           "type": "function",
           "path": "tests/test_services_promos.py",
           "line": 89,
+          "signature": "test_compute_discount_no_promo()",
           "exports": [
             "test_compute_discount_no_promo"
           ]
@@ -4371,6 +5021,7 @@
           "type": "function",
           "path": "tests/test_services_promos.py",
           "line": 95,
+          "signature": "test_compute_discount_percent()",
           "exports": [
             "test_compute_discount_percent"
           ]
@@ -4381,6 +5032,7 @@
           "type": "function",
           "path": "tests/test_services_promos.py",
           "line": 113,
+          "signature": "test_compute_discount_unknown_type_fallback()",
           "exports": [
             "test_compute_discount_unknown_type_fallback"
           ]
@@ -4409,11 +5061,22 @@
       ],
       "children": [
         {
+          "id": "tests/test_services_subscriptions.py:_xui_dispatch",
+          "name": "_xui_dispatch",
+          "type": "function",
+          "path": "tests/test_services_subscriptions.py",
+          "line": 16,
+          "signature": "_xui_dispatch(client_obj=None)",
+          "docComment": "``request_json`` side_effect: client for clients/get, None for mutations.\n\n    The new panel's ``update_client`` does a read-merge-write, so any test\n    that drives the extend / revoke path must let the ``clients/get/:email``\n    lookup return a client object instead of ``None``.",
+          "exports": []
+        },
+        {
           "id": "tests/test_services_subscriptions.py:_plan",
           "name": "_plan",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 16,
+          "line": 41,
+          "signature": "_plan(price=100, days=30, plan_id=1)",
           "exports": []
         },
         {
@@ -4421,7 +5084,8 @@
           "name": "_promo",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 28,
+          "line": 53,
+          "signature": "_promo(promo_type=\"free_days\", value=5, promo_id=1)",
           "exports": []
         },
         {
@@ -4429,7 +5093,8 @@
           "name": "test_expiry_ms_naive_converted_to_utc",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 42,
+          "line": 67,
+          "signature": "test_expiry_ms_naive_converted_to_utc()",
           "exports": [
             "test_expiry_ms_naive_converted_to_utc"
           ]
@@ -4439,7 +5104,8 @@
           "name": "test_parse_iso_t_separator",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 50,
+          "line": 75,
+          "signature": "test_parse_iso_t_separator()",
           "exports": [
             "test_parse_iso_t_separator"
           ]
@@ -4449,7 +5115,8 @@
           "name": "test_parse_iso_space_separator",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 57,
+          "line": 82,
+          "signature": "test_parse_iso_space_separator()",
           "exports": [
             "test_parse_iso_space_separator"
           ]
@@ -4459,7 +5126,8 @@
           "name": "test_parse_iso_with_microseconds_fallback",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 64,
+          "line": 89,
+          "signature": "test_parse_iso_with_microseconds_fallback()",
           "exports": [
             "test_parse_iso_with_microseconds_fallback"
           ]
@@ -4469,7 +5137,8 @@
           "name": "test_bonus_days",
           "type": "function",
           "path": "tests/test_services_subscriptions.py",
-          "line": 72,
+          "line": 97,
+          "signature": "test_bonus_days()",
           "exports": [
             "test_bonus_days"
           ]
@@ -4482,7 +5151,18 @@
       "type": "file",
       "path": "tests/test_xui_client.py",
       "exports": [],
-      "children": []
+      "children": [
+        {
+          "id": "tests/test_xui_client.py:_csrf_bootstrap",
+          "name": "_csrf_bootstrap",
+          "type": "function",
+          "path": "tests/test_xui_client.py",
+          "line": 14,
+          "signature": "_csrf_bootstrap(httpx_mock)",
+          "docComment": "Stub the CSRF bootstrap GET that ``login()`` now performs first.\n\n    Every ``login()`` GETs the panel root to read the\n    ``<meta name=\"csrf-token\">`` token before posting credentials. Register\n    a reusable, optional stub so individual login/relogin tests don't have\n    to spell it out (``is_optional`` keeps tests that never log in — e.g.\n    the singleton test — from failing the \"all responses requested\" check).",
+          "exports": []
+        }
+      ]
     },
     {
       "id": "tests/test_xui_clients.py",
@@ -4502,11 +5182,22 @@
       ],
       "children": [
         {
+          "id": "tests/test_xui_clients.py:_request_json_for",
+          "name": "_request_json_for",
+          "type": "function",
+          "path": "tests/test_xui_clients.py",
+          "line": 21,
+          "signature": "_request_json_for(current: dict)",
+          "docComment": "Build an AsyncMock side_effect for ``client.request_json``.\n\n    Returns the wrapped ``current`` client for ``clients/get/...`` paths\n    (mirroring the panel envelope ``{\"client\": {...}, \"inboundIds\": [...]}``)\n    and ``None`` for the subsequent mutating call.",
+          "exports": []
+        },
+        {
           "id": "tests/test_xui_clients.py:test_make_client_uuid_unique",
           "name": "test_make_client_uuid_unique",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 21,
+          "line": 37,
+          "signature": "test_make_client_uuid_unique()",
           "exports": [
             "test_make_client_uuid_unique"
           ]
@@ -4516,7 +5207,8 @@
           "name": "test_make_client_email_contains_tg_id",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 29,
+          "line": 45,
+          "signature": "test_make_client_email_contains_tg_id()",
           "exports": [
             "test_make_client_email_contains_tg_id"
           ]
@@ -4526,7 +5218,9 @@
           "name": "test_make_client_email_no_username_legacy_shape",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 35,
+          "line": 51,
+          "signature": "test_make_client_email_no_username_legacy_shape()",
+          "docComment": "Without a username the legacy ``tg_<id>_<hex>`` shape is preserved.",
           "exports": [
             "test_make_client_email_no_username_legacy_shape"
           ]
@@ -4536,7 +5230,8 @@
           "name": "test_make_client_email_with_plain_username",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 43,
+          "line": 59,
+          "signature": "test_make_client_email_with_plain_username()",
           "exports": [
             "test_make_client_email_with_plain_username"
           ]
@@ -4546,7 +5241,9 @@
           "name": "test_make_client_email_normalises_special_chars",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 50,
+          "line": 66,
+          "signature": "test_make_client_email_normalises_special_chars()",
+          "docComment": "Dots, dashes and spaces collapse into underscores.",
           "exports": [
             "test_make_client_email_normalises_special_chars"
           ]
@@ -4556,7 +5253,9 @@
           "name": "test_make_client_email_truncates_long_username",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 56,
+          "line": 72,
+          "signature": "test_make_client_email_truncates_long_username()",
+          "docComment": "The slug portion is capped at 32 chars.",
           "exports": [
             "test_make_client_email_truncates_long_username"
           ]
@@ -4566,7 +5265,9 @@
           "name": "test_make_client_email_all_special_falls_back",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 66,
+          "line": 82,
+          "signature": "test_make_client_email_all_special_falls_back()",
+          "docComment": "A username made entirely of special chars normalises to empty\n    after the trim, so the helper falls back to the legacy shape.",
           "exports": [
             "test_make_client_email_all_special_falls_back"
           ]
@@ -4576,7 +5277,8 @@
           "name": "test_make_client_email_lowercases_username",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 75,
+          "line": 91,
+          "signature": "test_make_client_email_lowercases_username()",
           "exports": [
             "test_make_client_email_lowercases_username"
           ]
@@ -4586,7 +5288,9 @@
           "name": "test_make_client_email_empty_username_falls_back",
           "type": "function",
           "path": "tests/test_xui_clients.py",
-          "line": 83,
+          "line": 99,
+          "signature": "test_make_client_email_empty_username_falls_back()",
+          "docComment": "An empty-string username is treated the same as None.",
           "exports": [
             "test_make_client_email_empty_username_falls_back"
           ]
@@ -4610,6 +5314,7 @@
           "type": "function",
           "path": "tests/test_xui_inbounds.py",
           "line": 14,
+          "signature": "test_parse_inbound_decodes_json_string_fields()",
           "exports": [
             "test_parse_inbound_decodes_json_string_fields"
           ]
@@ -4620,6 +5325,7 @@
           "type": "function",
           "path": "tests/test_xui_inbounds.py",
           "line": 30,
+          "signature": "test_parse_inbound_leaves_malformed_json_alone()",
           "exports": [
             "test_parse_inbound_leaves_malformed_json_alone"
           ]
@@ -4630,6 +5336,7 @@
           "type": "function",
           "path": "tests/test_xui_inbounds.py",
           "line": 36,
+          "signature": "test_parse_inbound_handles_already_dict()",
           "exports": [
             "test_parse_inbound_handles_already_dict"
           ]
@@ -4667,6 +5374,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 10,
+          "signature": "test_make_qr_png_returns_png(monkey_settings)",
           "exports": [
             "test_make_qr_png_returns_png"
           ]
@@ -4677,6 +5385,8 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 17,
+          "signature": "test_make_qr_png_long_payload()",
+          "docComment": "A long payload still encodes successfully.",
           "exports": [
             "test_make_qr_png_long_payload"
           ]
@@ -4687,6 +5397,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 24,
+          "signature": "test_build_subscription_url_normalises_slashes(monkey_settings)",
           "exports": [
             "test_build_subscription_url_normalises_slashes"
           ]
@@ -4697,6 +5408,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 30,
+          "signature": "test_build_subscription_url_no_trailing(monkey_settings)",
           "exports": [
             "test_build_subscription_url_no_trailing"
           ]
@@ -4707,6 +5419,8 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 35,
+          "signature": "_inbound(stream=None, port=8443, clients=None, network=\"tcp\", security=\"reality\")",
+          "docComment": "Build a parsed inbound dict for tests.",
           "exports": []
         },
         {
@@ -4715,6 +5429,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 47,
+          "signature": "test_build_vless_link_tcp_reality(monkey_settings)",
           "exports": [
             "test_build_vless_link_tcp_reality"
           ]
@@ -4725,6 +5440,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 72,
+          "signature": "test_build_vless_link_ws_tls(monkey_settings)",
           "exports": [
             "test_build_vless_link_ws_tls"
           ]
@@ -4735,6 +5451,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 95,
+          "signature": "test_build_vless_link_grpc(monkey_settings)",
           "exports": [
             "test_build_vless_link_grpc"
           ]
@@ -4745,6 +5462,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 108,
+          "signature": "test_build_vless_link_http(monkey_settings)",
           "exports": [
             "test_build_vless_link_http"
           ]
@@ -4755,6 +5473,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 121,
+          "signature": "test_build_vless_link_http_host_str(monkey_settings)",
           "exports": [
             "test_build_vless_link_http_host_str"
           ]
@@ -4765,6 +5484,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 132,
+          "signature": "test_build_vless_link_kcp(monkey_settings)",
           "exports": [
             "test_build_vless_link_kcp"
           ]
@@ -4775,6 +5495,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 145,
+          "signature": "test_build_vless_link_quic(monkey_settings)",
           "exports": [
             "test_build_vless_link_quic"
           ]
@@ -4785,6 +5506,8 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 158,
+          "signature": "test_build_vless_link_no_security(monkey_settings)",
+          "docComment": "Plain TCP without security still produces a vless URI.",
           "exports": [
             "test_build_vless_link_no_security"
           ]
@@ -4795,6 +5518,8 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 167,
+          "signature": "test_build_vless_link_no_stream_settings(monkey_settings)",
+          "docComment": "An inbound missing streamSettings degrades gracefully.",
           "exports": [
             "test_build_vless_link_no_stream_settings"
           ]
@@ -4805,6 +5530,8 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 174,
+          "signature": "test_build_vless_link_bad_stream_settings_type(monkey_settings)",
+          "docComment": "If streamSettings is not a dict the helper falls back to defaults.",
           "exports": [
             "test_build_vless_link_bad_stream_settings_type"
           ]
@@ -4815,6 +5542,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 182,
+          "signature": "test_build_vless_link_tcp_with_header_path_host(monkey_settings)",
           "exports": [
             "test_build_vless_link_tcp_with_header_path_host"
           ]
@@ -4825,6 +5553,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 203,
+          "signature": "test_build_vless_link_tcp_with_string_host(monkey_settings)",
           "exports": [
             "test_build_vless_link_tcp_with_string_host"
           ]
@@ -4835,6 +5564,7 @@
           "type": "function",
           "path": "tests/test_xui_links.py",
           "line": 219,
+          "signature": "test_build_vless_link_reality_with_serverName_singular(monkey_settings)",
           "exports": [
             "test_build_vless_link_reality_with_serverName_singular"
           ]

@@ -4,8 +4,15 @@ The 3x-ui panel authenticates with a session cookie returned from ``POST /login`
 This module wraps :class:`httpx.AsyncClient` with:
 
 - Automatic login on first call.
-- Transparent re-login on ``401`` or on JSON envelopes whose ``msg`` field
-  hints at an expired session (e.g. ``"login"``).
+- **CSRF bootstrap**: newer 3x-ui (the React-rewrite major version) embeds a
+  per-session CSRF token in a ``<meta name="csrf-token">`` tag on the panel
+  root page and rejects ``POST /login`` (and every mutating API call) with
+  HTTP ``403`` unless the token is echoed in the ``X-CSRF-Token`` header.
+  :meth:`XuiClient.login` first GETs the root to grab the token + session
+  cookie, then sends it on login and on every subsequent request. Older
+  panels have no such tag — a missing token is tolerated (cookie-only flow).
+- Transparent re-login on ``401`` / ``403`` or on JSON envelopes whose ``msg``
+  field hints at an expired session (e.g. ``"login"``).
 - Uniform response parsing: 3x-ui returns ``{success, msg, obj}`` envelopes;
   :meth:`XuiClient.request_json` unwraps ``obj`` or raises :class:`XuiError`.
 
@@ -23,12 +30,22 @@ The module also exposes a process-wide singleton via
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 import httpx
 from loguru import logger
 
 from app.config import settings
+
+# Matches the per-session CSRF token the panel embeds in the root HTML:
+#   <meta name="csrf-token" content="...">
+# Tolerant of attribute order / whitespace; searches raw bytes so we never
+# force a full-body decode of the (potentially large) HTML page.
+_CSRF_META_RE = re.compile(
+    rb"""<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']""",
+    re.IGNORECASE,
+)
 
 # Reasonable defaults for the panel — it lives in the same VPC most of the time
 # but we still want a hard ceiling so a hung backend cannot stall the bot.
@@ -74,6 +91,7 @@ class XuiClient:
         )
         self._login_lock = asyncio.Lock()
         self._logged_in = False
+        self._csrf_token: str | None = None
 
     # ------------------------------------------------------------------ #
     # Lifecycle
@@ -91,19 +109,55 @@ class XuiClient:
     # ------------------------------------------------------------------ #
     # Auth
     # ------------------------------------------------------------------ #
+    async def _bootstrap_session(self) -> None:
+        """GET the panel root to capture the session cookie + CSRF token.
+
+        Stores the ``<meta name="csrf-token">`` value (if present) on
+        ``self._csrf_token`` so :meth:`login` and :meth:`request` can echo
+        it in the ``X-CSRF-Token`` header. Older panels without the tag
+        leave the token ``None`` and the cookie-only flow still works.
+
+        A bootstrap transport failure is fatal (we cannot reach the panel
+        at all); a missing token is not (older panels).
+        """
+        try:
+            resp = await self._http.get("/")
+        except httpx.HTTPError as exc:  # network / TLS failure
+            raise XuiError(f"csrf bootstrap transport error: {exc!s}") from exc
+
+        token: str | None = None
+        match = _CSRF_META_RE.search(resp.content)
+        if match:
+            token = match.group(1).decode("ascii", "ignore") or None
+        self._csrf_token = token
+        logger.debug(
+            "xui: csrf bootstrap — {}", "token captured" if token else "no token (legacy panel)"
+        )
+
+    def _csrf_headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
+        """Merge the CSRF header (when known) into ``extra`` headers."""
+        headers = dict(extra or {})
+        if self._csrf_token:
+            headers.setdefault("X-CSRF-Token", self._csrf_token)
+        return headers
+
     async def login(self) -> None:
         """Perform ``POST /login`` and store the session cookie on the client.
 
         Serialised through ``_login_lock`` so concurrent callers wait for a
-        single round-trip. Raises :class:`XuiError` if the panel rejects
-        the credentials or returns an unexpected payload.
+        single round-trip. Bootstraps the CSRF token first (see
+        :meth:`_bootstrap_session`) and echoes it in the ``X-CSRF-Token``
+        header. Raises :class:`XuiError` if the panel rejects the
+        credentials or returns an unexpected payload.
         """
         async with self._login_lock:
             logger.debug("xui: logging in as {}", self._username)
+            await self._bootstrap_session()
             try:
                 resp = await self._http.post(
                     "/login",
                     data={"username": self._username, "password": self._password},
+                    headers=self._csrf_headers(),
                 )
             except httpx.HTTPError as exc:  # network / TLS failure
                 raise XuiError(f"login transport error: {exc!s}") from exc
@@ -154,13 +208,20 @@ class XuiClient:
         if not self._logged_in:
             await self.login()
 
-        resp = await self._http.request(method, path, **kwargs)
+        caller_headers = kwargs.pop("headers", None)
+        resp = await self._http.request(
+            method, path, headers=self._csrf_headers(caller_headers), **kwargs
+        )
 
         if self._needs_relogin(resp):
             logger.info("xui: session expired on {} {} — re-logging in", method, path)
             self._logged_in = False
             await self.login()
-            resp = await self._http.request(method, path, **kwargs)
+            # Rebuild from the caller's headers so the freshly-bootstrapped
+            # CSRF token replaces the stale one rather than being skipped.
+            resp = await self._http.request(
+                method, path, headers=self._csrf_headers(caller_headers), **kwargs
+            )
 
         return resp
 
@@ -185,8 +246,14 @@ class XuiClient:
     # ------------------------------------------------------------------ #
     @staticmethod
     def _needs_relogin(resp: httpx.Response) -> bool:
-        """Detect whether a response indicates a lost / invalid session."""
-        if resp.status_code == 401:
+        """Detect whether a response indicates a lost / invalid session.
+
+        ``401`` is the classic expired-cookie signal. ``403`` is added for
+        the new panel: a stale / missing CSRF token (e.g. after the session
+        rotated) is rejected with ``403`` — re-login re-bootstraps a fresh
+        token, so a single retry recovers transparently.
+        """
+        if resp.status_code in (401, 403):
             return True
         # 3x-ui sometimes returns 200 with success=false and a "please login"
         # style message when the cookie is missing or invalid. Detect that

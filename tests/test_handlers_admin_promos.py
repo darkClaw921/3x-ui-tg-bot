@@ -350,7 +350,7 @@ async def test_cb_promo_preset_value_percent(file_db):
     """Value preset (percent type) writes ``value`` and moves to max_uses."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state({"type": "percent"})
     await promos_mod.cb_promo_preset(
@@ -358,14 +358,14 @@ async def test_cb_promo_preset_value_percent(file_db):
     )
     state.update_data.assert_awaited_with(value=10)
     state.set_state.assert_awaited()
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_promo_preset_value_flat_stars(file_db):
     """Value preset (flat_stars type) writes ``value`` regardless of type."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state({"type": "flat_stars"})
     await promos_mod.cb_promo_preset(
@@ -379,7 +379,7 @@ async def test_cb_promo_preset_value_free_days(file_db):
     """Value preset (free_days type) writes ``value`` regardless of type."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state({"type": "free_days"})
     await promos_mod.cb_promo_preset(
@@ -393,7 +393,7 @@ async def test_cb_promo_preset_max_uses_zero_unlimited(file_db):
     """max_uses preset id=0 writes 0 (unlimited) and moves to expires."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state({"type": "percent", "value": 10})
     await promos_mod.cb_promo_preset(
@@ -407,7 +407,7 @@ async def test_cb_promo_preset_max_uses_finite(file_db):
     """max_uses preset id>0 writes the value and moves to expires."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state({"type": "percent", "value": 10})
     await promos_mod.cb_promo_preset(
@@ -427,7 +427,7 @@ async def test_cb_promo_preset_expires_zero_creates_with_none(file_db, make_user
 
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state(
         {"code": "PE0", "type": "percent", "value": 10, "max_uses": 0}
@@ -454,7 +454,7 @@ async def test_cb_promo_preset_expires_30days_iso(file_db, make_user):
 
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     state = _state(
         {"code": "PE30", "type": "percent", "value": 10, "max_uses": 5}
@@ -497,28 +497,28 @@ async def test_cb_promo_manual_value(file_db):
     """Manual button prompts text input without touching state."""
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="value"))
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_promo_manual_max_uses(file_db):
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="max_uses"))
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_promo_manual_expires(file_db):
     cb = MagicMock()
     cb.message = MagicMock()
-    cb.message.answer = AsyncMock()
+    cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     await promos_mod.cb_promo_manual(cb, PromoCB(action="manual", field="expires"))
-    cb.message.answer.assert_awaited()
+    cb.message.edit_text.assert_awaited()
 
 
 async def test_cb_promo_manual_unknown_field(file_db):

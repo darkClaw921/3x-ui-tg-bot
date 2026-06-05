@@ -37,10 +37,15 @@ from app.services.inbounds import InboundOption
 
 
 class AdminCB(CallbackData, prefix="adm"):
-    """Top-level admin navigation: open an area / go back / cancel."""
+    """Top-level admin navigation: open an area / go back / cancel.
 
-    area: str  # main | plans | promos | users | stats
-    action: str  # open | back | cancel
+    The ``broadcast`` area additionally uses ``action="send"`` to confirm
+    the post fan-out from the confirmation screen (see
+    :func:`broadcast_confirm_kb` and :mod:`app.handlers.admin.broadcast`).
+    """
+
+    area: str  # main | plans | promos | users | stats | broadcast
+    action: str  # open | back | cancel | send
 
 
 class PlanCB(CallbackData, prefix="admp"):
@@ -137,15 +142,36 @@ class PromoCB(CallbackData, prefix="admpr"):
 def admin_main_menu() -> InlineKeyboardMarkup:
     """Top-level admin menu shown by ``/admin``.
 
-    Four buttons (one per row for readability on mobile): Plans, Promos,
-    Users, Stats. The latter two are implemented in Phase 7 — buttons are
-    here from day one so the layout stays stable.
+    Five buttons (one per row for readability on mobile): Plans, Promos,
+    Users, Stats, Broadcast.
     """
     builder = InlineKeyboardBuilder()
     builder.button(text="📋 Тарифы", callback_data=AdminCB(area="plans", action="open"))
     builder.button(text="🎟 Промокоды", callback_data=AdminCB(area="promos", action="open"))
     builder.button(text="👥 Пользователи", callback_data=AdminCB(area="users", action="open"))
     builder.button(text="📊 Статистика", callback_data=AdminCB(area="stats", action="open"))
+    builder.button(text="📣 Рассылка", callback_data=AdminCB(area="broadcast", action="open"))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def broadcast_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirmation keyboard for the broadcast wizard.
+
+    «✅ Разослать» fires :class:`AdminCB` ``area=broadcast, action=send``
+    (handled in :mod:`app.handlers.admin.broadcast` under the
+    ``BroadcastCreate.confirming`` state); «✖ Отмена» reuses the canonical
+    cancel callback so the shared :func:`cancel_fsm` handler clears state.
+    """
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="✅ Разослать",
+        callback_data=AdminCB(area="broadcast", action="send"),
+    )
+    builder.button(
+        text="✖ Отмена",
+        callback_data=AdminCB(area="main", action="cancel"),
+    )
     builder.adjust(1)
     return builder.as_markup()
 
@@ -541,6 +567,7 @@ __all__ = [
     "UserCB",
     "admin_main_menu",
     "back_to_main_kb",
+    "broadcast_confirm_kb",
     "cancel_kb",
     "plan_card_kb",
     "plan_days_presets_kb",

@@ -1,0 +1,3 @@
+# broadcast_message
+
+Сервис app/services/broadcast.py: веерная рассылка одного поста всей аудитории. broadcast_message(bot, *, from_chat_id, message_id, tg_ids, throttle=0.05) -> BroadcastResult копирует сообщение каждому получателю через bot.copy_message (доставка как есть, без 'Forwarded from', поддержка любого типа контента: текст/фото/видео/документ). Устойчивость: TelegramForbiddenError -> бакет blocked (юзер заблокировал бота), любая другая ошибка -> failed, цикл не падает. TelegramRetryAfter (flood control) -> sleep(retry_after) + одна повторная попытка для получателя. throttle=asyncio.sleep между отправками (защита от лимита ~30 msg/s; в тестах 0). BroadcastResult(total, sent, blocked, failed) frozen dataclass, инвариант sent+blocked+failed==total.

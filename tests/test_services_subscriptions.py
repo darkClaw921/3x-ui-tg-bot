@@ -13,6 +13,31 @@ from app.services import subscriptions as subs_service
 from app.xui import XuiError
 
 
+def _xui_dispatch(client_obj=None):
+    """``request_json`` side_effect: client for clients/get, None for mutations.
+
+    The new panel's ``update_client`` does a read-merge-write, so any test
+    that drives the extend / revoke path must let the ``clients/get/:email``
+    lookup return a client object instead of ``None``.
+    """
+    obj = client_obj or {
+        "email": "e",
+        "uuid": "u",
+        "subId": "s",
+        "totalGB": 0,
+        "expiryTime": 0,
+        "enable": True,
+        "tgId": 0,
+    }
+
+    async def _dispatch(method, path, **kwargs):
+        if "clients/get/" in path:
+            return {"client": dict(obj), "inboundIds": [1]}
+        return None
+
+    return _dispatch
+
+
 def _plan(price=100, days=30, plan_id=1):
     return Plan(
         id=plan_id,
@@ -248,9 +273,9 @@ async def test_extend_does_not_send_total_gb_to_update_client(
 
     captured_kwargs: list[dict[str, object]] = []
 
-    async def fake_update_client(client, *, inbound_id, client_uuid, **kwargs):
+    async def fake_update_client(client, *, email, **kwargs):
         captured_kwargs.append(dict(kwargs))
-        return {"id": client_uuid}
+        return {"email": email}
 
     monkeypatch.setattr(svc, "update_client", fake_update_client)
 
@@ -284,7 +309,7 @@ async def test_create_or_extend_when_extend_sub_id_given(
     from app.db.engine import get_conn
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value=None)
+    xui.request_json = AsyncMock(side_effect=_xui_dispatch())
 
     async with get_conn() as conn:
         user = await make_user(conn, tg_id=1)
@@ -304,7 +329,7 @@ async def test_create_or_extend_when_extend_sub_id_given(
     assert new_sub.expires_at > old_expires
     # update_client was called (not add_client).
     call_paths = [c.args[1] for c in xui.request_json.call_args_list]
-    assert any("updateClient" in p for p in call_paths)
+    assert any("clients/update" in p for p in call_paths)
 
 
 async def test_create_or_extend_xui_failure_blocks_db_write(file_db, make_user):
@@ -382,7 +407,7 @@ async def test_revoke_calls_xui_and_updates_status(file_db, make_user, make_subs
     from app.db.repos import subscriptions as subs_repo
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value=None)
+    xui.request_json = AsyncMock(side_effect=_xui_dispatch())
 
     async with get_conn() as conn:
         user = await make_user(conn, tg_id=1)
@@ -395,7 +420,7 @@ async def test_revoke_calls_xui_and_updates_status(file_db, make_user, make_subs
     assert fresh.status == "revoked"
     # xui.update_client was called with enable=False inside body.
     paths = [c.args[1] for c in xui.request_json.call_args_list]
-    assert any("updateClient" in p for p in paths)
+    assert any("clients/update" in p for p in paths)
 
 
 async def test_revoke_xui_failure_still_marks_db(file_db, make_user, make_subscription):
@@ -423,7 +448,7 @@ async def test_create_or_extend_anchors_past_expiry_to_now(file_db, make_user, m
     from app.db.repos import subscriptions as subs_repo
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value=None)
+    xui.request_json = AsyncMock(side_effect=_xui_dispatch())
 
     past = datetime.now(UTC) - timedelta(days=10)
     async with get_conn() as conn:
@@ -592,7 +617,7 @@ async def test_activate_free_days_with_extend_sub_id(
     from app.db.engine import get_conn
 
     xui = AsyncMock()
-    xui.request_json = AsyncMock(return_value=None)
+    xui.request_json = AsyncMock(side_effect=_xui_dispatch())
 
     async with get_conn() as conn:
         user = await make_user(conn, tg_id=51)

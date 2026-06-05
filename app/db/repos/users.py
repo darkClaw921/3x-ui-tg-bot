@@ -153,6 +153,19 @@ async def get_or_create(
     )
 
 
+async def list_all_tg_ids(conn: aiosqlite.Connection) -> list[int]:
+    """Return the Telegram ids of every registered user, oldest first.
+
+    Used by the admin broadcast flow (:mod:`app.handlers.admin.broadcast`)
+    to fan a post out to the whole audience. Only ``tg_id`` is selected —
+    the broadcaster needs nothing else, and keeping the row narrow lets the
+    list scale to large audiences cheaply.
+    """
+    cursor = await conn.execute("SELECT tg_id FROM users ORDER BY id")
+    rows = await cursor.fetchall()
+    return [int(row["tg_id"]) for row in rows]
+
+
 async def set_admin(conn: aiosqlite.Connection, user_id: int, value: bool) -> None:
     """Toggle the ``is_admin`` flag for an existing user."""
     await conn.execute(

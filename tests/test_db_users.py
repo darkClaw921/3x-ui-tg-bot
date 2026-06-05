@@ -130,3 +130,17 @@ async def test_user_from_row_construct(db_conn):
     u = User.from_row(row)
     assert u.tg_id == 1
     assert u.username == "u"
+
+
+async def test_list_all_tg_ids_ordered(db_conn):
+    """Returns every tg_id, oldest (lowest pk) first."""
+    await users_repo.create(db_conn, tg_id=30, username="a", first_name="A")
+    await users_repo.create(db_conn, tg_id=10, username="b", first_name="B")
+    await users_repo.create(db_conn, tg_id=20, username="c", first_name="C")
+    ids = await users_repo.list_all_tg_ids(db_conn)
+    # Insertion order (by autoincrement id), not tg_id order.
+    assert ids == [30, 10, 20]
+
+
+async def test_list_all_tg_ids_empty(db_conn):
+    assert await users_repo.list_all_tg_ids(db_conn) == []

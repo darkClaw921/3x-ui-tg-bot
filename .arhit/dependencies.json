@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-17T11:04:34.841Z",
+  "generatedAt": "2026-06-05T09:18:08.843Z",
   "dependencies": [
     {
       "from": "app/config.py",
@@ -2582,6 +2582,36 @@
       "from": "app/db/repos/users.py",
       "to": "app/db/repos/users.py",
       "type": "call",
+      "toElement": "list_all_tg_ids"
+    },
+    {
+      "from": "app/db/repos/users.py",
+      "to": "app/db/repos/users.py",
+      "type": "call",
+      "toElement": "flow"
+    },
+    {
+      "from": "app/db/repos/users.py",
+      "to": "app/db/repos/users.py",
+      "type": "call",
+      "toElement": "conn.execute"
+    },
+    {
+      "from": "app/db/repos/users.py",
+      "to": "app/db/repos/users.py",
+      "type": "call",
+      "toElement": "cursor.fetchall"
+    },
+    {
+      "from": "app/db/repos/users.py",
+      "to": "app/db/repos/users.py",
+      "type": "call",
+      "toElement": "int"
+    },
+    {
+      "from": "app/db/repos/users.py",
+      "to": "app/db/repos/users.py",
+      "type": "call",
       "toElement": "set_admin"
     },
     {
@@ -2705,6 +2735,12 @@
       "to": "aiogram.py",
       "type": "import",
       "toElement": "Router"
+    },
+    {
+      "from": "app/handlers/admin/__init__.py",
+      "to": "app/handlers/admin.py",
+      "type": "import",
+      "toElement": "broadcast"
     },
     {
       "from": "app/handlers/admin/__init__.py",
@@ -2835,7 +2871,393 @@
       "from": "app/handlers/admin/__init__.py",
       "to": "app/handlers/admin/__init__.py",
       "type": "call",
+      "fromElement": "_build_admin_router",
+      "toElement": "admin_router.include_router"
+    },
+    {
+      "from": "app/handlers/admin/__init__.py",
+      "to": "app/handlers/admin/__init__.py",
+      "type": "call",
       "toElement": "_build_admin_router"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "__future__.py",
+      "type": "import",
+      "toElement": "annotations"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "aiogram.py",
+      "type": "import",
+      "toElement": "Bot"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "aiogram.py",
+      "type": "import",
+      "toElement": "F"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "aiogram.py",
+      "type": "import",
+      "toElement": "Router"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "aiogram/fsm/context.py",
+      "type": "import",
+      "toElement": "FSMContext"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "CallbackQuery"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "aiogram/types.py",
+      "type": "import",
+      "toElement": "Message"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/db/repos.py",
+      "type": "import",
+      "toElement": "users"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/keyboards/admin.py",
+      "type": "import",
+      "toElement": "("
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/logger.py",
+      "type": "import",
+      "toElement": "logger"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "import",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/states/admin.py",
+      "type": "import",
+      "toElement": "BroadcastCreate"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "router"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "Flow"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "data"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "import"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "Router"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "AdminCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "cb_open"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "state.set_state"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.message.edit_text"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "cancel_kb"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "router.message"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "st_post"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "users_repo.list_all_tg_ids"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "state.update_data"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "state.set_state"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "message.answer"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "len"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "_plural"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "len"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "broadcast_confirm_kb"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "router.callback_query"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "AdminCB.filter"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "cb_send"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "the"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "state.get_data"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "data.get"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "data.get"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "state.clear"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.message.edit_text"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "back_to_main_kb"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.answer"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.message.edit_text"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "users_repo.list_all_tg_ids"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "logger.info"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "len"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "int"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "int"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "state.clear"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "callback.message.edit_text"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "toElement": "back_to_main_kb"
+    },
+    {
+      "from": "app/handlers/admin/broadcast.py",
+      "to": "app/handlers/admin/broadcast.py",
+      "type": "call",
+      "fromElement": "_plural",
+      "toElement": "_plural"
     },
     {
       "from": "app/handlers/admin/menu.py",
@@ -3999,6 +4421,12 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
+      "toElement": "path"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
       "toElement": "get_xui_client"
     },
     {
@@ -4017,7 +4445,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "message.answer"
+      "toElement": "send"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -4029,7 +4457,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "message.answer"
+      "toElement": "send"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -4053,7 +4481,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "message.answer"
+      "toElement": "send"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -4317,7 +4745,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "callback.message.answer"
+      "toElement": "callback.message.edit_text"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -4377,6 +4805,12 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
+      "toElement": "message"
+    },
+    {
+      "from": "app/handlers/admin/plans.py",
+      "to": "app/handlers/admin/plans.py",
+      "type": "call",
       "toElement": "state.get_data"
     },
     {
@@ -4419,7 +4853,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "message.answer"
+      "toElement": "send"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -4515,7 +4949,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "callback.message.answer"
+      "toElement": "callback.message.edit_text"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -4569,7 +5003,7 @@
       "from": "app/handlers/admin/plans.py",
       "to": "app/handlers/admin/plans.py",
       "type": "call",
-      "toElement": "callback.message.answer"
+      "toElement": "callback.message.edit_text"
     },
     {
       "from": "app/handlers/admin/plans.py",
@@ -6053,12 +6487,6 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "inputs"
-    },
-    {
-      "from": "app/handlers/admin/promos.py",
-      "to": "app/handlers/admin/promos.py",
-      "type": "call",
       "toElement": "state.get_data"
     },
     {
@@ -6083,7 +6511,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "message.answer"
+      "toElement": "send"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -6095,7 +6523,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "message.answer"
+      "toElement": "send"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -6238,7 +6666,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "callback.message.answer"
+      "toElement": "callback.message.edit_text"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -6286,7 +6714,7 @@
       "from": "app/handlers/admin/promos.py",
       "to": "app/handlers/admin/promos.py",
       "type": "call",
-      "toElement": "callback.message.answer"
+      "toElement": "callback.message.edit_text"
     },
     {
       "from": "app/handlers/admin/promos.py",
@@ -13729,6 +14157,12 @@
       "from": "app/keyboards/admin.py",
       "to": "app/keyboards/admin.py",
       "type": "call",
+      "toElement": "screen"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
       "toElement": "PlanCB"
     },
     {
@@ -13903,6 +14337,20 @@
       "to": "app/keyboards/admin.py",
       "type": "call",
       "fromElement": "admin_main_menu",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "admin_main_menu",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "admin_main_menu",
       "toElement": "builder.adjust"
     },
     {
@@ -13910,6 +14358,62 @@
       "to": "app/keyboards/admin.py",
       "type": "call",
       "fromElement": "admin_main_menu",
+      "toElement": "builder.as_markup"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "broadcast_confirm_kb"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "InlineKeyboardBuilder"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "builder.button"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "AdminCB"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
+      "toElement": "builder.adjust"
+    },
+    {
+      "from": "app/keyboards/admin.py",
+      "to": "app/keyboards/admin.py",
+      "type": "call",
+      "fromElement": "broadcast_confirm_kb",
       "toElement": "builder.as_markup"
     },
     {
@@ -17928,6 +18432,179 @@
       "toElement": "int"
     },
     {
+      "from": "app/services/broadcast.py",
+      "to": "__future__.py",
+      "type": "import",
+      "toElement": "annotations"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "asyncio.py",
+      "type": "import"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "collections/abc.py",
+      "type": "import",
+      "toElement": "Sequence"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "dataclasses.py",
+      "type": "import",
+      "toElement": "dataclass"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "aiogram.py",
+      "type": "import",
+      "toElement": "Bot"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "aiogram/exceptions.py",
+      "type": "import",
+      "toElement": "("
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/logger.py",
+      "type": "import",
+      "toElement": "logger"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "base"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "used"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "message"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "import"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "dataclass"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "error"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "in"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "sends"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "disable"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "bot.copy_message"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "logger.warning"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "s"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "asyncio.sleep"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "bot.copy_message"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "logger.warning"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "logger.warning"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "asyncio.sleep"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "logger.info"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "len"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "BroadcastResult"
+    },
+    {
+      "from": "app/services/broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "call",
+      "toElement": "len"
+    },
+    {
       "from": "app/services/inbounds.py",
       "to": "__future__.py",
       "type": "import",
@@ -19631,6 +20308,13 @@
     {
       "from": "app/states/admin.py",
       "to": "app/states/admin.py",
+      "type": "extends",
+      "fromElement": "BroadcastCreate",
+      "toElement": "StatesGroup"
+    },
+    {
+      "from": "app/states/admin.py",
+      "to": "app/states/admin.py",
       "type": "call",
       "toElement": "flow"
     },
@@ -19735,6 +20419,24 @@
       "to": "app/states/admin.py",
       "type": "call",
       "toElement": "State"
+    },
+    {
+      "from": "app/states/admin.py",
+      "to": "app/states/admin.py",
+      "type": "call",
+      "toElement": "State"
+    },
+    {
+      "from": "app/states/admin.py",
+      "to": "app/states/admin.py",
+      "type": "call",
+      "toElement": "State"
+    },
+    {
+      "from": "app/states/admin.py",
+      "to": "app/states/admin.py",
+      "type": "call",
+      "toElement": "BroadcastCreate"
     },
     {
       "from": "app/states/admin.py",
@@ -19919,6 +20621,11 @@
     },
     {
       "from": "app/xui/client.py",
+      "to": "re.py",
+      "type": "import"
+    },
+    {
+      "from": "app/xui/client.py",
       "to": "typing.py",
       "type": "import",
       "toElement": "Any"
@@ -19951,6 +20658,18 @@
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
+      "toElement": "ui"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "toElement": "tolerated"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
       "toElement": "session"
     },
     {
@@ -19964,6 +20683,18 @@
       "to": "app/xui/client.py",
       "type": "call",
       "toElement": "client.request_json"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "toElement": "the"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "toElement": "re.compile"
     },
     {
       "from": "app/xui/client.py",
@@ -20058,7 +20789,63 @@
       "to": "app/xui/client.py",
       "type": "call",
       "fromElement": "__init__",
-      "toElement": "login"
+      "toElement": "_bootstrap_session"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "value"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "fatal"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "not"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "self._http.get"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "XuiError"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "_CSRF_META_RE.search"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "match.group"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "__init__",
+      "toElement": "decode"
     },
     {
       "from": "app/xui/client.py",
@@ -20072,167 +20859,258 @@
       "to": "app/xui/client.py",
       "type": "call",
       "fromElement": "__init__",
+      "toElement": "token"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "_csrf_headers"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "header"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "dict"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "headers.setdefault"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "login"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "first"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "logger.debug"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
+      "toElement": "self._bootstrap_session"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
       "toElement": "self._http.post"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
+      "toElement": "self._csrf_headers"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
       "toElement": "XuiError"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "XuiError"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "resp.text.strip"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "resp.json"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "XuiError"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "payload.get"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "XuiError"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "payload.get"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "logger.info"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "OK"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "len"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "request"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "in"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "self.login"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
+      "toElement": "kwargs.pop"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
       "toElement": "self._http.request"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
+      "toElement": "self._csrf_headers"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
       "toElement": "self._needs_relogin"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "logger.info"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "self.login"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "self._http.request"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
+      "toElement": "self._csrf_headers"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_csrf_headers",
       "toElement": "request_json"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "xx"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "self.request"
     },
     {
       "from": "app/xui/client.py",
       "to": "app/xui/client.py",
       "type": "call",
-      "fromElement": "__init__",
+      "fromElement": "_csrf_headers",
       "toElement": "self._parse"
     },
     {
@@ -20241,6 +21119,20 @@
       "type": "call",
       "fromElement": "_needs_relogin",
       "toElement": "_needs_relogin"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_needs_relogin",
+      "toElement": "token"
+    },
+    {
+      "from": "app/xui/client.py",
+      "to": "app/xui/client.py",
+      "type": "call",
+      "fromElement": "_needs_relogin",
+      "toElement": "in"
     },
     {
       "from": "app/xui/client.py",
@@ -20426,11 +21318,6 @@
     },
     {
       "from": "app/xui/clients.py",
-      "to": "json.py",
-      "type": "import"
-    },
-    {
-      "from": "app/xui/clients.py",
       "to": "re.py",
       "type": "import"
     },
@@ -20444,6 +21331,12 @@
       "to": "typing.py",
       "type": "import",
       "toElement": "Any"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "urllib/parse.py",
+      "type": "import",
+      "toElement": "quote"
     },
     {
       "from": "app/xui/clients.py",
@@ -20468,6 +21361,36 @@
       "to": "app/xui/client.py",
       "type": "import",
       "toElement": "XuiError"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "panel"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "endpoints"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "object"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "touch"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "envelope"
     },
     {
       "from": "app/xui/clients.py",
@@ -20564,13 +21487,35 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "add_client"
+      "fromElement": "_q",
+      "toElement": "_q"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "field"
+      "fromElement": "_q",
+      "toElement": "segment"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_q",
+      "toElement": "quote"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_q",
+      "toElement": "str"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "add_client"
     },
     {
       "from": "app/xui/clients.py",
@@ -20589,6 +21534,12 @@
       "to": "app/xui/clients.py",
       "type": "call",
       "toElement": "int"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "_coerce_tg_id"
     },
     {
       "from": "app/xui/clients.py",
@@ -20618,12 +21569,6 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "json.dumps"
-    },
-    {
-      "from": "app/xui/clients.py",
-      "to": "app/xui/clients.py",
-      "type": "call",
       "toElement": "client.request_json"
     },
     {
@@ -20642,13 +21587,100 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
+      "fromElement": "_coerce_tg_id",
+      "toElement": "_coerce_tg_id"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_coerce_tg_id",
+      "toElement": "in"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_coerce_tg_id",
+      "toElement": "int"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
       "toElement": "frozenset"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
+      "toElement": "sent"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "frozenset"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "get_client"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "client.request_json"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "_q"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "str"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "lower"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "isinstance"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "obj.get"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "isinstance"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
       "toElement": "update_client"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "touch"
     },
     {
       "from": "app/xui/clients.py",
@@ -20678,55 +21710,31 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "dict"
+      "toElement": "get_client"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "payload.setdefault"
+      "toElement": "XuiError"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "int"
+      "toElement": "current.items"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "int"
+      "toElement": "payload.update"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "bool"
-    },
-    {
-      "from": "app/xui/clients.py",
-      "to": "app/xui/clients.py",
-      "type": "call",
-      "toElement": "int"
-    },
-    {
-      "from": "app/xui/clients.py",
-      "to": "app/xui/clients.py",
-      "type": "call",
-      "toElement": "int"
-    },
-    {
-      "from": "app/xui/clients.py",
-      "to": "app/xui/clients.py",
-      "type": "call",
-      "toElement": "int"
-    },
-    {
-      "from": "app/xui/clients.py",
-      "to": "app/xui/clients.py",
-      "type": "call",
-      "toElement": "json.dumps"
+      "toElement": "_coerce_numeric_fields"
     },
     {
       "from": "app/xui/clients.py",
@@ -20738,13 +21746,19 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
+      "toElement": "_q"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
       "toElement": "logger.info"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "list"
+      "toElement": "sorted"
     },
     {
       "from": "app/xui/clients.py",
@@ -20756,13 +21770,48 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
+      "fromElement": "_coerce_numeric_fields",
+      "toElement": "_coerce_numeric_fields"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_coerce_numeric_fields",
+      "toElement": "in"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_coerce_numeric_fields",
+      "toElement": "int"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_coerce_numeric_fields",
+      "toElement": "bool"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "fromElement": "_coerce_numeric_fields",
+      "toElement": "_coerce_tg_id"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
       "toElement": "del_client"
     },
     {
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
-      "toElement": "view"
+      "toElement": "_q"
     },
     {
       "from": "app/xui/clients.py",
@@ -20816,6 +21865,12 @@
       "from": "app/xui/clients.py",
       "to": "app/xui/clients.py",
       "type": "call",
+      "toElement": "_q"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
       "toElement": "isinstance"
     },
     {
@@ -20835,6 +21890,60 @@
       "to": "app/xui/clients.py",
       "type": "call",
       "toElement": "type"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "obj.get"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "isinstance"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "next"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "isinstance"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "it.get"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "len"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "isinstance"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "match.get"
+    },
+    {
+      "from": "app/xui/clients.py",
+      "to": "app/xui/clients.py",
+      "type": "call",
+      "toElement": "isinstance"
     },
     {
       "from": "app/xui/inbounds.py",
@@ -26650,6 +27759,516 @@
       "toElement": "User.from_row"
     },
     {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "test_list_all_tg_ids_ordered"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "oldest"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "users_repo.create"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "users_repo.create"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "users_repo.create"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "users_repo.list_all_tg_ids"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "order"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "test_list_all_tg_ids_empty"
+    },
+    {
+      "from": "tests/test_db_users.py",
+      "to": "tests/test_db_users.py",
+      "type": "call",
+      "toElement": "users_repo.list_all_tg_ids"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "__future__.py",
+      "type": "import",
+      "toElement": "annotations"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "unittest/mock.py",
+      "type": "import",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "unittest/mock.py",
+      "type": "import",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "app/handlers/admin.py",
+      "type": "import",
+      "toElement": "broadcast"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "import",
+      "toElement": "BroadcastResult"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "app/states/admin.py",
+      "type": "import",
+      "toElement": "BroadcastCreate"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "app/db/engine.py",
+      "type": "import",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "_state",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "_state",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "_state",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "_state",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "_state",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "_state",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "test_plural_endings",
+      "toElement": "test_plural_endings"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "test_plural_endings",
+      "toElement": "bc_mod._plural"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "test_plural_endings",
+      "toElement": "bc_mod._plural"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "test_plural_endings",
+      "toElement": "bc_mod._plural"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "test_plural_endings",
+      "toElement": "bc_mod._plural"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "fromElement": "test_plural_endings",
+      "toElement": "bc_mod._plural"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "test_cb_open_enters_waiting_post"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "bc_mod.cb_open"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "cb.message.edit_text.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "test_st_post_stores_ref_and_confirms"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "s"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "bc_mod.st_post"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "state.update_data.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "state.set_state.assert_awaited_with"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "msg.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "size"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "test_cb_send_broadcasts_and_reports"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "get_conn"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "make_user"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "BroadcastResult"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "monkeypatch.setattr"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "bc_mod.cb_send"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "fake.assert_awaited_once"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "sorted"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "state.clear.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "test_cb_send_missing_post_ref_aborts"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "MagicMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "_state"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "bc_mod.cb_send"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "cb.answer.assert_awaited"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "cb.answer.await_args.kwargs.get"
+    },
+    {
+      "from": "tests/test_handlers_admin_broadcast.py",
+      "to": "tests/test_handlers_admin_broadcast.py",
+      "type": "call",
+      "toElement": "state.clear.assert_awaited"
+    },
+    {
       "from": "tests/test_handlers_admin_plans.py",
       "to": "__future__.py",
       "type": "import",
@@ -28067,7 +29686,7 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -28133,7 +29752,7 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -28331,7 +29950,7 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -28379,7 +29998,7 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -28427,7 +30046,7 @@
       "from": "tests/test_handlers_admin_plans.py",
       "to": "tests/test_handlers_admin_plans.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_plans.py",
@@ -31562,7 +33181,7 @@
       "from": "tests/test_handlers_admin_promos.py",
       "to": "tests/test_handlers_admin_promos.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_promos.py",
@@ -32126,7 +33745,7 @@
       "from": "tests/test_handlers_admin_promos.py",
       "to": "tests/test_handlers_admin_promos.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_promos.py",
@@ -32174,7 +33793,7 @@
       "from": "tests/test_handlers_admin_promos.py",
       "to": "tests/test_handlers_admin_promos.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_promos.py",
@@ -32222,7 +33841,7 @@
       "from": "tests/test_handlers_admin_promos.py",
       "to": "tests/test_handlers_admin_promos.py",
       "type": "call",
-      "toElement": "cb.message.answer.assert_awaited"
+      "toElement": "cb.message.edit_text.assert_awaited"
     },
     {
       "from": "tests/test_handlers_admin_promos.py",
@@ -32393,6 +34012,12 @@
       "to": "app/services/inbounds.py",
       "type": "import",
       "toElement": "InboundOption"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "app/states/admin.py",
+      "type": "import",
+      "toElement": "BroadcastCreate"
     },
     {
       "from": "tests/test_handlers_admin_routing.py",
@@ -32920,6 +34545,13 @@
       "type": "call",
       "fromElement": "_all_admin_keyboards",
       "toElement": "stats_kb"
+    },
+    {
+      "from": "tests/test_handlers_admin_routing.py",
+      "to": "tests/test_handlers_admin_routing.py",
+      "type": "call",
+      "fromElement": "_all_admin_keyboards",
+      "toElement": "broadcast_confirm_kb"
     },
     {
       "from": "tests/test_handlers_admin_routing.py",
@@ -44429,6 +46061,18 @@
       "from": "tests/test_handlers_user_promo.py",
       "to": "tests/test_handlers_user_promo.py",
       "type": "call",
+      "toElement": "object"
+    },
+    {
+      "from": "tests/test_handlers_user_promo.py",
+      "to": "tests/test_handlers_user_promo.py",
+      "type": "call",
+      "toElement": "_rj"
+    },
+    {
+      "from": "tests/test_handlers_user_promo.py",
+      "to": "tests/test_handlers_user_promo.py",
+      "type": "call",
       "toElement": "AsyncMock"
     },
     {
@@ -47821,6 +49465,12 @@
       "from": "tests/test_scheduler.py",
       "to": "tests/test_scheduler.py",
       "type": "call",
+      "toElement": "list"
+    },
+    {
+      "from": "tests/test_scheduler.py",
+      "to": "tests/test_scheduler.py",
+      "type": "call",
       "toElement": "AsyncMock"
     },
     {
@@ -49364,6 +51014,321 @@
       "type": "call",
       "fromElement": "test_billing_payload_legacy_without_s_returns_zero",
       "toElement": "billing.parse_invoice_payload"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "__future__.py",
+      "type": "import",
+      "toElement": "annotations"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "unittest/mock.py",
+      "type": "import",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "aiogram/exceptions.py",
+      "type": "import",
+      "toElement": "TelegramForbiddenError"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "aiogram/exceptions.py",
+      "type": "import",
+      "toElement": "TelegramRetryAfter"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "aiogram/methods.py",
+      "type": "import",
+      "toElement": "CopyMessage"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "import",
+      "toElement": "BroadcastResult"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "app/services/broadcast.py",
+      "type": "import",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_forbidden",
+      "toElement": "_forbidden"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_forbidden",
+      "toElement": "TelegramForbiddenError"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_forbidden",
+      "toElement": "CopyMessage"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_retry_after",
+      "toElement": "_retry_after"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_retry_after",
+      "toElement": "TelegramRetryAfter"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_retry_after",
+      "toElement": "CopyMessage"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "test_broadcast_all_delivered"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "BroadcastResult"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "test_broadcast_buckets_blocked_and_failed"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_copy"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_forbidden"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "ValueError"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "test_broadcast_retry_after_then_success"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_copy"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_retry_after"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "asyncio.sleep"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "test_broadcast_retry_after_then_fail"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_copy"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_retry_after"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "_retry_after"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_copy",
+      "toElement": "ValueError"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_side",
+      "toElement": "_side"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_side",
+      "toElement": "seq.pop"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_side",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_side",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "fromElement": "_side",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "test_broadcast_empty_audience"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "broadcast_message"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "BroadcastResult"
+    },
+    {
+      "from": "tests/test_services_broadcast.py",
+      "to": "tests/test_services_broadcast.py",
+      "type": "call",
+      "toElement": "bot.copy_message.assert_not_awaited"
     },
     {
       "from": "tests/test_services_inbounds.py",
@@ -51049,6 +53014,27 @@
       "from": "tests/test_services_subscriptions.py",
       "to": "tests/test_services_subscriptions.py",
       "type": "call",
+      "fromElement": "_xui_dispatch",
+      "toElement": "_xui_dispatch"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "_xui_dispatch",
+      "toElement": "_dispatch"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "fromElement": "_xui_dispatch",
+      "toElement": "dict"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
       "fromElement": "_plan",
       "toElement": "_plan"
     },
@@ -51672,6 +53658,12 @@
       "from": "tests/test_services_subscriptions.py",
       "to": "tests/test_services_subscriptions.py",
       "type": "call",
+      "toElement": "_xui_dispatch"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
       "toElement": "get_conn"
     },
     {
@@ -51948,6 +53940,12 @@
       "from": "tests/test_services_subscriptions.py",
       "to": "tests/test_services_subscriptions.py",
       "type": "call",
+      "toElement": "_xui_dispatch"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
       "toElement": "get_conn"
     },
     {
@@ -52069,6 +54067,12 @@
       "to": "tests/test_services_subscriptions.py",
       "type": "call",
       "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
+      "toElement": "_xui_dispatch"
     },
     {
       "from": "tests/test_services_subscriptions.py",
@@ -52440,6 +54444,12 @@
       "from": "tests/test_services_subscriptions.py",
       "to": "tests/test_services_subscriptions.py",
       "type": "call",
+      "toElement": "_xui_dispatch"
+    },
+    {
+      "from": "tests/test_services_subscriptions.py",
+      "to": "tests/test_services_subscriptions.py",
+      "type": "call",
       "toElement": "get_conn"
     },
     {
@@ -52570,6 +54580,95 @@
       "to": "app/xui/client.py",
       "type": "import",
       "toElement": "get_xui_client"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "pytest.fixture"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "fromElement": "_csrf_bootstrap",
+      "toElement": "_csrf_bootstrap"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "fromElement": "_csrf_bootstrap",
+      "toElement": "login"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "fromElement": "_csrf_bootstrap",
+      "toElement": "login"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "fromElement": "_csrf_bootstrap",
+      "toElement": "out"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "fromElement": "_csrf_bootstrap",
+      "toElement": "httpx_mock.add_response"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "test_login_sends_csrf_header"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "httpx_mock.add_response"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "XuiClient"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "client.login"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "next"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "httpx_mock.get_requests"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "login_req.headers.get"
+    },
+    {
+      "from": "tests/test_xui_client.py",
+      "to": "tests/test_xui_client.py",
+      "type": "call",
+      "toElement": "client.close"
     },
     {
       "from": "tests/test_xui_client.py",
@@ -53191,11 +55290,6 @@
     },
     {
       "from": "tests/test_xui_clients.py",
-      "to": "json.py",
-      "type": "import"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
       "to": "unittest/mock.py",
       "type": "import",
       "toElement": "AsyncMock"
@@ -53222,6 +55316,27 @@
       "to": "tests/test_xui_clients.py",
       "type": "call",
       "toElement": "import"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "_request_json_for",
+      "toElement": "_request_json_for"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "_request_json_for",
+      "toElement": "_dispatch"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "fromElement": "_request_json_for",
+      "toElement": "dict"
     },
     {
       "from": "tests/test_xui_clients.py",
@@ -53517,12 +55632,6 @@
       "from": "tests/test_xui_clients.py",
       "to": "tests/test_xui_clients.py",
       "type": "call",
-      "toElement": "json.loads"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
       "toElement": "test_add_client_defaults_sub_id_when_none"
     },
     {
@@ -53553,7 +55662,175 @@
       "from": "tests/test_xui_clients.py",
       "to": "tests/test_xui_clients.py",
       "type": "call",
+      "toElement": "test_add_client_coerces_non_numeric_tg_id"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "add_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_get_client_returns_inner_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "get_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_get_client_not_found_returns_empty"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "XuiError"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "get_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
       "toElement": "test_update_client_whitelists_fields"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "pytest.raises"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "update_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_update_client_read_merge_write"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "_request_json_for"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "update_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "stripped"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_update_client_payload_coercion"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "_request_json_for"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "update_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_update_client_not_found_raises"
     },
     {
       "from": "tests/test_xui_clients.py",
@@ -53583,67 +55860,31 @@
       "from": "tests/test_xui_clients.py",
       "to": "tests/test_xui_clients.py",
       "type": "call",
-      "toElement": "test_update_client_payload_coercion"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "AsyncMock"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "AsyncMock"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "update_client"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "json.loads"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "test_update_client_default_id_set"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "AsyncMock"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "AsyncMock"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "update_client"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
-      "toElement": "json.loads"
-    },
-    {
-      "from": "tests/test_xui_clients.py",
-      "to": "tests/test_xui_clients.py",
-      "type": "call",
       "toElement": "test_del_client_calls_correct_endpoint"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "del_client"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_del_client_keep_traffic_flag"
     },
     {
       "from": "tests/test_xui_clients.py",
@@ -53764,6 +56005,54 @@
       "to": "tests/test_xui_clients.py",
       "type": "call",
       "toElement": "test_get_client_traffics"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "get_client_traffics"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_get_client_traffics_single_item_lenient"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "AsyncMock"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "get_client_traffics"
+    },
+    {
+      "from": "tests/test_xui_clients.py",
+      "to": "tests/test_xui_clients.py",
+      "type": "call",
+      "toElement": "test_get_client_traffics_not_found"
     },
     {
       "from": "tests/test_xui_clients.py",
