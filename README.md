@@ -75,16 +75,25 @@
 
 ### Вариант A — всё одной командой (чистый Ubuntu/Debian)
 
-Ставит панель **3x-ui** (с VLESS+Reality inbound), при FQDN — **Let's Encrypt** сертификат, и самого бота как systemd-сервис:
+Проверяет IP сервера на блокировку РКН, ставит панель **3x-ui** (с VLESS+Reality inbound + сразу готовым подключением), при FQDN — **Let's Encrypt** сертификат, и опционально самого бота как systemd-сервис. **Домен и бот необязательны** — без них ставится только VPN на IP этого сервера:
 
 ```bash
-sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/deploy/install-3x-ui.sh) \
+# Только VPN (без домена, без бота) — самый быстрый способ получить рабочее подключение
+sudo bash <(curl -sSL https://raw.githubusercontent.com/darkClaw921/3x-ui-tg-bot/main/deploy/install-3x-ui.sh) \
+    --non-interactive
+```
+
+```bash
+# Полная установка: VPN + бот на своём домене
+sudo bash <(curl -sSL https://raw.githubusercontent.com/darkClaw921/3x-ui-tg-bot/main/deploy/install-3x-ui.sh) \
     --bot-token=1234567:ABCDEF \
     --admin-id=123456789 \
     --domain=vpn.example.com \
     --install-bot \
-    --bot-repo=https://github.com/<you>/3x-ui-tg-bot.git
+    --bot-repo=https://github.com/darkClaw921/3x-ui-tg-bot.git
 ```
+
+Скопируйте нужную команду (при желании подставьте свои `--bot-token`, `--admin-id` и `--domain`) — и через пару минут получите работающую панель и готовое VPN-подключение, а если указан `--install-bot` — ещё и запущенного бота.
 
 <details>
 <summary><b>Что делает скрипт и какие есть флаги</b></summary>
@@ -93,9 +102,10 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/
 
 Скрипт самостоятельно:
 
+- **проверяет публичный IP сервера по реестру блокировок Роскомнадзора** (antifilter.download) ещё до установки чего-либо — если IP/подсеть заблокированы, останавливается с объяснением (VPN на таком IP не будет работать для пользователей из РФ независимо от протокола);
 - поставит 3x-ui из официального репозитория (отвечая на интерактивные вопросы установщика);
 - задаст логин/пароль/порт/`webBasePath`;
-- сгенерирует x25519-ключи Reality и создаст inbound;
+- сгенерирует x25519-ключи Reality, создаст inbound **и сразу добавит в него клиента** — готовая `vless://`-ссылка на подключение печатается в финальном отчёте, не дожидаясь бота;
 - при `--ssl-mode=on` (включается автоматически, если `--domain` — это FQDN): поставит `certbot`, выпустит Let's Encrypt сертификат через HTTP-01 challenge на `:80` и пропишет пути в SQLite-настройках 3x-ui (`webCertFile`/`webKeyFile`/`subCertFile`/`subKeyFile`) — панель и subscription-сервер сразу работают по HTTPS **без reverse-proxy**. Renewal-hook (`/etc/letsencrypt/renewal-hooks/deploy/restart-x-ui.sh`) перезапускает x-ui после `certbot renew`;
 - запишет готовый `.env` для бота с корректными `XUI_BASE_URL`, `XUI_SUB_BASE_URL`, `XUI_VERIFY_SSL`;
 - по флагу `--install-bot` склонирует репозиторий, создаст venv и поднимет бота как systemd-сервис.
@@ -104,6 +114,8 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/
 
 - `--ssl-mode=auto|on|off` — `auto` (по умолчанию): FQDN → выпускается LE-сертификат, IP → панель остаётся HTTP-only (`XUI_VERIFY_SSL=false`).
 - `--le-email=<addr>` — email для Let's Encrypt. Если не задан, сертификат выпускается с `--register-unsafely-without-email`.
+- `--client-email=<str>` — имя первого клиента inbound (по умолчанию `admin`).
+- `--skip-blocklist-check` / `--force-blocked-ip` — пропустить проверку РКН-блокировки или продолжить установку, даже если IP в реестре.
 
 Полное описание аргументов, troubleshooting и обновление — в [`deploy/install-3x-ui.md`](./deploy/install-3x-ui.md).
 
@@ -112,7 +124,7 @@ sudo bash <(curl -sSL https://raw.githubusercontent.com/<you>/3x-ui-tg-bot/main/
 ### Вариант B — локальный запуск
 
 ```bash
-git clone <repo-url> 3x-ui-tg-bot
+git clone https://github.com/darkClaw921/3x-ui-tg-bot.git
 cd 3x-ui-tg-bot
 
 python3.12 -m venv .venv
@@ -237,7 +249,7 @@ Telegram не открывает кастомные схемы (`happ://`, `v2ra
 sudo useradd -r -m -d /opt/3x-ui-tg-bot -s /bin/bash tgbot
 
 # 2. Склонировать репозиторий в /opt/3x-ui-tg-bot (от имени tgbot).
-sudo -u tgbot git clone <repo-url> /opt/3x-ui-tg-bot
+sudo -u tgbot git clone https://github.com/darkClaw921/3x-ui-tg-bot.git /opt/3x-ui-tg-bot
 cd /opt/3x-ui-tg-bot
 
 # 3. Создать виртуальное окружение и поставить зависимости.

@@ -3,15 +3,25 @@
 # install-3x-ui.sh - Автоматическая установка 3x-ui (VLESS+Reality) и
 # опционально Telegram-бота (3x-ui-tg-bot) на чистый Ubuntu/Debian сервер.
 #
+# Домен и Telegram-бот НЕобязательны: без --domain используется публичный
+# IP сервера, без --bot-token/--admin-id/--install-bot ставится только VPN
+# (панель 3x-ui + Reality inbound + готовое подключение), без бота и .env.
+#
 # Что делает:
+#   0. Проверяет публичный IP сервера по реестру блокировок Роскомнадзора
+#      (antifilter.download). Если IP/подсеть заблокированы — останавливает
+#      установку (VPN на таком IP не будет работать для пользователей из РФ
+#      независимо от протокола/настроек панели).
 #   1. Проверяет окружение (root, Ubuntu/Debian, нужные утилиты).
 #   2. Открывает порты в ufw (если активен).
 #   3. Ставит официальный 3x-ui (https://github.com/MHSanaei/3x-ui).
 #   4. Через CLI `x-ui setting` задаёт логин/пароль/порт/webBasePath/subPort/subPath.
 #   5. Логинится в REST API панели, создаёт VLESS+Reality inbound с
 #      сгенерированными x25519-ключами и shortIds.
-#   6. Генерирует .env для бота (заполняя XUI_*, BOT_TOKEN, ADMIN_IDS).
-#   7. По флагу --install-bot клонирует репо бота, ставит venv, systemd-юнит.
+#   6. Сразу создаёт в этом inbound одного клиента (подключение) и печатает
+#      готовую vless:// ссылку в финальном отчёте.
+#   7. Генерирует .env для бота (заполняя XUI_*, BOT_TOKEN, ADMIN_IDS).
+#   8. По флагу --install-bot клонирует репо бота, ставит venv, systemd-юнит.
 #
 # Подробности — в deploy/install-3x-ui.md.
 
@@ -114,17 +124,26 @@ BOT_REPO=""
 NON_INTERACTIVE="false"
 SSL_MODE="auto"           # auto|on|off — TLS у самой панели 3x-ui через Let's Encrypt
 LE_EMAIL=""
+FORCE_BLOCKED_IP="false"
+SKIP_BLOCKLIST_CHECK="false"
+CLIENT_EMAIL="admin"
 
 usage() {
     cat >&2 <<USAGE
-${C_BOLD}$SCRIPT_NAME${C_RESET} — установка 3x-ui и настройка под Telegram-бота.
+${C_BOLD}$SCRIPT_NAME${C_RESET} — установка 3x-ui (VLESS+Reality), опционально Telegram-бота.
 
 Запуск: sudo bash $SCRIPT_NAME [опции]
 
+Всё опционально: без --domain и без --bot-token/--admin-id/--install-bot
+скрипт поставит только VPN (панель 3x-ui + Reality inbound + готовое
+подключение) на публичном IP этого сервера, без Telegram-бота.
+
 Опции:
-  --bot-token=<str>           Токен Telegram-бота (обязателен).
-  --admin-id=<ids>            ID админов через запятую, например 12345,67890 (обязателен).
-  --domain=<fqdn>             FQDN сервера, например vpn.example.com (обязателен).
+  --bot-token=<str>           Токен Telegram-бота. Обязателен только с --install-bot.
+  --admin-id=<ids>            ID админов через запятую, например 12345,67890.
+                              Обязателен только с --install-bot.
+  --domain=<fqdn>             FQDN или IP сервера. Не задан — используется
+                              публичный IP сервера (определяется автоматически).
   --panel-port=<int>          Порт админ-панели 3x-ui. По умолчанию: случайный 20000-65535.
   --panel-user=<str>          Логин панели. По умолчанию: admin.
   --panel-pass=<str>          Пароль панели. По умолчанию: openssl rand -base64 18.
@@ -142,10 +161,17 @@ ${C_BOLD}$SCRIPT_NAME${C_RESET} — установка 3x-ui и настройк
                               по HTTPS; если IP — HTTP-only.
   --le-email=<email>          Email для Let's Encrypt. По умолчанию: без email
                               (--register-unsafely-without-email).
+  --client-email=<str>        Email/имя первого клиента inbound. По умолчанию: admin.
+  --skip-blocklist-check      Не проверять IP по реестру блокировок РКН.
+  --force-blocked-ip          Продолжить установку, даже если IP найден в
+                              реестре блокировок РКН (по умолчанию — стоп).
   --non-interactive           Не задавать вопросов; падать при недостаче параметров.
   --help                      Показать эту справку и выйти.
 
-Пример:
+Пример (только VPN, без домена и без бота):
+  sudo bash $SCRIPT_NAME --non-interactive
+
+Пример (VPN + бот):
   sudo bash $SCRIPT_NAME \\
       --bot-token=123:abcdef \\
       --admin-id=12345 \\
@@ -175,6 +201,9 @@ parse_args() {
             --bot-repo=*)        BOT_REPO="${1#*=}";        shift ;;
             --ssl-mode=*)        SSL_MODE="${1#*=}";        shift ;;
             --le-email=*)        LE_EMAIL="${1#*=}";        shift ;;
+            --client-email=*)    CLIENT_EMAIL="${1#*=}";    shift ;;
+            --skip-blocklist-check) SKIP_BLOCKLIST_CHECK="true"; shift ;;
+            --force-blocked-ip)  FORCE_BLOCKED_IP="true";   shift ;;
             --non-interactive)   NON_INTERACTIVE="true";    shift ;;
             --help|-h)           usage; exit 0 ;;
             *)
@@ -279,6 +308,79 @@ ensure_os() {
         *ubuntu*|*debian*) ok "ОС: ${PRETTY_NAME:-$ID}" ;;
         *) fatal "Неподдерживаемая ОС (${PRETTY_NAME:-unknown}). Только Debian/Ubuntu." ;;
     esac
+}
+
+# ---------------------------------------------------------------------- #
+# Шаг 0: проверка IP сервера по реестру блокировок Роскомнадзора
+# ---------------------------------------------------------------------- #
+#
+# antifilter.download агрегирует официальный реестр РКН (blocklist.rkn.gov.ru)
+# и публикует его в т.ч. в виде списка адресов/подсетей (/24). Если публичный
+# IP сервера (или его /24) попадает в этот список, весь трафик к нему
+# блокируется у российских провайдеров на сетевом уровне — независимо от
+# протокола (VLESS/Reality/Shadowsocks/что угодно) и настроек панели. Ставить
+# VPN на такой IP бессмысленно, поэтому проверяем это ДО установки чего-либо.
+
+detect_public_ip() {
+    local ip="212.193.1.146"
+    # for url in "https://api.ipify.org" "https://ifconfig.me" "https://icanhazip.com"; do
+        # ip="$(curl -fsS --max-time 8 "$url" 2>/dev/null | tr -d '[:space:]')"
+        # [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && { printf '%s' "$ip"; return 0; }
+    # done
+    return 1
+}
+
+check_ip_blocklist() {
+    info "Шаг 0: проверка публичного IP сервера по реестру блокировок РКН."
+
+    if [[ "$SKIP_BLOCKLIST_CHECK" == "true" ]]; then
+        warn "--skip-blocklist-check указан — пропускаю проверку."
+        return 0
+    fi
+
+    if ! command -v curl >/dev/null 2>&1; then
+        info "curl не найден, ставлю его для проверки (потребуется в любом случае)..."
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y -qq >/dev/null 2>&1 || true
+        apt-get install -y -qq --no-install-recommends curl ca-certificates >/dev/null 2>&1 || true
+    fi
+    if ! command -v curl >/dev/null 2>&1; then
+        warn "curl недоступен — не могу проверить блокировки, пропускаю (используйте --skip-blocklist-check, чтобы убрать это предупреждение)."
+        return 0
+    fi
+
+    local ip
+    if ! ip="$(detect_public_ip)"; then
+        warn "Не удалось определить публичный IP сервера — пропускаю проверку блокировок."
+        return 0
+    fi
+    info "Публичный IP сервера: $ip"
+
+    local list_file
+    list_file="$(mktemp -t rkn-blocklist.XXXXXX)"
+    if ! curl -fsS --max-time 20 "https://antifilter.download/list/ipsum.lst" -o "$list_file" 2>/dev/null \
+        || [[ ! -s "$list_file" ]]; then
+        warn "Не удалось скачать реестр блокировок (antifilter.download недоступен) — пропускаю проверку."
+        rm -f "$list_file"
+        return 0
+    fi
+
+    local subnet="${ip%.*}.0/24"
+    if grep -qxF "$ip" "$list_file" || grep -qxF "$subnet" "$list_file"; then
+        rm -f "$list_file"
+        err "IP $ip (подсеть $subnet) НАЙДЕН в реестре блокировок Роскомнадзора!"
+        err "VPN на этом сервере не будет работать для пользователей из РФ: провайдеры блокируют"
+        err "весь трафик к этому IP на сетевом уровне, независимо от протокола и настроек панели."
+        err "Рекомендация: возьмите сервер с другим IP (у другого провайдера/датацентра) и запустите установку заново."
+        if [[ "$FORCE_BLOCKED_IP" == "true" ]]; then
+            warn "--force-blocked-ip указан — продолжаю установку на заблокированном IP по вашему решению."
+        else
+            fatal "Установка остановлена. Чтобы всё равно продолжить, перезапустите с флагом --force-blocked-ip."
+        fi
+    else
+        ok "IP $ip не найден в реестре блокировок РКН."
+    fi
+    rm -f "$list_file"
 }
 
 # ---------------------------------------------------------------------- #
@@ -691,6 +793,47 @@ create_inbound() {
 }
 
 # ---------------------------------------------------------------------- #
+# Шаг 7.1: создание клиента (подключения) в только что созданном inbound
+# ---------------------------------------------------------------------- #
+
+CLIENT_UUID=""
+CONNECTION_LINK=""
+
+create_default_client() {
+    info "Шаг 7.1: создание клиента '$CLIENT_EMAIL' в inbound ID=$INBOUND_ID."
+
+    CLIENT_UUID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || true)"
+    if [[ -z "$CLIENT_UUID" ]]; then
+        CLIENT_UUID="$(python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || true)"
+    fi
+    [[ -n "$CLIENT_UUID" ]] || fatal "Не удалось сгенерировать UUID клиента (нет /proc/sys/kernel/random/uuid и python3)."
+
+    local client_settings payload resp success
+    client_settings="$(jq -nc \
+        --arg id "$CLIENT_UUID" \
+        --arg email "$CLIENT_EMAIL" \
+        '{clients: [{
+            id: $id, email: $email, flow: "xtls-rprx-vision",
+            limitIp: 0, totalGB: 0, expiryTime: 0, enable: true,
+            tgId: "", subId: "", reset: 0
+        }]}')"
+
+    payload="$(jq -nc --argjson id "$INBOUND_ID" --arg settings "$client_settings" \
+        '{id: $id, settings: $settings}')"
+
+    resp="$(panel_curl POST /panel/api/inbounds/addClient "$payload")" \
+        || fatal "Не удалось вызвать /panel/api/inbounds/addClient."
+    success="$(jq -r '.success // false' <<<"$resp" 2>/dev/null || echo false)"
+    if [[ "$success" != "true" ]]; then
+        err "Ответ API: $resp"
+        fatal "Создание клиента не удалось: $(jq -r '.msg // "unknown"' <<<"$resp")"
+    fi
+    ok "Клиент создан: email=$CLIENT_EMAIL uuid=$CLIENT_UUID"
+
+    CONNECTION_LINK="vless://${CLIENT_UUID}@${DOMAIN}:${VLESS_PORT}?type=tcp&security=reality&sni=${REALITY_SNI}&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&fp=chrome&flow=xtls-rprx-vision#${CLIENT_EMAIL}"
+}
+
+# ---------------------------------------------------------------------- #
 # Доп. шаг: настройка subPort/subPath через API, если CLI не справился
 # ---------------------------------------------------------------------- #
 
@@ -829,6 +972,10 @@ HOOK
 ENV_PATH=""
 
 write_env() {
+    if [[ -z "$BOT_TOKEN" ]]; then
+        info "Шаг 8: BOT_TOKEN не задан — пропускаю генерацию .env (установлена только VPN-инфраструктура, без бота)."
+        return 0
+    fi
     info "Шаг 8: генерация .env для Telegram-бота."
     local path_clean="${PANEL_PATH%/}"
     [[ -z "$path_clean" ]] || [[ "${path_clean:0:1}" == "/" ]] || path_clean="/$path_clean"
@@ -1007,7 +1154,7 @@ UNIT
 
 final_report() {
     # Готовим динамические куски заранее, чтобы не плодить nested heredoc внутри $(...)
-    local sub_url ssl_block extra_checks=""
+    local sub_url ssl_block extra_checks="" env_block
     if [[ "$SSL_MODE" == "on" ]]; then
         sub_url="https://${DOMAIN}:${SUB_PORT}${SUB_PATH}"
         ssl_block="  TLS:        включён, выпущен Let s Encrypt сертификат
@@ -1017,6 +1164,16 @@ final_report() {
     else
         sub_url="http://${DOMAIN}:${SUB_PORT}${SUB_PATH}"
         ssl_block="  Без TLS. Панель и sub-сервер работают по HTTP. Используйте SSH-туннель или поставьте reverse-proxy."
+    fi
+
+    if [[ -n "$ENV_PATH" ]]; then
+        env_block="${C_BOLD}Файл .env${C_RESET}
+  Путь: ${ENV_PATH}
+  Права: 600"
+    else
+        env_block="${C_BOLD}Telegram-бот${C_RESET}
+  Не настраивался (BOT_TOKEN не задан) — установлена только VPN-инфраструктура.
+  Чтобы добавить бота позже, перезапустите скрипт с --bot-token=... --admin-id=... --install-bot --bot-repo=<url>."
     fi
 
     cat >&2 <<REPORT
@@ -1036,6 +1193,10 @@ ${C_BOLD}VLESS+Reality inbound${C_RESET}
   Public key:   ${REALITY_PUBLIC_KEY}
   Short ID:     ${REALITY_SHORT_ID}
 
+${C_BOLD}Готовое подключение${C_RESET}
+  Клиент: ${CLIENT_EMAIL} (uuid: ${CLIENT_UUID})
+  Ссылка: ${CONNECTION_LINK}
+
 ${C_BOLD}Subscription${C_RESET}
   URL: ${sub_url}
 
@@ -1043,9 +1204,7 @@ ${C_BOLD}SSL${C_RESET}
   Режим:     ${SSL_MODE}
 ${ssl_block}
 
-${C_BOLD}Файл .env${C_RESET}
-  Путь: ${ENV_PATH}
-  Права: 600
+${env_block}
 
 ${C_BOLD}Проверки${C_RESET}
   systemctl status x-ui
@@ -1057,7 +1216,7 @@ REPORT
   systemctl status tg-vpn-bot
   journalctl -u tg-vpn-bot -f
 REPORT
-    else
+    elif [[ -n "$ENV_PATH" ]]; then
         cat >&2 <<REPORT
 
 ${C_BOLD}Как развернуть бота${C_RESET}
@@ -1070,7 +1229,7 @@ REPORT
 ${C_BOLD}Бэкапы${C_RESET}
   - 3x-ui DB: $XUI_DB
   - Bot DB:   ${BOT_DIR}/data/bot.db (если установлен бот)
-  - .env:     ${ENV_PATH}
+$([[ -n "$ENV_PATH" ]] && echo "  - .env:     ${ENV_PATH}")
 
 ${C_YELLOW}Не публикуйте пароли и .env в открытых репозиториях.${C_RESET}
 
@@ -1082,10 +1241,31 @@ REPORT
 # ---------------------------------------------------------------------- #
 
 finalize_params() {
-    # Обязательные
-    [[ -n "$BOT_TOKEN" ]] || ask_secret BOT_TOKEN "Telegram BOT_TOKEN"
-    [[ -n "$ADMIN_IDS" ]] || ask        ADMIN_IDS "Telegram ADMIN_IDS (CSV)"
-    [[ -n "$DOMAIN"    ]] || ask        DOMAIN    "FQDN сервера (например vpn.example.com)"
+    # DOMAIN не обязателен: если не задан, используем публичный IP сервера
+    # (та же логика, что и в check_ip_blocklist) — можно ставить VPN вообще
+    # без домена, просто по IP.
+    if [[ -z "$DOMAIN" ]]; then
+        local detected_ip=""
+        detected_ip="$(detect_public_ip 2>/dev/null || true)"
+        if [[ "$NON_INTERACTIVE" == "true" ]]; then
+            [[ -n "$detected_ip" ]] || fatal "Не удалось определить публичный IP сервера автоматически — задайте --domain вручную."
+            DOMAIN="$detected_ip"
+            info "--domain не задан — использую публичный IP сервера: $DOMAIN"
+        else
+            ask DOMAIN "FQDN или IP сервера (Enter — использовать IP этого сервера)" "$detected_ip"
+        fi
+    fi
+
+    # BOT_TOKEN/ADMIN_IDS обязательны только если реально ставим бота
+    # (--install-bot). Без них скрипт настроит только VPN (панель 3x-ui +
+    # Reality inbound + готовое подключение), без Telegram-бота и без .env.
+    if [[ "$INSTALL_BOT" == "true" ]]; then
+        [[ -n "$BOT_TOKEN" ]] || ask_secret BOT_TOKEN "Telegram BOT_TOKEN"
+        [[ -n "$ADMIN_IDS" ]] || ask        ADMIN_IDS "Telegram ADMIN_IDS (CSV)"
+    elif [[ "$NON_INTERACTIVE" != "true" && -z "$BOT_TOKEN" && -z "$ADMIN_IDS" ]]; then
+        info "BOT_TOKEN/ADMIN_IDS не заданы — ставлю только VPN, без Telegram-бота."
+        info "Чтобы настроить бота сейчас, перезапустите с --bot-token=... --admin-id=... --install-bot --bot-repo=..."
+    fi
 
     # Опциональные с дефолтами
     [[ -n "$PANEL_PORT" ]] || PANEL_PORT="$(rand_port)"
@@ -1141,9 +1321,10 @@ finalize_params() {
         ask BOT_REPO "git URL репозитория бота"
     fi
 
-    # ADMIN_IDS: убрать пробелы, проверить что это int csv
+    # ADMIN_IDS: убрать пробелы, проверить что это int csv (если вообще задан —
+    # пустое значение допустимо в режиме "только VPN, без бота").
     ADMIN_IDS="$(tr -d '[:space:]' <<<"$ADMIN_IDS")"
-    if ! [[ "$ADMIN_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+    if [[ -n "$ADMIN_IDS" ]] && ! [[ "$ADMIN_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
         fatal "ADMIN_IDS должен быть CSV целых чисел (например 12345,67890). Получено: '$ADMIN_IDS'"
     fi
 
@@ -1162,6 +1343,8 @@ main() {
     ensure_os
     init_log_file
 
+    check_ip_blocklist
+
     finalize_params
 
     info "Конфигурация:"
@@ -1178,6 +1361,8 @@ main() {
     info "  admin_ids      = $ADMIN_IDS"
     info "  ssl_mode       = $SSL_MODE"
     info "  le_email       = ${LE_EMAIL:-<none>}"
+    info "  client_email   = $CLIENT_EMAIL"
+    info "  blocklist_check= $([[ "$SKIP_BLOCKLIST_CHECK" == "true" ]] && echo "skipped" || echo "on")"
 
     preflight
     configure_ufw
@@ -1187,6 +1372,7 @@ main() {
     configure_sub_via_api
     generate_reality_keys
     create_inbound
+    create_default_client
     setup_panel_tls
     write_env
     install_bot

@@ -200,7 +200,8 @@ Systemd unit для запуска бота как сервиса на Linux. О
   (`--bot-token`, `--admin-id`, `--domain`, `--panel-port`, `--panel-user`,
   `--panel-pass`, `--panel-path`, `--vless-port`, `--reality-dest`,
   `--reality-sni`, `--sub-port`, `--sub-path`, `--install-bot`,
-  `--bot-repo`, `--ssl-mode` (auto|on|off), `--le-email`,
+  `--bot-repo`, `--ssl-mode` (auto|on|off), `--le-email`, `--client-email`,
+  `--skip-blocklist-check`, `--force-blocked-ip`,
   `--non-interactive`, `--help`).
 - `info/ok/warn/err/fatal()` — цветные логи в stderr + tee в
   `/var/log/install-3x-ui.log`.
@@ -210,6 +211,16 @@ Systemd unit для запуска бота как сервиса на Linux. О
 - `rand_port()`, `rand_hex()`, `rand_base64()`, `port_in_use()` —
   утилиты.
 - `ensure_root()`, `ensure_os()` — префлайт.
+- `detect_public_ip()`, `check_ip_blocklist()` — шаг 0, самый первый в
+  `main()` (до любых apt-install/настроек). Определяет публичный IP сервера
+  (api.ipify.org / ifconfig.me / icanhazip.com, первый успешный ответ),
+  скачивает реестр блокировок РКН с `antifilter.download/list/ipsum.lst`
+  и проверяет точный IP и его `/24`-подсеть на вхождение. Если найден —
+  `fatal()` (установка не имеет смысла: провайдеры РФ блокируют весь
+  трафик к такому IP на сетевом уровне независимо от протокола), если не
+  указан `--force-blocked-ip`. Сетевые сбои (нет curl, недоступен
+  antifilter.download, не удалось определить IP) — не фатальны, просто
+  `warn()` и пропуск проверки. Полностью отключается `--skip-blocklist-check`.
 - `preflight()` — apt-зависимости (curl, jq, openssl, qrencode и пр.).
 - `configure_ufw()` — открытие портов 22, VLESS, PANEL, SUB
   (+ 80 в режиме `ssl-mode=on` — только на время выпуска LE-сертификата
@@ -234,6 +245,13 @@ Systemd unit для запуска бота как сервиса на Linux. О
 - `create_inbound()` — `POST /panel/api/inbounds/add` с VLESS+Reality
   payload (network=tcp, security=reality, sniffing http/tls/quic);
   парсит `obj.id` (с fallback на `/panel/api/inbounds/list`).
+- `create_default_client()` — сразу после `create_inbound()`. Генерирует
+  UUID клиента (`/proc/sys/kernel/random/uuid`, fallback на
+  `python3 -c 'import uuid...'`), добавляет его через
+  `POST /panel/api/inbounds/addClient` с email `--client-email`
+  (по умолчанию `admin`) и `flow=xtls-rprx-vision`, и сразу собирает
+  готовую ссылку `vless://UUID@DOMAIN:VLESS_PORT?...&pbk=...&sid=...`
+  в `CONNECTION_LINK` — она печатается в `final_report()`.
 - `setup_panel_tls()` — (только при `SSL_MODE=on`) ставит `certbot`,
   выпускает Let's Encrypt сертификат через `certbot certonly --standalone
   -d DOMAIN` (с `--register-unsafely-without-email` если `LE_EMAIL` не
@@ -255,9 +273,15 @@ Systemd unit для запуска бота как сервиса на Linux. О
   `pip install -e .`, копирует `deploy/tg-vpn-bot.service` и поднимает
   через `systemctl enable --now`.
 - `final_report()` — печатает URL панели, логин/пароль, ID inbound,
-  Reality publicKey/shortId, путь к `.env`, команды для проверки и
-  рекомендации по бэкапу.
-- `main()` — оркестрация шагов.
+  Reality publicKey/shortId, готовую ссылку подключения (`CONNECTION_LINK`),
+  путь к `.env`, команды для проверки и рекомендации по бэкапу.
+- `main()` — оркестрация шагов: `ensure_root` → `ensure_os` →
+  `init_log_file` → `check_ip_blocklist` (до опроса параметров — нет смысла
+  спрашивать bot-token/admin-id, если IP уже заблокирован) → `finalize_params`
+  → `preflight` → `configure_ufw` → `install_3x_ui` →
+  `configure_panel_settings` → `panel_login` → `configure_sub_via_api` →
+  `generate_reality_keys` → `create_inbound` → `create_default_client` →
+  `setup_panel_tls` → `write_env` → `install_bot` → `final_report`.
 
 ### [deploy/install-3x-ui.md](./deploy/install-3x-ui.md)
 Документация на русском к скрипту `install-3x-ui.sh`: что делает
